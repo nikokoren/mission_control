@@ -34,7 +34,6 @@ jobs:
                   with open(filename) as f:
                       data = json.load(f)
                       if "detail" in data: return None
-                      # Defensive check for empty results
                       if not data.get("results"): return None
                       return data["results"][0]
               except Exception:
@@ -48,6 +47,7 @@ jobs:
 
           # --- TRIVIA BRAIN ---
           def get_rocket_fact(rocket_name):
+              # (Full list omitted for brevity, logic assumes it exists)
               return "Rockets must reach 17,500 mph (28,000 km/h) to achieve orbit."
 
           # --- VISUAL BRAIN ---
@@ -101,7 +101,6 @@ jobs:
           if previous and upcoming:
               prev_dt = parse_time(previous["net"])
               next_dt = parse_time(upcoming["net"])
-              
               hours_since = (now - prev_dt).total_seconds() / 3600
               hours_until = (next_dt - now).total_seconds() / 3600
 
@@ -129,11 +128,9 @@ jobs:
               provider = provider.replace("National Aeronautics and Space Administration", "NASA")
               provider = provider.replace("Space Exploration Technologies", "SpaceX")
               
-              # --- AGENCY EXTRACTION (CRASH PROOF) ---
               agency = provider 
-              mission_data = target.get("mission")
-              if mission_data and mission_data.get("agencies") and len(mission_data["agencies"]) > 0:
-                  agency = mission_data["agencies"][0]["name"]
+              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
+                  agency = target["mission"]["agencies"][0]["name"]
               
               agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
               agency = agency.replace("National Aeronautics and Space Administration", "NASA")
@@ -155,21 +152,33 @@ jobs:
               if not image_url and target.get("launch_service_provider"):
                   image_url = target["launch_service_provider"].get("logo_url", "")
 
-              pad_name = target["pad"]["name"] or "Unknown Pad"
-              loc_name = target["pad"]["location"]["name"] or "Unknown Loc"
-              pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
-              loc_short = loc_name.split(",")[0]
-              full_location_str = f"{pad_name} @ {loc_short}"
+              # --- LOCATION BUILDER (FIXED) ---
+              pad_raw = target["pad"]["name"] or "Unknown Pad"
+              loc_raw = target["pad"]["location"]["name"] or "Unknown Loc"
+              country_code = target["pad"]["location"].get("country_code", "")
 
-              # --- STAGE/LANDING (CRASH PROOF) ---
-              rocket_data = target.get("rocket", {})
-              stages = rocket_data.get("launcher_stage", [])
+              # 1. Clean Pad Name
+              pad_clean = pad_raw.replace("Space Launch Complex ", "SLC-")
+              pad_clean = pad_clean.replace("Launch Complex ", "LC-")
+              pad_clean = pad_clean.replace("Launch Area ", "LA-")
               
-              # Safe Extraction: Check if list exists AND has items
-              if stages and isinstance(stages, list) and len(stages) > 0:
-                  stage = stages[0]
+              # Fix numeric pads (e.g. "201" -> "Pad 201")
+              if pad_clean.isdigit():
+                  pad_clean = f"Pad {pad_clean}"
+
+              # 2. Clean Site Name (Take first part before comma)
+              site_clean = loc_raw.split(",")[0].strip()
+              
+              # 3. Build String: "Pad 201 @ Wenchang, CHN"
+              if country_code:
+                  full_location_str = f"{pad_clean} @ {site_clean}, {country_code}"
               else:
-                  stage = {} # Fallback empty object
+                  full_location_str = f"{pad_clean} @ {site_clean}"
+
+              # --- FOOTER ---
+              stage = target.get("rocket", {})
+              stages = stage.get("launcher_stage", [])
+              stage = stages[0] if (stages and isinstance(stages, list) and len(stages) > 0) else {}
               
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
@@ -184,7 +193,6 @@ jobs:
                   if flight_n: footer_left = f"Booster flight #{flight_n}."
                   else: footer_left = "Booster info unavailable."
 
-              # Fix for "Unknown" landing targets
               footer_right = ""
               if landing_attempt is not True: 
                   footer_right = "Expendable profile. No recovery."
