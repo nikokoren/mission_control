@@ -2,9 +2,8 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    # Run every 10 minutes to catch delays and landing updates quickly
-    - cron: '*/10 * * * *'
-  workflow_dispatch: # Allows you to force-run it manually from the Actions tab
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,41 +17,50 @@ jobs:
 
       - name: Fetch and Smart-Process Data
         run: |
-          # 1. Fetch NEXT launch
-          curl -s "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&mode=detailed&format=json" > upcoming.json
+          # 1. Fetch NEXT launch (Silent -s but show errors -S)
+          curl -sS "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&mode=detailed&format=json" > upcoming.json
           
-          # 2. Fetch PREVIOUS launch (to capture recent successes)
-          curl -s "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
+          # 2. Fetch PREVIOUS launch
+          curl -sS "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
 
-          # 3. Python Logic: Decide which one to show & format the data
-          python3 -c '
+          # 3. DEBUG: Check if files fetched correctly (Prints first 5 lines)
+          echo "--- DEBUG: upcoming.json head ---"
+          head -n 5 upcoming.json
+          echo "--- DEBUG: previous.json head ---"
+          head -n 5 previous.json
+
+          # 4. Python Logic (Using Heredoc to prevent Syntax Errors)
+          python3 - <<'EOF'
           import json
+          import sys
           from datetime import datetime, timezone
 
-          # Load Data
-          try:
-              with open("upcoming.json") as f:
-                  upcoming = json.load(f)["results"][0]
-          except (IndexError, KeyError):
-              upcoming = None
+          # Load Data with Error Handling
+          def load_json(filename):
+              try:
+                  with open(filename) as f:
+                      data = json.load(f)
+                      # Check if API returned an error message instead of data
+                      if "detail" in data:
+                          print(f"API Error in {filename}: {data['detail']}")
+                          return None
+                      return data["results"][0]
+              except Exception as e:
+                  print(f"Failed to parse {filename}: {e}")
+                  return None
 
-          try:
-              with open("previous.json") as f:
-                  previous = json.load(f)["results"][0]
-          except (IndexError, KeyError):
-              previous = None
+          upcoming = load_json("upcoming.json")
+          previous = load_json("previous.json")
 
-          # If API fails completely, exit (prevents overwriting valid data with empty file)
+          # If both fail, we can't do anything. Exit cleanly (or with error).
           if not upcoming and not previous:
-              exit(1)
+              print("CRITICAL: No valid data found in API response.")
+              sys.exit(1)
 
-          # Helper to parse time
           def parse_time(t_str):
               return datetime.strptime(t_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
           now = datetime.now(timezone.utc)
-          
-          # Default to upcoming
           target = upcoming
           mode = "PRE_LAUNCH"
 
@@ -64,8 +72,7 @@ jobs:
               hours_since_prev = (now - prev_date).total_seconds() / 3600
               hours_until_next = (next_date - now).total_seconds() / 3600
 
-              # Rule 1: "The 6-Hour Window"
-              # If previous launch was recent (<6h) and next one isn't immediate (>1h), show previous.
+              # Rule 1: The 6-Hour Window
               if hours_since_prev < 6 and hours_until_next > 1:
                   target = previous
                   mode = "POST_LAUNCH"
@@ -73,55 +80,55 @@ jobs:
                   target = upcoming
                   mode = "PRE_LAUNCH"
 
-          # Rule 2: "The Zombie Fix (Status Override)"
-          # If the target we selected says "Success" or "Failure", it is NOT a pre-launch.
-          # This fixes cases where a launch is technically "upcoming" in the API but has already launched.
-          status_abbrev = target["status"]["abbrev"]
-          if status_abbrev in ["Success", "Failure", "Partial Failure"]:
-              mode = "POST_LAUNCH"
+          # Rule 2: The Zombie Fix (Status Override)
+          # If we have data, check the status
+          if target:
+              status_abbrev = target["status"]["abbrev"]
+              if status_abbrev in ["Success", "Failure", "Partial Failure"]:
+                  mode = "POST_LAUNCH"
 
-          # EXTRACT DATA FIELDS
-          # Handle potential nulls safely
-          stage = target.get("rocket", {}).get("launcher_stage", [{}])[0]
-          landing = stage.get("landing", {})
-          
-          # Logic for Landing Status
-          landing_status = "N/A"
-          if landing and landing.get("attempt"):
-              if landing.get("success") is None:
-                  landing_status = "PENDING"
-              elif landing.get("success"):
-                  landing_status = "SUCCESS"
-              else:
-                  landing_status = "FAILED"
-          elif landing:
-              landing_status = "NO ATTEMPT"
+              # EXTRACT DATA FIELDS
+              stage = target.get("rocket", {}).get("launcher_stage", [{}])[0]
+              landing = stage.get("landing", {})
+              
+              landing_status = "N/A"
+              if landing and landing.get("attempt"):
+                  if landing.get("success") is None:
+                      landing_status = "PENDING"
+                  elif landing.get("success"):
+                      landing_status = "SUCCESS"
+                  else:
+                      landing_status = "FAILED"
+              elif landing:
+                  landing_status = "NO ATTEMPT"
 
-          # Construct the clean JSON
-          output = {
-              "mode": mode,
-              "name": target["name"],
-              "provider": target["launch_service_provider"]["name"],
-              "pad": target["pad"]["location"]["name"],
-              "date": target["net"],
-              "status": target["status"]["abbrev"],
-              # Truncate description to 250 chars to fit TRMNL memory
-              "description": (target["mission"]["description"] or "No description available.")[0:250] + "...",
-              "rocket": target["rocket"]["configuration"]["name"],
-              "orbit": target["mission"]["orbit"]["name"] if target["mission"] and target["mission"]["orbit"] else "TBD",
-              "landing_status": landing_status,
-              "landing_loc": landing.get("location", {}).get("name", "Ocean") if landing and landing.get("location") else "N/A",
-              "flight_proven": stage.get("reused", False)
-          }
+              output = {
+                  "mode": mode,
+                  "name": target["name"],
+                  "provider": target["launch_service_provider"]["name"],
+                  "pad": target["pad"]["location"]["name"],
+                  "date": target["net"],
+                  "status": target["status"]["abbrev"],
+                  "description": (target["mission"]["description"] or "No description available.")[0:250] + "...",
+                  "rocket": target["rocket"]["configuration"]["name"],
+                  "orbit": target["mission"]["orbit"]["name"] if target["mission"] and target["mission"]["orbit"] else "TBD",
+                  "landing_status": landing_status,
+                  "landing_loc": landing.get("location", {}).get("name", "Ocean") if landing and landing.get("location") else "N/A",
+                  "flight_proven": stage.get("reused", False)
+              }
 
-          with open("launch.json", "w") as f:
-              json.dump(output, f, indent=2)
-          '
+              with open("launch.json", "w") as f:
+                  json.dump(output, f, indent=2)
+              
+              print(f"SUCCESS: Generated launch.json in {mode} mode.")
+          else:
+              print("Error: Target data is empty.")
+              sys.exit(1)
+          EOF
 
       - name: Commit and Push
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add launch.json
-          # Only commit if the file has actually changed
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update launch data" && git push)
