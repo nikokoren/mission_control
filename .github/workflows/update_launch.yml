@@ -2,8 +2,9 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *' # Run every 4 hours normally
-  workflow_dispatch:      # Run manually
+    # Run every 10 minutes to catch delays and landing updates quickly
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows you to force-run it manually from the Actions tab
 
 permissions:
   contents: write
@@ -17,58 +18,86 @@ jobs:
 
       - name: Fetch and Smart-Process Data
         run: |
-          # 1. Fetch the NEXT launch
+          # 1. Fetch NEXT launch
           curl -s "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&mode=detailed&format=json" > upcoming.json
           
-          # 2. Fetch the PREVIOUS launch (to check if we just missed one)
+          # 2. Fetch PREVIOUS launch (to capture recent successes)
           curl -s "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
 
-          # 3. RUN THE DECISION LOGIC (Python is cleaner for this math than Shell)
+          # 3. Python Logic: Decide which one to show & format the data
           python3 -c '
           import json
-          from datetime import datetime, timezone, timedelta
+          from datetime import datetime, timezone
 
           # Load Data
-          with open("upcoming.json") as f:
-              upcoming = json.load(f)["results"][0]
-          with open("previous.json") as f:
-              previous = json.load(f)["results"][0]
+          try:
+              with open("upcoming.json") as f:
+                  upcoming = json.load(f)["results"][0]
+          except (IndexError, KeyError):
+              upcoming = None
+
+          try:
+              with open("previous.json") as f:
+                  previous = json.load(f)["results"][0]
+          except (IndexError, KeyError):
+              previous = None
+
+          # If API fails completely, exit (prevents overwriting valid data with empty file)
+          if not upcoming and not previous:
+              exit(1)
 
           # Helper to parse time
           def parse_time(t_str):
               return datetime.strptime(t_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
           now = datetime.now(timezone.utc)
-          prev_date = parse_time(previous["net"])
-          next_date = parse_time(upcoming["net"])
-
-          # LOGIC:
-          # 1. If previous launch was less than 6 hours ago, SHOW PREVIOUS (Results mode)
-          # 2. UNLESS the next launch is imminent (less than 1 hour away), then SHOW NEXT (Hype mode)
           
-          hours_since_prev = (now - prev_date).total_seconds() / 3600
-          hours_until_next = (next_date - now).total_seconds() / 3600
+          # Default to upcoming
+          target = upcoming
+          mode = "PRE_LAUNCH"
 
-          if hours_since_prev < 6 and hours_until_next > 1:
-              target = previous
+          # LOGIC ENGINE
+          if previous and upcoming:
+              prev_date = parse_time(previous["net"])
+              next_date = parse_time(upcoming["net"])
+              
+              hours_since_prev = (now - prev_date).total_seconds() / 3600
+              hours_until_next = (next_date - now).total_seconds() / 3600
+
+              # Rule 1: "The 6-Hour Window"
+              # If previous launch was recent (<6h) and next one isn't immediate (>1h), show previous.
+              if hours_since_prev < 6 and hours_until_next > 1:
+                  target = previous
+                  mode = "POST_LAUNCH"
+              else:
+                  target = upcoming
+                  mode = "PRE_LAUNCH"
+
+          # Rule 2: "The Zombie Fix (Status Override)"
+          # If the target we selected says "Success" or "Failure", it is NOT a pre-launch.
+          # This fixes cases where a launch is technically "upcoming" in the API but has already launched.
+          status_abbrev = target["status"]["abbrev"]
+          if status_abbrev in ["Success", "Failure", "Partial Failure"]:
               mode = "POST_LAUNCH"
-          else:
-              target = upcoming
-              mode = "PRE_LAUNCH"
 
-          # Extract Fields
-          # We check stage retreival (landing) specifically for the first stage
+          # EXTRACT DATA FIELDS
+          # Handle potential nulls safely
           stage = target.get("rocket", {}).get("launcher_stage", [{}])[0]
           landing = stage.get("landing", {})
           
-          landing_success = "Pending"
-          if landing.get("attempt") == True:
-              if landing.get("success") == True: landing_success = "SUCCESS"
-              elif landing.get("success") == False: landing_success = "FAILED"
-              else: landing_success = "Attempting..."
-          else:
-              landing_success = "No Attempt"
+          # Logic for Landing Status
+          landing_status = "N/A"
+          if landing and landing.get("attempt"):
+              if landing.get("success") is None:
+                  landing_status = "PENDING"
+              elif landing.get("success"):
+                  landing_status = "SUCCESS"
+              else:
+                  landing_status = "FAILED"
+          elif landing:
+              landing_status = "NO ATTEMPT"
 
+          # Construct the clean JSON
           output = {
               "mode": mode,
               "name": target["name"],
@@ -76,13 +105,12 @@ jobs:
               "pad": target["pad"]["location"]["name"],
               "date": target["net"],
               "status": target["status"]["abbrev"],
-              "description": (target["mission"]["description"] or "No description")[0:250] + "...",
+              # Truncate description to 250 chars to fit TRMNL memory
+              "description": (target["mission"]["description"] or "No description available.")[0:250] + "...",
               "rocket": target["rocket"]["configuration"]["name"],
-              "orbit": target["mission"]["orbit"]["name"] if target["mission"]["orbit"] else "TBD",
-              
-              # Post-Launch Specifics
-              "landing_status": landing_success,
-              "landing_loc": landing.get("location", {}).get("name", "N/A"),
+              "orbit": target["mission"]["orbit"]["name"] if target["mission"] and target["mission"]["orbit"] else "TBD",
+              "landing_status": landing_status,
+              "landing_loc": landing.get("location", {}).get("name", "Ocean") if landing and landing.get("location") else "N/A",
               "flight_proven": stage.get("reused", False)
           }
 
@@ -95,4 +123,5 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add launch.json
+          # Only commit if the file has actually changed
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update launch data" && git push)
