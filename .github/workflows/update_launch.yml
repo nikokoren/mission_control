@@ -2,7 +2,7 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,7 @@ jobs:
           from datetime import datetime, timezone
 
           # --- CONFIG ---
+          # REPLACE THIS WITH YOUR REPO URL
           REPO_BASE = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main"
 
           def load_json(filename):
@@ -45,10 +46,167 @@ jobs:
           if not upcoming and not previous:
               sys.exit(0)
 
-          # --- TRIVIA BRAIN ---
+          # --- TRIVIA BRAIN (Formatted & Explicit) ---
           def get_rocket_fact(rocket_name):
-              # (Full list omitted for brevity, logic assumes it exists)
-              return "Rockets must reach 17,500 mph (28,000 km/h) to achieve orbit."
+              r_name = rocket_name.lower()
+              facts = []
+
+              if "falcon 9" in r_name:
+                  facts = [
+                      "The Falcon 9's heat shield protecting the engines is covered in a layer of cork.",
+                      "The Falcon 9 uses grid fins cast from a single piece of titanium so strong they are rarely replaced.",
+                      "The Falcon 9 cannot hover; it must perform a 'hoverslam' to hit zero velocity exactly at touchdown.",
+                      "The Falcon 9's flight computer uses 'voting' logic where three identical computers must agree.",
+                      "The Falcon 9's engines are arranged in an 'Octaweb' pattern to contain blast damage.",
+                      "The Falcon 9's fuel and oxygen are chilled to near freezing to densify them, packing more fuel in.",
+                      "The Falcon 9 uses 'friction stir welding' to fuse tanks without melting the metal.",
+                      "The Falcon 9 steers in space using cold nitrogen gas thrusters, creating visible white puffs.",
+                      "The Falcon 9 must be pressurized with nitrogen during road transport to prevent collapsing.",
+                      "The Falcon 9's engines ignite using TEA-TEB, creating the signature green flash."
+                  ]
+              elif "falcon heavy" in r_name:
+                  facts = [
+                      "The Falcon Heavy's center core uses a 'LOXtopus' plumbing manifold for oxygen flow.",
+                      "At liftoff, the Falcon Heavy fires 27 engines simultaneously.",
+                      "The Falcon Heavy's center booster has thicker walls to withstand the side boosters' force.",
+                      "The Falcon Heavy's first payload (Tesla Roadster) crosses the path of Mars.",
+                      "The Falcon Heavy's 27 engines stagger ignition by milliseconds to reduce acoustic shock.",
+                      "Falcon Heavy side boosters are often converted flight-proven Falcon 9 boosters.",
+                      "Hydraulic rams push the Falcon Heavy side boosters away to ensure safe separation.",
+                      "The Falcon Heavy center core throttles down immediately after launch to save fuel.",
+                      "The launch pad sound suppression system was upgraded to handle the Falcon Heavy's acoustic energy.",
+                      "The three exhaust plumes of the Falcon Heavy interact to create a massive single column of fire."
+                  ]
+              elif "starship" in r_name:
+                  facts = [
+                      "Starship is designed to be the first fully reusable orbital rocket.",
+                      "Starship uses Liquid Methane fuel, which can be synthesized on Mars.",
+                      "The Starship Super Heavy booster has 33 Raptor engines.",
+                      "Starship catches the booster using 'Mechazilla' chopstick arms.",
+                      "Starship is made of stainless steel instead of carbon fiber."
+                  ]
+              elif "electron" in r_name:
+                  facts = [
+                      "Electron uses battery-powered electric motors to spin fuel pumps.",
+                      "Electron performs a 'battery hot-swap' in mid-air, dropping dead batteries.",
+                      "Electron's Rutherford engines are almost entirely 3D printed in 24 hours.",
+                      "The black body of Electron is carbon fiber, light enough for two people to lift.",
+                      "A robot named 'Rosie' builds the Electron carbon fiber tubes in 12 hours.",
+                      "Electron often uses a tiny 'kick stage' that can coast for hours to precision-drop satellites.",
+                      "Helicopter mid-air catch attempts for Electron were scrapped for ocean recovery.",
+                      "Electron's exhaust sparkles because the nozzle liner erodes intentionally.",
+                      "Electron is only 4 feet wide; a person could almost wrap their arms around it.",
+                      "Submerged helium bottles in the Electron LOX tank are a complex engineering feat."
+                  ]
+              elif "atlas v" in r_name:
+                  facts = [
+                      "Atlas V has a 100% mission success rate for National Security payloads.",
+                      "Atlas V launched the Mars Perseverance Rover and New Horizons.",
+                      "The Atlas V RD-180 main engine is a high-performance Russian engine.",
+                      "Atlas V can fly with anywhere from 0 to 5 solid rocket boosters.",
+                      "The Atlas V Centaur upper stage uses balloon tanks that must stay pressurized."
+                  ]
+              elif "vulcan" in r_name:
+                  facts = [
+                      "The Vulcan Centaur's stainless steel upper tank is as thin as a dime.",
+                      "The Vulcan SMART reuse plan involves catching just the engines after splashdown.",
+                      "Vulcan's solid rocket boosters (72ft) are the longest single-cast motors ever built.",
+                      "Vulcan uses Blue Origin BE-4 engines, relying on hardware from a competitor.",
+                      "Vulcan burns methane, producing a clean blue flame.",
+                      "Vulcan stages travel by ship (RocketShip) because they are too big for roads.",
+                      "The Vulcan Centaur upper stage engine lineage dates back to the 1960s.",
+                      "Advanced laser ignition research led to Vulcan's torch ignition system.",
+                      "The Vulcan main tank uses an 'orthogrid' milled pattern for strength.",
+                      "Mid-air helicopter capture of Vulcan engines was scrapped for ocean recovery."
+                  ]
+              elif "new glenn" in r_name:
+                  facts = [
+                      "New Glenn lands on a moving ship that drives forward to stabilize against waves.",
+                      "The New Glenn fairing is large enough to fit two school buses side-by-side.",
+                      "New Glenn uses a 'tapped off' gas system, removing heavy helium bottles.",
+                      "The New Glenn booster is engineered for 25 flights with minimal refurbishment.",
+                      "Wing-like strakes allow New Glenn to glide back to the ship aerodynamically.",
+                      "Methane fuel gives New Glenn a transparent blue exhaust with visible shock diamonds.",
+                      "Massive hydraulic fins at the top provide New Glenn with primary steering during glide.",
+                      "Static fire tests are often skipped for New Glenn in favor of rigorous factory testing.",
+                      "New Glenn is assembled and rolled out vertically to protect payloads.",
+                      "The New Glenn upper stage engines use an efficient 'expander cycle' to spin pumps."
+                  ]
+              elif "soyuz" in r_name:
+                  facts = [
+                      "Soyuz engines are ignited by pyrotechnics held by wooden birch sticks.",
+                      "Soyuz hangs from a 'Tulip' structure rather than bolting to the pad.",
+                      "The Soyuz launch command is ceremonially called 'Key to Start'.",
+                      "Soyuz is assembled horizontally and rolled out on wide-gauge rail tracks.",
+                      "Soyuz launches to ISS aim for 51.6 degrees to avoid dropping boosters on China.",
+                      "Soyuz LOX is warmed in winter to prevent valve freezing.",
+                      "Soyuz crew buses stop for a traditional 'urination ritual' on the rear wheel.",
+                      "Soyuz pumps run on hydrogen peroxide, separate from the main fuel.",
+                      "Soyuz abort motors pull 14Gs, faster than the human eye can track.",
+                      "Soyuz boosters separate in the famous 'Korolev Cross' pattern."
+                  ]
+              elif "ariane 6" in r_name:
+                  facts = [
+                      "Ariane 6 components arrive on 'Canopée', a ship with massive wingsails.",
+                      "Ariane 6 is assembled horizontally to save costs, unlike Ariane 5.",
+                      "The Ariane 6 upper stage has a tiny engine to re-ignite and settle fuel.",
+                      "Ariane 6 solid boosters are identical to the Vega-C first stage.",
+                      "A massive 'water curtain' suppresses Ariane 6 acoustic energy at launch.",
+                      "The 8,200-ton Ariane 6 gantry building rolls away on rails before launch.",
+                      "The Ariane 6 nozzle rim is cooled by dumping turbopump exhaust into it.",
+                      "The Ariane 6 SYLDA system encapsulates one satellite under another for dual launch.",
+                      "A pyrotechnic cord 'unzips' the Ariane 6 fairing nose cone.",
+                      "Launching Ariane 6 from French Guiana gives a 1,000 mph rotation boost."
+                  ]
+              elif "long march 5" in r_name:
+                  facts = [
+                      "Long March 5 is nicknamed 'Fat-Five' because it exceeds the 3.35m rail tunnel limit.",
+                      "Long March 5 is the first Chinese rocket transported by ship.",
+                      "Foam insulation frost makes Long March 5 change color from orange to white.",
+                      "Long March 5 engines use a nickel superalloy after a turbopump cracking issue.",
+                      "The Wenchang launch site boosts Long March 5 payload due to equator proximity.",
+                      "The Long March 5 fairing launched the Tiangong space station module in one piece.",
+                      "Ten liquid engines fire simultaneously at Long March 5 liftoff.",
+                      "Long March 5 is a hybrid: hydrogen core with kerosene boosters.",
+                      "Long March 5 exhaust is mostly clean steam and kerosene, unlike older toxic hypergolics.",
+                      "Future Long March 5 versions may use maglev rail transport to the pad."
+                  ]
+              elif "h3" in r_name:
+                  facts = [
+                      "H3 uses a complex 'expander bleed cycle' scaled up for main engines.",
+                      "H3 uses automotive-grade electronics to cut costs.",
+                      "H3 solid boosters separate using struts and drag, no separation rockets.",
+                      "The H3 rocket is bolted to the platform and rolls 500m to the pad.",
+                      "The H3 flight computer can trigger self-destruct if ignition fails.",
+                      "H3 AI algorithms verify systems, reducing human crew needs.",
+                      "H3 insulation is sprayed-on silicone instead of hand-glued cork.",
+                      "H3 can coast for hours to insert directly to Geostationary Orbit.",
+                      "H3 Pogo suppression is built into the piping geometry.",
+                      "H3 launches from Tanegashima, considered the world's most beautiful launch site."
+                  ]
+              elif "lvm3" in r_name:
+                  facts = [
+                      "LVM3 is affectionately nicknamed 'Bahubali' (Fat Boy) for its stubby appearance.",
+                      "LVM3 solid boosters contain 200 tons of propellant each.",
+                      "LVM3 core engines are improved versions of French Viking engines.",
+                      "LVM3 boosters are tuned for lower vibration for human safety.",
+                      "The LVM3 cryogenic upper stage was developed indigenously in India.",
+                      "LVM3 water dumping keeps launch noise below 142 decibels.",
+                      "LVM3 is assembled vertically and rolled to the Second Launch Pad.",
+                      "LVM3 manufacturing is eliminating hazardous chromium for green standards.",
+                      "LVM3 liquid core engines ignite 110 seconds after liftoff.",
+                      "LVM3 is one of the most cost-efficient heavy launchers in the global market."
+                  ]
+              
+              if not facts:
+                  facts = [
+                      "Rockets must reach 17,500 mph (7.8 km/s) to achieve orbit.",
+                      "The Kármán line (100km / 62 miles) is widely accepted as the boundary of space.",
+                      "Most of a rocket's mass (often over 85%) is just fuel.",
+                      "Launch windows are determined by orbital mechanics and collision avoidance."
+                  ]
+              
+              return random.choice(facts)
 
           # --- VISUAL BRAIN ---
           def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
@@ -115,7 +273,6 @@ jobs:
               if target["status"]["abbrev"] in ["Success", "Failure", "Partial Failure", "In Flight"]:
                   mode = "POST_LAUNCH"
 
-              # --- CONTEXT ---
               mission_context = "COMMERCIAL"
               if target.get("program") and len(target["program"]) > 0:
                   mission_context = target["program"][0]["name"]
@@ -135,7 +292,6 @@ jobs:
               agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
               agency = agency.replace("National Aeronautics and Space Administration", "NASA")
 
-              # --- DESCRIPTIONS ---
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
@@ -152,33 +308,22 @@ jobs:
               if not image_url and target.get("launch_service_provider"):
                   image_url = target["launch_service_provider"].get("logo_url", "")
 
-              # --- LOCATION BUILDER (FIXED) ---
-              pad_raw = target["pad"]["name"] or "Unknown Pad"
-              loc_raw = target["pad"]["location"]["name"] or "Unknown Loc"
+              pad_name = target["pad"]["name"] or "Unknown Pad"
+              loc_name = target["pad"]["location"]["name"] or "Unknown Loc"
               country_code = target["pad"]["location"].get("country_code", "")
-
-              # 1. Clean Pad Name
-              pad_clean = pad_raw.replace("Space Launch Complex ", "SLC-")
-              pad_clean = pad_clean.replace("Launch Complex ", "LC-")
-              pad_clean = pad_clean.replace("Launch Area ", "LA-")
               
-              # Fix numeric pads (e.g. "201" -> "Pad 201")
-              if pad_clean.isdigit():
-                  pad_clean = f"Pad {pad_clean}"
-
-              # 2. Clean Site Name (Take first part before comma)
-              site_clean = loc_raw.split(",")[0].strip()
+              pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+              if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
               
-              # 3. Build String: "Pad 201 @ Wenchang, CHN"
-              if country_code:
-                  full_location_str = f"{pad_clean} @ {site_clean}, {country_code}"
-              else:
-                  full_location_str = f"{pad_clean} @ {site_clean}"
+              loc_short = loc_name.split(",")[0].strip()
+              
+              if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
+              else: full_location_str = f"{pad_name} @ {loc_short}"
 
               # --- FOOTER ---
-              stage = target.get("rocket", {})
-              stages = stage.get("launcher_stage", [])
-              stage = stages[0] if (stages and isinstance(stages, list) and len(stages) > 0) else {}
+              stage = {}
+              if target.get("rocket", {}).get("launcher_stage"):
+                  stage = target["rocket"]["launcher_stage"][0]
               
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
@@ -189,14 +334,19 @@ jobs:
               landing_loc = landing_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI").replace("A Shortfall of Gravitas", "ASOG")
 
               footer_left = ""
-              if mode == "PRE_LAUNCH":
-                  if flight_n: footer_left = f"Booster flight #{flight_n}."
-                  else: footer_left = "Booster info unavailable."
-
               footer_right = ""
+
               if landing_attempt is not True: 
-                  footer_right = "Expendable profile. No recovery."
+                  footer_left = "" 
+                  footer_right = "Single-use configuration. No recovery planned."
               else:
+                  if mode == "PRE_LAUNCH":
+                      if flight_n: 
+                          if flight_n == 1: footer_left = "Maiden flight for this booster."
+                          else: footer_left = f"Booster flight #{flight_n}."
+                      else:
+                          footer_left = "Booster identity classified/unavailable."
+                  
                   if mode == "PRE_LAUNCH":
                       if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
                       else: footer_right = f"Targeting recovery at {landing_loc}."
