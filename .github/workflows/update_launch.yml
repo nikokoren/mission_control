@@ -1,0 +1,38 @@
+name: Update Rocket Launch Data
+
+on:
+  schedule:
+    # Run every 4 hours (to respect API limits and battery)
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allows you to run it manually for testing
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Fetch and Filter Data
+        run: |
+          # 1. Fetch data from SpaceDevs (Upcoming launches)
+          # 2. Use jq to grab ONLY the specific fields we need and flatten the structure
+          curl -s "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1&format=json" | \
+          jq -r '.results[0] | {
+            name: .name, 
+            provider: .launch_service_provider.name, 
+            pad: .pad.location.name, 
+            date: .net, 
+            image: .image
+          }' > launch.json
+
+      - name: Commit and Push if changed
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add launch.json
+          # Only commit if the file has actually changed
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update launch data" && git push)
