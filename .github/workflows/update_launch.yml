@@ -41,10 +41,73 @@ jobs:
           if not upcoming and not previous:
               sys.exit(1)
 
-          # [TRIVIA BRAIN - Assume full list is here]
+          # --- TRIVIA BRAIN (Add your full list back here) ---
           def get_rocket_fact(rocket_name):
               return "Rockets must reach 17,500 mph to achieve orbit."
 
+          # --- VISUAL BRAIN (New!) ---
+          def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
+              # 1. Normalize Name
+              r = rocket_name.lower()
+              key = "generic" # Fallback
+
+              # 2. Map Name to Filename Prefix
+              if "falcon 9" in r: key = "falcon9"
+              elif "falcon heavy" in r: key = "falconheavy"
+              elif "starship" in r or "super heavy" in r: key = "starship"
+              elif "electron" in r: key = "electron"
+              elif "atlas v" in r: key = "atlasv"
+              elif "vulcan" in r: key = "vulcan"
+              elif "delta iv heavy" in r: key = "delta4"
+              elif "sls" in r or "space launch system" in r: key = "sls"
+              elif "new glenn" in r: key = "newglenn"
+              elif "ariane 6" in r: key = "ariane6"
+              elif "vega" in r: key = "vega"
+              elif "soyuz" in r: key = "soyuz"
+              elif "proton" in r: key = "proton"
+              elif "angara" in r: key = "angara"
+              elif "long march 5" in r: key = "cz_5"
+              elif "long march" in r: key = "cz_classic" # Covers 2, 3, 4, 7
+              elif "h-ii" in r or "h3" in r: key = "h3"
+              elif "lvm3" in r or "gslv mk iii" in r: key = "lvm3"
+              elif "pslv" in r: key = "pslv"
+              elif "firefly" in r: key = "firefly"
+              elif "minotaur" in r: key = "minotaur"
+
+              # 3. Determine State Suffix
+              # status can be: Go, TBD, Hold, In Flight, Success, Failure
+              suffix = "_idle" # Default (Pre-Launch)
+
+              if status == "In Flight":
+                  suffix = "_ascent"
+              elif status in ["Success", "Failure", "Partial Failure"]:
+                  # POST LAUNCH LOGIC
+                  if landing_success is True:
+                      # Only Reusables get a landed state
+                      if key in ["falcon9", "falconheavy", "starship", "newglenn"]:
+                          suffix = "_landed"
+                      else:
+                          # Expendables that succeeded just disappear (or show empty pad)
+                          key = "empty" 
+                          suffix = ""
+                  else:
+                      # If landing failed or wasn't attempted (expendable), show empty sky
+                      key = "empty"
+                      suffix = ""
+
+              # 4. Construct URL
+              # Assuming images are in a folder named 'rockets' in your repo
+              # Format: https://raw.githubusercontent.com/USER/REPO/main/rockets/falcon9_idle.png
+              
+              # NOTE: For "empty", we don't need a suffix
+              if key == "empty":
+                  filename = "empty.png"
+              else:
+                  filename = f"{key}{suffix}.png"
+              
+              return f"{repo_url}/rockets/{filename}"
+
+          # --- MAIN LOGIC ---
           def parse_time(t_str):
               return datetime.strptime(t_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
@@ -69,7 +132,7 @@ jobs:
               if target["status"]["abbrev"] in ["Success", "Failure", "Partial Failure", "In Flight"]:
                   mode = "POST_LAUNCH"
 
-              # --- CONTEXT ---
+              # [Context, Agency, Desc Logic same as before...]
               mission_context = "COMMERCIAL"
               if target.get("program") and len(target["program"]) > 0:
                   mission_context = target["program"][0]["name"]
@@ -82,42 +145,37 @@ jobs:
               agency = agency.replace("National Aeronautics and Space Administration", "NASA")
               agency = agency.replace("Space Exploration Technologies", "SpaceX")
 
-              # --- CLEAN DESCRIPTION LOGIC ---
-              # CRITICAL FIX: Return EMPTY strings if no data, not "No details"
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
-                  if "No description" not in desc:
-                      raw_mission_desc = desc
+                  if "No description" not in desc: raw_mission_desc = desc
               
               raw_program_desc = ""
               if target.get("program") and len(target["program"]) > 0:
                   p_desc = target["program"][0].get("description", "")
-                  if "No description" not in p_desc:
-                      raw_program_desc = p_desc
+                  if "No description" not in p_desc: raw_program_desc = p_desc
 
+              # Patch/Logo Image
               image_url = ""
               if target.get("mission_patches") and len(target["mission_patches"]) > 0:
                   image_url = target["mission_patches"][0]["image_url"]
               if not image_url and target.get("launch_service_provider"):
                   image_url = target["launch_service_provider"].get("logo_url", "")
 
-              # --- LOCATION BUILDER ---
+              # Location
               pad_name = target["pad"]["name"] or "Unknown Pad"
               loc_name = target["pad"]["location"]["name"] or "Unknown Loc"
               pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
               loc_short = loc_name.split(",")[0]
-              
               full_location_str = f"{pad_name} @ {loc_short}"
 
-              # --- FOOTER LOGIC ---
+              # Footer Logic
               stage = target.get("rocket", {}).get("launcher_stage", [{}])[0]
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
               landing_attempt = landing.get("attempt")
               landing_loc = landing.get("location", {}).get("name", "Unknown")
               landing_success = landing.get("success")
-
               landing_loc = landing_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI").replace("A Shortfall of Gravitas", "ASOG")
 
               footer_left = ""
@@ -128,8 +186,7 @@ jobs:
                   else: footer_left = "Booster history unavailable."
 
               footer_right = ""
-              if landing_attempt is False:
-                  footer_right = "Expendable profile. No recovery."
+              if landing_attempt is False: footer_right = "Expendable profile. No recovery."
               else:
                   if mode == "PRE_LAUNCH": footer_right = f"Targeting recovery at {landing_loc}."
                   else:
@@ -139,10 +196,19 @@ jobs:
                       else: footer_right = f"Landing pending at {landing_loc}."
 
               rocket_name = target["rocket"]["configuration"]["name"]
-              # Dummy fact logic
-              the_fact = "Rockets are cool."
               try: the_fact = get_rocket_fact(rocket_name)
-              except: pass
+              except: the_fact = "Rockets are cool."
+
+              # --- ROCKET IMAGE LOGIC ---
+              # You must replace YOUR_USER/YOUR_REPO with your actual details
+              REPO_BASE = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main"
+              
+              rocket_visual_url = get_rocket_image_url(
+                  rocket_name, 
+                  target["status"]["name"], # Use full status name for "In Flight"
+                  landing_success, 
+                  REPO_BASE
+              )
 
               output = {
                   "mode": mode,
@@ -160,7 +226,8 @@ jobs:
                   "orbit": target["mission"]["orbit"]["name"] if target["mission"] and target["mission"]["orbit"] else "TBD",
                   "footer_left": footer_left,
                   "footer_right": footer_right,
-                  "rocket_fact": the_fact
+                  "rocket_fact": the_fact,
+                  "rocket_visual": rocket_visual_url # <--- New Image Field
               }
 
               with open("launch.json", "w") as f:
