@@ -34,6 +34,8 @@ jobs:
                   with open(filename) as f:
                       data = json.load(f)
                       if "detail" in data: return None
+                      # Defensive check for empty results
+                      if not data.get("results"): return None
                       return data["results"][0]
               except Exception:
                   return None
@@ -44,7 +46,7 @@ jobs:
           if not upcoming and not previous:
               sys.exit(0)
 
-          # --- TRIVIA BRAIN (Full list abbreviated for length, but keeps logic) ---
+          # --- TRIVIA BRAIN ---
           def get_rocket_fact(rocket_name):
               return "Rockets must reach 17,500 mph (28,000 km/h) to achieve orbit."
 
@@ -78,7 +80,7 @@ jobs:
               else: filename = f"{key}{suffix}.png"
               return f"{repo_url}/rockets/{filename}"
 
-          # --- COUNTDOWN LOGIC (New!) ---
+          # --- COUNTDOWN ---
           def get_countdown(dt_event):
               now = datetime.now(timezone.utc)
               diff = dt_event - now
@@ -99,10 +101,11 @@ jobs:
           if previous and upcoming:
               prev_dt = parse_time(previous["net"])
               next_dt = parse_time(upcoming["net"])
-              hours_since_prev = (now - prev_dt).total_seconds() / 3600
-              hours_until_next = (next_dt - now).total_seconds() / 3600
+              
+              hours_since = (now - prev_dt).total_seconds() / 3600
+              hours_until = (next_dt - now).total_seconds() / 3600
 
-              if hours_since_prev < 6 and hours_until_next > 1:
+              if hours_since < 6 and hours_until > 1:
                   target = previous
                   mode = "POST_LAUNCH"
               else:
@@ -113,25 +116,29 @@ jobs:
               if target["status"]["abbrev"] in ["Success", "Failure", "Partial Failure", "In Flight"]:
                   mode = "POST_LAUNCH"
 
+              # --- CONTEXT ---
               mission_context = "COMMERCIAL"
               if target.get("program") and len(target["program"]) > 0:
                   mission_context = target["program"][0]["name"]
               elif target.get("mission") and target["mission"].get("type"):
                   mission_context = target["mission"]["type"]
 
-              # --- PROVIDER SHORTENING (New!) ---
+              # --- PROVIDER SHORTENING ---
               provider = target["launch_service_provider"]["name"]
               provider = provider.replace("China Aerospace Science and Technology Corporation", "CASC")
               provider = provider.replace("National Aeronautics and Space Administration", "NASA")
               provider = provider.replace("Space Exploration Technologies", "SpaceX")
               
+              # --- AGENCY EXTRACTION (CRASH PROOF) ---
               agency = provider 
-              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
-                  agency = target["mission"]["agencies"][0]["name"]
+              mission_data = target.get("mission")
+              if mission_data and mission_data.get("agencies") and len(mission_data["agencies"]) > 0:
+                  agency = mission_data["agencies"][0]["name"]
               
               agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
               agency = agency.replace("National Aeronautics and Space Administration", "NASA")
 
+              # --- DESCRIPTIONS ---
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
@@ -154,7 +161,16 @@ jobs:
               loc_short = loc_name.split(",")[0]
               full_location_str = f"{pad_name} @ {loc_short}"
 
-              stage = target.get("rocket", {}).get("launcher_stage", [{}])[0]
+              # --- STAGE/LANDING (CRASH PROOF) ---
+              rocket_data = target.get("rocket", {})
+              stages = rocket_data.get("launcher_stage", [])
+              
+              # Safe Extraction: Check if list exists AND has items
+              if stages and isinstance(stages, list) and len(stages) > 0:
+                  stage = stages[0]
+              else:
+                  stage = {} # Fallback empty object
+              
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
               landing_attempt = landing.get("attempt")
@@ -168,7 +184,7 @@ jobs:
                   if flight_n: footer_left = f"Booster flight #{flight_n}."
                   else: footer_left = "Booster info unavailable."
 
-              # --- RECOVERY LOGIC FIX ---
+              # Fix for "Unknown" landing targets
               footer_right = ""
               if landing_attempt is not True: 
                   footer_right = "Expendable profile. No recovery."
@@ -194,7 +210,7 @@ jobs:
                   "provider": provider,
                   "location_str": full_location_str,
                   "date": target["net"],
-                  "countdown": get_countdown(parse_time(target["net"])), # <--- Generates the T-Minus string
+                  "countdown": get_countdown(parse_time(target["net"])),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
                   "description": (raw_mission_desc or "").replace("\n", " ")[0:600],
