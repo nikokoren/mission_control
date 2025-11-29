@@ -1,14 +1,1 @@
-{
-  "mode": "POST_LAUNCH",
-  "name": "Falcon 9 Block 5 | Transporter 15 (Dedicated SSO Rideshare)",
-  "provider": "SpaceX",
-  "pad": "Vandenberg SFB, CA, USA",
-  "date": "2025-11-28T18:44:30Z",
-  "status": "Success",
-  "description": "Dedicated rideshare flight to a sun-synchronous orbit with dozens of small microsatellites and nanosatellites for commercial and government customers....",
-  "rocket": "Falcon 9",
-  "orbit": "Sun-Synchronous Orbit",
-  "landing_status": "SUCCESS",
-  "landing_loc": "Of Course I Still Love You",
-  "flight_proven": true
-}
+{"mode":"POST_LAUNCH","name":"Falcon 9 Block 5 | Transporter 15 (Dedicated SSO Rideshare)","context":"DEDICATED RIDESHARE","agency":"SpaceX","provider":"SpaceX","pad":"Vandenberg SFB, CA, USA","date":"2025-11-28T18:44:30Z","status":"Success","image":"https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/mission_patch_images/spacex2520tran_mission_patch_20230102202140.png","description":"Dedicated rideshare flight to a sun-synchronous orbit with dozens of small microsatellites and nanosatellites for commercial and government customers.","program_description":"No program details....","rocket":"Falcon 9","orbit":"Sun-Synchronous Orbit","landing_status":"SUCCESS","landing_loc":"Of Course I Still Love You","flight_number":30}
