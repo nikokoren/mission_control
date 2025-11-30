@@ -484,7 +484,7 @@ jobs:
               
               return random.choice(pool)
 
-          # --- VISUAL BRAIN ---
+        # --- VISUAL BRAIN ---
           def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
               r = rocket_name.lower()
               key = "generic"
@@ -506,9 +506,14 @@ jobs:
               if status == "In Flight": suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
                   if landing_success:
-                      if key in ["falcon9", "falconheavy", "starship", "newglenn"]: suffix = "_landed"
-                      else: key, suffix = "empty", ""
-                  else: key, suffix = "empty", ""
+                      if key in ["falcon9", "falconheavy", "starship", "newglenn"]:
+                          suffix = "_landed"
+                      else:
+                          key = "empty" 
+                          suffix = ""
+                  else:
+                      key = "empty"
+                      suffix = ""
 
               if key == "empty": filename = "empty.png"
               else: filename = f"{key}{suffix}.png"
@@ -547,6 +552,14 @@ jobs:
                   mode = "PRE_LAUNCH"
 
           if target:
+              target_dt = parse_time(target["net"])
+              seconds_since_t0 = (now - target_dt).total_seconds()
+              
+              if mode == "PRE_LAUNCH" and seconds_since_t0 > 600:
+                  mode = "POST_LAUNCH"
+                  target["status"]["abbrev"] = "PENDING"
+                  target["status"]["name"] = "AWAITING CONFIRMATION"
+
               if target["status"]["abbrev"] in ["Success", "Failure", "Partial Failure", "In Flight"]:
                   mode = "POST_LAUNCH"
 
@@ -556,19 +569,34 @@ jobs:
               elif target.get("mission") and target["mission"].get("type"):
                   mission_context = target["mission"]["type"]
 
-              # --- PROVIDER SHORTENING ---
-              provider = target["launch_service_provider"]["name"]
-              provider = provider.replace("China Aerospace Science and Technology Corporation", "CASC")
-              provider = provider.replace("National Aeronautics and Space Administration", "NASA")
-              provider = provider.replace("Space Exploration Technologies", "SpaceX")
-              
-              agency = provider 
-              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
-                  agency = target["mission"]["agencies"][0]["name"]
-              
-              agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
-              agency = agency.replace("National Aeronautics and Space Administration", "NASA")
+              # --- PROVIDER & AGENCY SHORTENING ---
+              def clean_provider(name):
+                  n = name.lower()
+                  if "china aerospace" in n: return "CASC"
+                  if "spacex" in n: return "SpaceX"
+                  if "nasa" in n: return "NASA"
+                  if "united launch alliance" in n: return "ULA"
+                  if "roscosmos" in n: return "Roscosmos"
+                  if "indian space" in n: return "ISRO"
+                  if "japan aerospace" in n: return "JAXA"
+                  if "european space" in n: return "ESA"
+                  if "rocket lab" in n: return "Rocket Lab"
+                  if "blue origin" in n: return "Blue Origin"
+                  if "northrop" in n: return "Northrop"
+                  if "mitsubishi" in n: return "MHI"
+                  return name
 
+              provider = clean_provider(target["launch_service_provider"]["name"])
+
+              agency = ""
+              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
+                  raw_agency = target["mission"]["agencies"][0]["name"]
+                  cleaned_agency = clean_provider(raw_agency)
+                  # Only set agency if it's different from provider
+                  if cleaned_agency != provider:
+                      agency = cleaned_agency
+
+              # --- DESCRIPTIONS ---
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
@@ -615,7 +643,7 @@ jobs:
 
               if landing_attempt is not True: 
                   footer_left = "" 
-                  footer_right = "Single-use configuration. No recovery of booster planned."
+                  footer_right = "Single-use configuration. No recovery planned."
               else:
                   if mode == "PRE_LAUNCH":
                       if flight_n: 
@@ -625,13 +653,18 @@ jobs:
                           footer_left = "Booster identity classified/unavailable."
                   
                   if mode == "PRE_LAUNCH":
-                      if landing_loc == "Unknown": footer_right = "Recovery of booster planned (Location TBD)."
+                      if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
                       else: footer_right = f"Targeting recovery at {landing_loc}."
                   else:
                       footer_left = "" 
-                      if landing_success is True: footer_right = f"SUCCESS: Booster anded at {landing_loc}."
-                      elif landing_success is False: footer_right = f"FAILURE: Booster missed {landing_loc}."
-                      else: footer_right = f"Landing pending at {landing_loc}."
+                      if target["status"]["abbrev"] == "PENDING":
+                          footer_right = "Launch window open. Status pending confirmation."
+                      elif landing_success is True: 
+                          footer_right = f"SUCCESS: Landed at {landing_loc}."
+                      elif landing_success is False: 
+                          footer_right = f"FAILURE: Missed {landing_loc}."
+                      else: 
+                          footer_right = f"Landing pending at {landing_loc}."
 
               rocket_name = target["rocket"]["configuration"]["name"]
               try: the_fact = get_rocket_fact(rocket_name)
