@@ -28,7 +28,7 @@ jobs:
 
           # --- CONFIG ---
           # REPLACE THIS WITH YOUR REPO URL
-          REPO_BASE = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main"
+          REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
 
           def load_json(filename):
               try:
@@ -53,9 +53,9 @@ jobs:
               # 1. General Facts (To mix in)
               general_facts = [
                   "Launch pad water deluge systems are primarily used for sound suppression to prevent acoustic waves from tearing the rocket apart.",
-                  "To reach low Earth orbit, any rocket must travel at approximately 17,500 mph (28,000 km/h) sideways.",
+                  "To reach low Earth orbit, any rocket must travel at approximately 28,000 km/h (17,500 mph) sideways.",
                   "The Kármán line at 100km (62 miles) altitude is widely accepted as the boundary where space begins.",
-                  "Rockets are mostly fuel; often over 85% of a launch vehicle's mass is propellant, leaving little room for payload.",
+                  "Rockets are mostly fuel! Often over 85% of a launch vehicle's mass is propellant, leaving little room for payload.",
                   "Launch windows are strictly determined by orbital mechanics and collision avoidance requirements.",
                   "The 'Max-Q' callout during launch refers to the moment of maximum dynamic pressure, where structural stress is highest.",
                   "Most rockets use a 'Gravity Turn', tilting slightly after liftoff to let gravity do the work of turning the rocket horizontal.",
@@ -77,7 +77,6 @@ jobs:
                       "The Falcon 9's fuel and oxygen are chilled to near freezing to densify them, packing more fuel in.",
                       "The Falcon 9 uses 'friction stir welding' to fuse its aluminum-lithium tanks without melting the metal.",
                       "SpaceX's Falcon 9 steers in the vacuum of space using cold nitrogen gas thrusters, creating visible white puffs.",
-                      "The Falcon 9 fairing halves are guided back to Earth using onboard thrusters and parafoils.",
                       "The Falcon 9's engines ignite using TEA-TEB, creating the signature green flash."
                   ]
               elif "falcon heavy" in r_name:
@@ -112,7 +111,7 @@ jobs:
                       "Rocket Lab's Rutherford engines are almost entirely 3D printed, allowing a verified engine to be built in 24 hours.",
                       "The Electron's body is black because it is made of carbon fiber composite, making it light enough for two people to lift.",
                       "Rocket Lab's Electron controllers run on C++ code, similar to the software powering many video games.",
-                      "The Rutherford engine uses an electric motor the size of a soda can to spin its pumps at 40,000 RPM.",
+                      "Rocket Lab's Rutherford engine uses an electric motor the size of a soda can to spin its pumps at 40,000 RPM.",
                       "Electron's tanks are carbon composite liners overwrapped with carbon fiber, holding cryogenic fluid without a metal liner.",
                       "Rocket Lab names their Electron missions with puns, such as 'It's a Business Time' and 'Rocket Like a Hurricane'.",
                       "Electron's exhaust sometimes appears to sparkle because the ablative liner of the engine nozzle erodes intentionally.",
@@ -131,8 +130,7 @@ jobs:
               elif "vulcan" in r_name:
                   facts = [
                       "The Vulcan Centaur's stainless steel upper tank is as thin as a dime.",
-                      "The Vulcan SMART reuse plan involves catching just the engines after splashdown.",
-                      "Vulcan's solid rocket boosters (72ft) are the longest single-cast motors ever built.",
+                      "Vulcan's solid rocket boosters are the longest single-cast motors ever built (22m or ~70ft).",
                       "Vulcan uses Blue Origin BE-4 engines, relying on hardware from a competitor.",
                       "Vulcan burns methane, producing a clean blue flame.",
                       "Vulcan stages travel by ship (RocketShip) because they are too big for roads.",
@@ -183,7 +181,6 @@ jobs:
                       "Long March 5 is the first Chinese rocket that must be transported by ship to the launch site.",
                       "The Long March 5 uses YF-100 engines that run on an Oxygen-Rich Staged Combustion cycle.",
                       "The Long March 5 core stage is so cold after fueling that it creates its own weather system of fog.",
-                      "CASC's Long March 5 appears to change color from orange to white as frost shakes off during launch.",
                       "The Long March 5 fairing was large enough to launch the Tiangong space station core module in one piece.",
                       "Ten liquid engines fire simultaneously at the liftoff of a Long March 5.",
                       "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters."
@@ -214,8 +211,7 @@ jobs:
                       "ISRO's PSLV is known as the 'Workhorse of India' for its high reliability.",
                       "PSLV launched India's first mission to Mars (Mangalyaan).",
                       "PSLV alternates solid and liquid stages (Solid-Liquid-Solid-Liquid).",
-                      "PSLV set a world record by launching 104 satellites in a single mission.",
-                      "PSLV uses strap-on boosters that look like miniature rockets."
+                      "PSLV set a world record by launching 104 satellites in a single mission."
                   ]
               elif "vega" in r_name:
                   facts = [
@@ -226,7 +222,6 @@ jobs:
                   ]
               elif "h3" in r_name:
                   facts = [
-                      "H3 uses a complex 'expander bleed cycle' scaled up for main engines.",
                       "H3 uses automotive-grade electronics to cut costs.",
                       "H3 solid boosters separate using struts and drag, no separation rockets.",
                       "The H3 rocket is bolted to the platform and rolls 500m to the pad.",
@@ -425,7 +420,7 @@ jobs:
 
               if landing_attempt is not True: 
                   footer_left = "" 
-                  footer_right = "Single-use configuration. No recovery planned."
+                  footer_right = "Single-use configuration. No recovery of booster planned."
               else:
                   if mode == "PRE_LAUNCH":
                       if flight_n: 
@@ -435,12 +430,12 @@ jobs:
                           footer_left = "Booster identity classified/unavailable."
                   
                   if mode == "PRE_LAUNCH":
-                      if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
+                      if landing_loc == "Unknown": footer_right = "Recovery of booster planned (Location TBD)."
                       else: footer_right = f"Targeting recovery at {landing_loc}."
                   else:
                       footer_left = "" 
-                      if landing_success is True: footer_right = f"SUCCESS: Landed at {landing_loc}."
-                      elif landing_success is False: footer_right = f"FAILURE: Missed {landing_loc}."
+                      if landing_success is True: footer_right = f"SUCCESS: Booster anded at {landing_loc}."
+                      elif landing_success is False: footer_right = f"FAILURE: Booster missed {landing_loc}."
                       else: footer_right = f"Landing pending at {landing_loc}."
 
               rocket_name = target["rocket"]["configuration"]["name"]
