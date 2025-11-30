@@ -484,28 +484,70 @@ jobs:
               
               return random.choice(pool)
 
-        # --- VISUAL BRAIN ---
+       # --- VISUAL BRAIN (EXPANDED MAP) ---
           def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
               r = rocket_name.lower()
-              key = "generic"
+              key = "generic" # Default white rocket
+
+              # 1. SpaceX
               if "falcon 9" in r: key = "falcon9"
               elif "falcon heavy" in r: key = "falconheavy"
-              elif "starship" in r: key = "starship"
-              elif "electron" in r: key = "electron"
-              elif "atlas" in r: key = "atlasv"
-              elif "vulcan" in r: key = "vulcan"
-              elif "delta" in r: key = "delta4"
-              elif "sls" in r: key = "sls"
-              elif "new glenn" in r: key = "newglenn"
-              elif "ariane" in r: key = "ariane6"
-              elif "soyuz" in r: key = "soyuz"
-              elif "long march" in r: key = "cz_classic"
-              elif "h3" in r: key = "h3"
+              elif "starship" in r or "super heavy" in r: key = "starship"
               
+              # 2. Rocket Lab
+              elif "electron" in r: key = "electron"
+              
+              # 3. ULA
+              elif "atlas v" in r: key = "atlasv"
+              elif "vulcan" in r: key = "vulcan"
+              elif "delta iv heavy" in r: key = "delta4"
+              elif "delta" in r: key = "atlasv" # Fallback for Delta II/IV Medium
+              
+              # 4. NASA
+              elif "sls" in r or "space launch system" in r: key = "sls"
+              
+              # 5. Blue Origin
+              elif "new glenn" in r: key = "newglenn"
+              
+              # 6. Europe
+              elif "ariane 6" in r: key = "ariane6"
+              elif "ariane 5" in r: key = "ariane6" # Close enough visual
+              elif "vega" in r: key = "vega"
+              
+              # 7. Russia
+              elif "soyuz" in r: key = "soyuz"
+              elif "proton" in r: key = "proton"
+              elif "angara" in r: key = "angara"
+              
+              # 8. China
+              elif "long march 5" in r: key = "cz_5"
+              elif "long march" in r: key = "cz_classic" # Covers 2, 3, 4, 7, 8
+              elif "zhuque" in r: key = "cz_classic"
+              
+              # 9. Japan
+              elif "h-ii" in r or "h3" in r: key = "h3"
+              elif "epsilon" in r: key = "vega" # Similar solid look
+              
+              # 10. India
+              elif "lvm3" in r or "gslv mk iii" in r: key = "lvm3"
+              elif "pslv" in r: key = "pslv"
+              elif "gslv" in r: key = "pslv" # Similar strap-on look
+              
+              # 11. Others
+              elif "antares" in r: key = "antares"
+              elif "minotaur" in r: key = "minotaur"
+              elif "firefly" in r or "alpha" in r: key = "firefly"
+
+              # --- STATE LOGIC ---
               suffix = "_idle"
-              if status == "In Flight": suffix = "_ascent"
+              
+              # If Status is In Flight OR Pending Confirmation -> SHOW ASCENT
+              if status == "In Flight" or status == "AWAITING CONFIRMATION":
+                  suffix = "_ascent"
+                  
               elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success:
+                  # Post-Launch: Landing or Empty?
+                  if landing_success is True:
                       if key in ["falcon9", "falconheavy", "starship", "newglenn"]:
                           suffix = "_landed"
                       else:
@@ -517,6 +559,7 @@ jobs:
 
               if key == "empty": filename = "empty.png"
               else: filename = f"{key}{suffix}.png"
+              
               return f"{repo_url}/rockets/{filename}"
 
           # --- COUNTDOWN ---
@@ -540,7 +583,6 @@ jobs:
           if previous and upcoming:
               prev_dt = parse_time(previous["net"])
               next_dt = parse_time(upcoming["net"])
-              
               hours_since = (now - prev_dt).total_seconds() / 3600
               hours_until = (next_dt - now).total_seconds() / 3600
 
@@ -552,6 +594,7 @@ jobs:
                   mode = "PRE_LAUNCH"
 
           if target:
+              # Time Override for Limbo State
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
@@ -569,34 +612,18 @@ jobs:
               elif target.get("mission") and target["mission"].get("type"):
                   mission_context = target["mission"]["type"]
 
-              # --- PROVIDER & AGENCY SHORTENING ---
-              def clean_provider(name):
-                  n = name.lower()
-                  if "china aerospace" in n: return "CASC"
-                  if "spacex" in n: return "SpaceX"
-                  if "nasa" in n: return "NASA"
-                  if "united launch alliance" in n: return "ULA"
-                  if "roscosmos" in n: return "Roscosmos"
-                  if "indian space" in n: return "ISRO"
-                  if "japan aerospace" in n: return "JAXA"
-                  if "european space" in n: return "ESA"
-                  if "rocket lab" in n: return "Rocket Lab"
-                  if "blue origin" in n: return "Blue Origin"
-                  if "northrop" in n: return "Northrop"
-                  if "mitsubishi" in n: return "MHI"
-                  return name
-
-              provider = clean_provider(target["launch_service_provider"]["name"])
-
-              agency = ""
+              provider = target["launch_service_provider"]["name"]
+              provider = provider.replace("China Aerospace Science and Technology Corporation", "CASC")
+              provider = provider.replace("National Aeronautics and Space Administration", "NASA")
+              provider = provider.replace("Space Exploration Technologies", "SpaceX")
+              
+              agency = provider 
               if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
-                  raw_agency = target["mission"]["agencies"][0]["name"]
-                  cleaned_agency = clean_provider(raw_agency)
-                  # Only set agency if it's different from provider
-                  if cleaned_agency != provider:
-                      agency = cleaned_agency
+                  agency = target["mission"]["agencies"][0]["name"]
+              
+              agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
+              agency = agency.replace("National Aeronautics and Space Administration", "NASA")
 
-              # --- DESCRIPTIONS ---
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
@@ -625,10 +652,11 @@ jobs:
               if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
               else: full_location_str = f"{pad_name} @ {loc_short}"
 
-              # --- FOOTER ---
-              stage = {}
-              if target.get("rocket", {}).get("launcher_stage"):
-                  stage = target["rocket"]["launcher_stage"][0]
+              # --- SAFER STAGE EXTRACTION (CRASH PROOF) ---
+              rocket_data = target.get("rocket", {})
+              stages = rocket_data.get("launcher_stage", [])
+              # If list is empty or None, use empty dict to prevent crash
+              stage = stages[0] if (stages and isinstance(stages, list) and len(stages) > 0) else {}
               
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
