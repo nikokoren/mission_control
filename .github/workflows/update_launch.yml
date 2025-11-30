@@ -672,9 +672,12 @@ jobs:
               provider = provider.replace("National Aeronautics and Space Administration", "NASA")
               provider = provider.replace("Space Exploration Technologies", "SpaceX")
               
-              agency = provider 
+              agency = "" # Default to empty so the UI hides the column
               if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
-                  agency = target["mission"]["agencies"][0]["name"]
+                  raw_agency = target["mission"]["agencies"][0]["name"]
+                  # Only set agency if it is DIFFERENT from the provider
+                  if raw_agency != target["launch_service_provider"]["name"]:
+                       agency = raw_agency
               
               agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
               agency = agency.replace("National Aeronautics and Space Administration", "NASA")
