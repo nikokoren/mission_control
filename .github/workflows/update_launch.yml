@@ -562,7 +562,7 @@ jobs:
               
               return f"{repo_url}/rockets/{filename}"
 
-          # --- COUNTDOWN ---
+         # --- COUNTDOWN ---
           def get_countdown(dt_event):
               now = datetime.now(timezone.utc)
               diff = dt_event - now
@@ -594,10 +594,10 @@ jobs:
                   mode = "PRE_LAUNCH"
 
           if target:
-              # Time Override for Limbo State
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
+              # LIMBO LOGIC: If >10 mins past T-0 and status is still "Go", force Pending
               if mode == "PRE_LAUNCH" and seconds_since_t0 > 600:
                   mode = "POST_LAUNCH"
                   target["status"]["abbrev"] = "PENDING"
@@ -652,11 +652,13 @@ jobs:
               if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
               else: full_location_str = f"{pad_name} @ {loc_short}"
 
-              # --- SAFER STAGE EXTRACTION (CRASH PROOF) ---
-              rocket_data = target.get("rocket", {})
-              stages = rocket_data.get("launcher_stage", [])
-              # If list is empty or None, use empty dict to prevent crash
-              stage = stages[0] if (stages and isinstance(stages, list) and len(stages) > 0) else {}
+              # --- FOOTER (CRASH PROOF FIX) ---
+              stage = {}
+              # Safe check: Does 'launcher_stage' exist and is it a non-empty list?
+              if target.get("rocket", {}).get("launcher_stage"):
+                  stages_list = target["rocket"]["launcher_stage"]
+                  if isinstance(stages_list, list) and len(stages_list) > 0:
+                      stage = stages_list[0]
               
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
@@ -669,6 +671,7 @@ jobs:
               footer_left = ""
               footer_right = ""
 
+              # LOGIC: If attempt is False or None (Unknown), assume Expendable
               if landing_attempt is not True: 
                   footer_left = "" 
                   footer_right = "Single-use configuration. No recovery planned."
