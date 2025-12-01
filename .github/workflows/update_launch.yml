@@ -126,18 +126,7 @@ jobs:
                       "The Raptor engine uses a Full-Flow Staged Combustion cycle, a complex design only previously attempted by Soviet engineers.",
                       "Starship is pressurized with autogenous gas (gaseous methane/oxygen) instead of heavy helium bottles.",
                       "On the Super Heavy booster, the outer ring of 20 engines is fixed, while only the inner 13 can gimbal to steer.",
-                      "Starship is constructed from stainless steel rather than carbon fiber to better withstand reentry heat.",
-                      "The 'Hot Staging' ring allows the upper stage to ignite its engines while still attached to the booster.",
-                      "Starship is taller than the Saturn V moon rocket, standing nearly 400 feet (120 meters) tall.",
-                      "The Raptor engines are the first mass-produced full-flow staged combustion engines in history.",
-                      "Starship steers during descent using four massive 'elonerons' (flaps) that act like a skydiver's limbs.",
-                      "SpaceX plans to refuel Starship in orbit, allowing it to carry full payloads to the Moon or Mars.",
-                      "The launch tower for Starship is not just a support structure but an integral part of the catching mechanism.",
-                      "Starship's methane fuel burns clean blue, unlike the bright orange kerosene flame of the Falcon 9.",
-                      "The heat shield tiles on Starship must survive temperatures exceeding 2,500 degrees Fahrenheit.",
-                      "Super Heavy consumes propellant at a rate of tens of tons per second during liftoff.",
-                      "Starship is designed to fly up to three times a day in a rapid reuse airliner-style cadence.",
-                      "The nose cone of Starship houses a small header tank for landing fuel to prevent sloshing during the flip maneuver."
+                      "Starship is constructed from stainless steel rather than carbon fiber to better withstand reentry heat."
                   ]
               elif "electron" in r_name:
                   facts = [
@@ -585,7 +574,7 @@ jobs:
               
               return random.choice(pool)
 
-          # --- VISUAL BRAIN ---
+          # --- VISUAL BRAIN (EXPANDED MAP) ---
           def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
               r = rocket_name.lower()
               key = "generic"
@@ -656,13 +645,17 @@ jobs:
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
-              if mode == "PRE_LAUNCH" and seconds_since_t0 > 600:
+              # --- LOGIC FIX: Check API Status FIRST ---
+              api_status = target["status"]["abbrev"]
+              is_final_status = api_status in ["Success", "Failure", "Partial Failure", "In Flight"]
+              
+              if is_final_status:
+                  mode = "POST_LAUNCH"
+              elif seconds_since_t0 > 600: # > 10 mins past launch
+                  # If API still says Go, force Pending
                   mode = "POST_LAUNCH"
                   target["status"]["abbrev"] = "PENDING"
                   target["status"]["name"] = "AWAITING CONFIRMATION"
-
-              if target["status"]["abbrev"] in ["Success", "Failure", "Partial Failure", "In Flight"]:
-                  mode = "POST_LAUNCH"
 
               mission_context = "COMMERCIAL"
               if target.get("program") and len(target["program"]) > 0:
@@ -680,7 +673,6 @@ jobs:
                   raw_agency = target["mission"]["agencies"][0]["name"]
                   raw_agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
                   raw_agency = raw_agency.replace("National Aeronautics and Space Administration", "NASA")
-                  
                   if raw_agency != provider:
                       agency = raw_agency
 
@@ -708,9 +700,11 @@ jobs:
               if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
               
               loc_short = loc_name.split(",")[0].strip()
+              
               if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
               else: full_location_str = f"{pad_name} @ {loc_short}"
 
+              # --- FOOTER (CRASH PROOF) ---
               stage = {}
               if target.get("rocket", {}).get("launcher_stage"):
                   stages = target["rocket"]["launcher_stage"]
@@ -728,34 +722,47 @@ jobs:
               footer_left = ""
               footer_right = ""
 
-              if landing_attempt is not True: 
-                  footer_left = "" 
-                  footer_right = "Single-use configuration. No recovery planned."
-              else:
-                  if mode == "PRE_LAUNCH":
-                      if flight_n: 
-                          if flight_n == 1: footer_left = "Maiden flight for this booster."
-                          else: footer_left = f"Booster flight #{flight_n}."
-                      else:
-                          footer_left = "Booster identity classified/unavailable."
-                  
-                  if mode == "PRE_LAUNCH":
-                      if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
-                      else: footer_right = f"Targeting recovery at {landing_loc}."
+              # SMART LOGIC: Is this a reusable rocket type?
+              is_reusable_type = False
+              r_check = rocket_name.lower()
+              if "falcon" in r_check or "starship" in r_check or "new glenn" in r_check or "electron" in r_check:
+                  is_reusable_type = True
+
+              if is_reusable_type:
+                  if landing_attempt is False:
+                      footer_left = ""
+                      footer_right = "Expendable profile. No recovery planned."
+                  elif landing_attempt is None:
+                      if flight_n: footer_left = f"Booster flight #{flight_n}."
+                      else: footer_left = "Booster identity classified/unavailable."
+                      footer_right = "Recovery likely planned (Location TBD)."
                   else:
-                      footer_left = "" 
-                      if target["status"]["abbrev"] == "PENDING":
-                          footer_right = "Launch window open. Status pending confirmation."
-                      elif landing_success is True: 
-                          footer_right = f"SUCCESS: Landed at {landing_loc}."
-                      elif landing_success is False: 
-                          footer_right = f"FAILURE: Missed {landing_loc}."
-                      else: 
-                          footer_right = f"Landing pending at {landing_loc}."
+                      if mode == "PRE_LAUNCH":
+                          if flight_n: 
+                              if flight_n == 1: footer_left = "Maiden flight for this booster."
+                              else: footer_left = f"Booster flight #{flight_n}."
+                          else:
+                              footer_left = "Booster identity classified/unavailable."
+                          
+                          if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
+                          else: footer_right = f"Targeting recovery at {landing_loc}."
+                      else:
+                          footer_left = "" 
+                          if target["status"]["abbrev"] == "PENDING":
+                              footer_right = "Launch window open. Status pending confirmation."
+                          elif landing_success is True: footer_right = f"SUCCESS: Landed at {landing_loc}."
+                          elif landing_success is False: footer_right = f"FAILURE: Missed {landing_loc}."
+                          else: footer_right = f"Landing pending at {landing_loc}."
+              else:
+                  footer_left = ""
+                  footer_right = "Single-use configuration. No recovery planned."
 
               rocket_name = target["rocket"]["configuration"]["name"]
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
+              
+              visual_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
+              rocket_visual_url = get_rocket_image_url(rocket_name, visual_status, landing_success, REPO_BASE)
 
               output = {
                   "mode": mode,
@@ -775,7 +782,7 @@ jobs:
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
-                  "rocket_visual": get_rocket_image_url(rocket_name, target["status"]["name"], landing_success, REPO_BASE)
+                  "rocket_visual": rocket_visual_url
               }
 
               with open("launch.json", "w") as f:
