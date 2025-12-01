@@ -2,7 +2,7 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,7 @@ jobs:
 
       - name: Fetch and Smart-Process Data
         run: |
+          # UPDATED URL: hide_recent_previous=true
           curl -sS "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=2&mode=detailed&hide_recent_previous=true&format=json" > upcoming.json
           curl -sS "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
 
@@ -27,8 +28,7 @@ jobs:
           from datetime import datetime, timezone
 
           # --- CONFIG ---
-          # REPLACE THIS WITH YOUR REPO URL
-          REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
+          REPO_BASE = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main"
 
           def load_json(filename):
               try:
@@ -46,17 +46,32 @@ jobs:
           if not upcoming and not previous:
               sys.exit(0)
 
-          # --- TRIVIA BRAIN ---
+          # --- TRIVIA BRAIN (TITANIUM EDITION) ---
           def get_rocket_fact(rocket_name):
-              # (Shortened for brevity - keep your full Titanium list here!)
-              return "Rockets must reach 17,500 mph (28,000 km/h) to achieve orbit."
+              r_name = rocket_name.lower()
+              general_facts = [
+                  "Launch pad water deluge systems are primarily used for sound suppression to prevent acoustic waves from tearing the rocket apart.",
+                  "To reach low Earth orbit, any rocket must travel at approximately 17,500 mph (28,000 km/h) sideways.",
+                  "The Kármán line at 100km (62 miles) altitude is widely accepted as the boundary where space begins.",
+                  "Rockets are mostly fuel; often over 85% of a launch vehicle's mass is propellant, leaving little room for payload.",
+                  "Launch windows are strictly determined by orbital mechanics and collision avoidance requirements to hit a precise target.",
+                  "The 'Max-Q' callout during launch refers to the moment of maximum dynamic pressure, where structural stress is highest.",
+                  "Most rockets use a 'Gravity Turn', tilting slightly after liftoff to let gravity do the work of turning the rocket horizontal.",
+                  "Hypergolic fuels ignite spontaneously upon contact with each other, making them reliable for restarting engines in space.",
+                  "The 'pogo oscillation' is a dangerous vibration caused by fuel surging in the pipes, which can shake a rocket to pieces.",
+                  "Specific Impulse (ISP) is the 'miles per gallon' of rocketry, measuring how efficiently an engine turns fuel into thrust."
+              ]
+              # (Paste your full Rocket Specific Facts list here if you have it saved locally, 
+              # otherwise I will use a short fallback to keep this block copy-pasteable)
+              facts = []
+              
+              if not facts: return random.choice(general_facts)
+              return random.choice(facts + general_facts)
 
-          # --- VISUAL BRAIN (FIXED STATUS MATCHING) ---
+          # --- VISUAL BRAIN ---
           def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
               r = rocket_name.lower()
               key = "generic"
-              
-              # Rocket Mapping
               if "falcon 9" in r: key = "falcon9"
               elif "falcon heavy" in r: key = "falconheavy"
               elif "starship" in r: key = "starship"
@@ -70,26 +85,20 @@ jobs:
               elif "soyuz" in r: key = "soyuz"
               elif "long march" in r: key = "cz_classic"
               elif "h3" in r: key = "h3"
+              elif "vega" in r: key = "vega"
+              elif "pslv" in r: key = "pslv"
+              elif "antares" in r: key = "antares"
+              elif "minotaur" in r: key = "minotaur"
+              elif "firefly" in r: key = "firefly"
               
               suffix = "_idle"
-              
-              # Status Check (Using Abbreviations now)
-              if status == "In Flight" or status == "PENDING":
-                  suffix = "_ascent"
+              if status == "In Flight" or status == "AWAITING CONFIRMATION": suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success is True:
-                      if key in ["falcon9", "falconheavy", "starship", "newglenn"]:
-                          suffix = "_landed"
-                      else:
-                          key = "empty" 
-                          suffix = ""
-                  else:
-                      key = "empty"
-                      suffix = ""
-
-              if key == "empty": filename = "empty.png"
-              else: filename = f"{key}{suffix}.png"
-              return f"{repo_url}/rockets/{filename}"
+                  if landing_success and key in ["falcon9", "falconheavy", "starship", "newglenn"]: suffix = "_landed"
+                  else: key, suffix = "empty", ""
+              
+              if key == "empty": return f"{repo_url}/rockets/empty.png"
+              return f"{repo_url}/rockets/{key}{suffix}.png"
 
           # --- COUNTDOWN ---
           def get_countdown(dt_event):
@@ -114,8 +123,7 @@ jobs:
               next_dt = parse_time(upcoming["net"])
               hours_since = (now - prev_dt).total_seconds() / 3600
               hours_until = (next_dt - now).total_seconds() / 3600
-
-              if hours_since < 12 and hours_until > 6:
+              if hours_since < 12 and hours_until > 1:
                   target = previous
                   mode = "POST_LAUNCH"
               else:
@@ -126,16 +134,16 @@ jobs:
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
-              # CHECK API STATUS FIRST
+              # API STATUS CHECK
               api_status = target["status"]["abbrev"]
               is_final = api_status in ["Success", "Failure", "Partial Failure", "In Flight"]
               
               if is_final:
                   mode = "POST_LAUNCH"
-              elif mode == "PRE_LAUNCH" and seconds_since_t0 > 600:
-                  # Time Override
+              elif seconds_since_t0 > 600:
                   mode = "POST_LAUNCH"
                   target["status"]["abbrev"] = "PENDING"
+                  target["status"]["name"] = "AWAITING CONFIRMATION"
 
               mission_context = "COMMERCIAL"
               if target.get("program") and len(target["program"]) > 0:
@@ -143,23 +151,38 @@ jobs:
               elif target.get("mission") and target["mission"].get("type"):
                   mission_context = target["mission"]["type"]
 
-              provider = target["launch_service_provider"]["name"]
-              provider = provider.replace("China Aerospace Science and Technology Corporation", "CASC")
-              provider = provider.replace("National Aeronautics and Space Administration", "NASA")
-              provider = provider.replace("Space Exploration Technologies", "SpaceX")
+              # --- NAME CLEANER ---
+              def clean_name(name):
+                  n = name.lower()
+                  if "china aerospace" in n: return "CASC"
+                  if "korea aerospace" in n: return "KARI" # Added KARI
+                  if "arianespace" in n: return "Arianespace" # Ensure capitalization
+                  if "spacex" in n: return "SpaceX"
+                  if "nasa" in n: return "NASA"
+                  if "united launch alliance" in n: return "ULA"
+                  if "roscosmos" in n: return "Roscosmos"
+                  if "indian space" in n: return "ISRO"
+                  if "japan aerospace" in n: return "JAXA"
+                  if "european space" in n: return "ESA"
+                  if "rocket lab" in n: return "Rocket Lab"
+                  if "blue origin" in n: return "Blue Origin"
+                  if "northrop" in n: return "Northrop"
+                  return name
+
+              provider = clean_name(target["launch_service_provider"]["name"])
               
               agency = "" 
-              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
+              if target.get("mission") and target.get("mission", {}).get("agencies"):
                   raw_agency = target["mission"]["agencies"][0]["name"]
-                  raw_agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
-                  raw_agency = raw_agency.replace("National Aeronautics and Space Administration", "NASA")
-                  if raw_agency != provider:
-                      agency = raw_agency
+                  cleaned = clean_name(raw_agency)
+                  if cleaned != provider: agency = cleaned
 
+              # --- DESCRIPTION DIET (250 chars) ---
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
-                  if "No description" not in desc: raw_mission_desc = desc
+                  if "No description" not in desc and "TBD" not in desc:
+                      raw_mission_desc = desc
               
               raw_program_desc = ""
               if target.get("program") and len(target["program"]) > 0:
@@ -167,86 +190,76 @@ jobs:
                   if "No description" not in p_desc: raw_program_desc = p_desc
 
               image_url = ""
-              if target.get("mission_patches") and len(target["mission_patches"]) > 0:
-                  image_url = target["mission_patches"][0]["image_url"]
-              if not image_url and target.get("launch_service_provider"):
-                  image_url = target["launch_service_provider"].get("logo_url", "")
+              if target.get("mission_patches"): image_url = target["mission_patches"][0]["image_url"]
+              elif target.get("launch_service_provider"): image_url = target["launch_service_provider"].get("logo_url", "")
 
-              pad_name = target["pad"]["name"] or "Unknown Pad"
-              loc_name = target["pad"]["location"]["name"] or "Unknown Loc"
-              country_code = target["pad"]["location"].get("country_code", "")
-              pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
-              if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
-              loc_short = loc_name.split(",")[0].strip()
-              if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
-              else: full_location_str = f"{pad_name} @ {loc_short}"
+              pad = target["pad"]["name"].replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+              if pad.isdigit(): pad = f"Pad {pad}"
+              loc = target["pad"]["location"]["name"].split(",")[0].strip()
+              country = target["pad"]["location"].get("country_code", "")
+              location_str = f"{pad} @ {loc}"
+              if country: location_str += f", {country}"
 
               stage = {}
               if target.get("rocket", {}).get("launcher_stage"):
-                  stages = target["rocket"]["launcher_stage"]
-                  if isinstance(stages, list) and len(stages) > 0: stage = stages[0]
+                  s_list = target["rocket"]["launcher_stage"]
+                  if s_list: stage = s_list[0]
               
               landing = stage.get("landing") or {}
+              attempt = landing.get("attempt")
+              success = landing.get("success")
+              l_loc = landing.get("location", {}).get("name", "Unknown")
+              l_loc = l_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI")
+              
               flight_n = stage.get("launcher_flight_number")
-              landing_attempt = landing.get("attempt")
-              landing_loc = landing.get("location", {}).get("name", "Unknown")
-              landing_success = landing.get("success")
-              landing_loc = landing_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI").replace("A Shortfall of Gravitas", "ASOG")
 
               footer_left = ""
               footer_right = ""
-
-              if landing_attempt is not True: 
-                  footer_left = "" 
+              if attempt is not True:
                   footer_right = "Single-use configuration. No recovery planned."
               else:
                   if mode == "PRE_LAUNCH":
                       if flight_n: footer_left = f"Booster flight #{flight_n}."
                       else: footer_left = "Booster identity classified."
-                      
-                      if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
-                      else: footer_right = f"Targeting recovery at {landing_loc}."
+                      if l_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
+                      else: footer_right = f"Targeting recovery at {l_loc}."
                   else:
-                      footer_left = "" 
-                      if target["status"]["abbrev"] == "PENDING":
-                          footer_right = "Launch window open. Status pending confirmation."
-                      elif landing_success is True: footer_right = f"SUCCESS: Landed at {landing_loc}."
-                      elif landing_success is False: footer_right = f"FAILURE: Missed {landing_loc}."
-                      else: footer_right = f"Landing pending at {landing_loc}."
+                      footer_left = ""
+                      if target["status"]["abbrev"] == "PENDING": footer_right = "Launch window open. Status pending."
+                      elif success: footer_right = f"SUCCESS: Landed at {l_loc}."
+                      elif success is False: footer_right = f"FAILURE: Missed {l_loc}."
+                      else: footer_right = f"Landing pending at {l_loc}."
 
               rocket_name = target["rocket"]["configuration"]["name"]
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
-
-              # --- VISUAL FIX: Use Abbrev (e.g. "Success", "PENDING") ---
-              status_code_for_visuals = target["status"]["abbrev"]
               
-              rocket_visual_url = get_rocket_image_url(
-                  rocket_name, 
-                  status_code_for_visuals, 
-                  landing_success, 
-                  REPO_BASE
-              )
+              vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
+              vis_url = get_rocket_image_url(rocket_name, vis_status, success, REPO_BASE)
+
+              m_name = target["name"].split(" | ")[-1]
+              if "Unknown Payload" in m_name: m_name = rocket_name
 
               output = {
                   "mode": mode,
-                  "name": target["name"],
+                  "name": m_name,
                   "context": mission_context.upper(),
                   "agency": agency,
                   "provider": provider,
-                  "location_str": full_location_str,
+                  "location_str": location_str,
                   "date": target["net"],
                   "countdown": get_countdown(parse_time(target["net"])),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
-                  "description": (raw_mission_desc or "").replace("\n", " ")[0:600],
-                  "program_description": (raw_program_desc or "").replace("\n", " ")[0:400],
+                  # DIET APPLIED HERE:
+                  "description": (raw_mission_desc or "").replace("\n", " ")[0:280], 
+                  "program_description": (raw_program_desc or "").replace("\n", " ")[0:280],
                   "rocket": rocket_name,
-                  "orbit": target["mission"]["orbit"]["name"] if target["mission"] and target["mission"]["orbit"] else "TBD",
+                  "orbit": target["mission"]["orbit"]["name"] if target.get("mission") and target.get("mission", {}).get("orbit") else "TBD",
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
-                  "rocket_visual": rocket_visual_url
+                  "rocket_visual": vis_url
               }
 
               with open("launch.json", "w") as f:
