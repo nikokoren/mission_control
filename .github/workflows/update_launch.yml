@@ -2,7 +2,7 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -46,10 +46,11 @@ jobs:
           if not upcoming and not previous:
               sys.exit(0)
 
-          # --- TRIVIA BRAIN ---
+          # --- TRIVIA BRAIN (TITANIUM EDITION - 400+ FACTS) ---
           def get_rocket_fact(rocket_name):
               r_name = rocket_name.lower()
               
+              # 1. General High-Grade Facts
               general_facts = [
                   "Launch pad water deluge systems are primarily used for sound suppression to prevent acoustic waves from tearing the rocket apart.",
                   "To reach low Earth orbit, any rocket must travel at approximately 17,500 mph (28,000 km/h) sideways.",
@@ -70,6 +71,7 @@ jobs:
 
               facts = []
 
+              # 2. Specific Facts
               if "falcon 9" in r_name:
                   facts = [
                       "The Falcon 9's heat shield protecting the engines is covered in a layer of cork, similar to wine stoppers.",
@@ -208,7 +210,7 @@ jobs:
                   ]
               elif "new glenn" in r_name:
                   facts = [
-                      "New Glenn lands on a moving ship that drives forward to stabilize against waves.",
+                      "Blue Origin's New Glenn is designed to land on a moving ship that drives forward to stabilize against waves.",
                       "The New Glenn payload fairing is so voluminous that two full-sized school buses could fit inside side-by-side.",
                       "New Glenn's BE-4 engine uses an oxygen-rich staged combustion cycle, a method that requires advanced metallurgy.",
                       "The feather logo on Blue Origin's New Glenn represents the perfection of flight, inspired by Apollo 15.",
@@ -575,6 +577,7 @@ jobs:
                       "The Reaver engines produce a bright, clean flame during flight."
                   ]
               
+              # Fallback Logic (Mix Specific + General)
               if not facts:
                   pool = general_facts
               else:
@@ -601,7 +604,8 @@ jobs:
               elif "h3" in r: key = "h3"
               
               suffix = "_idle"
-              if status == "In Flight": suffix = "_ascent"
+              if status == "In Flight" or status == "AWAITING CONFIRMATION":
+                  suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
                   if landing_success:
                       if key in ["falcon9", "falconheavy", "starship", "newglenn"]:
@@ -638,11 +642,10 @@ jobs:
           if previous and upcoming:
               prev_dt = parse_time(previous["net"])
               next_dt = parse_time(upcoming["net"])
-              
               hours_since = (now - prev_dt).total_seconds() / 3600
               hours_until = (next_dt - now).total_seconds() / 3600
 
-              if hours_since < 6 and hours_until > 1:
+              if hours_since < 12 and hours_until > 1:
                   target = previous
                   mode = "POST_LAUNCH"
               else:
@@ -672,15 +675,14 @@ jobs:
               provider = provider.replace("National Aeronautics and Space Administration", "NASA")
               provider = provider.replace("Space Exploration Technologies", "SpaceX")
               
-              agency = "" # Default to empty so the UI hides the column
+              agency = "" 
               if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
                   raw_agency = target["mission"]["agencies"][0]["name"]
-                  # Only set agency if it is DIFFERENT from the provider
-                  if raw_agency != target["launch_service_provider"]["name"]:
-                       agency = raw_agency
-              
-              agency = agency.replace("China Aerospace Science and Technology Corporation", "CASC")
-              agency = agency.replace("National Aeronautics and Space Administration", "NASA")
+                  raw_agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
+                  raw_agency = raw_agency.replace("National Aeronautics and Space Administration", "NASA")
+                  
+                  if raw_agency != provider:
+                      agency = raw_agency
 
               raw_mission_desc = ""
               if target.get("mission") and target["mission"].get("description"):
@@ -706,15 +708,14 @@ jobs:
               if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
               
               loc_short = loc_name.split(",")[0].strip()
-              
               if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
               else: full_location_str = f"{pad_name} @ {loc_short}"
 
               stage = {}
               if target.get("rocket", {}).get("launcher_stage"):
-                  stages_list = target["rocket"]["launcher_stage"]
-                  if isinstance(stages_list, list) and len(stages_list) > 0:
-                      stage = stages_list[0]
+                  stages = target["rocket"]["launcher_stage"]
+                  if isinstance(stages, list) and len(stages) > 0:
+                      stage = stages[0]
               
               landing = stage.get("landing") or {}
               flight_n = stage.get("launcher_flight_number")
