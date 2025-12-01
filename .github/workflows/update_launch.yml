@@ -17,7 +17,7 @@ jobs:
 
       - name: Fetch and Smart-Process Data
         run: |
-          curl -sS "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=10&mode=detailed&format=json" > upcoming.json
+          curl -sS "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=2&mode=detailed&format=json" > upcoming.json
           curl -sS "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
 
           python3 - <<'EOF'
