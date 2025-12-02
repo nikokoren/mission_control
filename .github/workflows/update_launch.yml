@@ -234,8 +234,21 @@ jobs:
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
               
-              vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
-              vis_url = get_rocket_image_url(rocket_name, vis_status, success, REPO_BASE)
+              # Use the Status Abbreviation (e.g. "Success", "In Flight", "PENDING")
+              # instead of the long name so the image logic matches correctly.
+              
+              visual_status_code = target["status"]["abbrev"]
+              
+              # Handle our custom "Limbo" state override
+              if target["status"]["abbrev"] == "PENDING":
+                   visual_status_code = "PENDING"
+
+              rocket_visual_url = get_rocket_image_url(
+                  rocket_name, 
+                  visual_status_code, 
+                  landing_success, 
+                  REPO_BASE
+              )
 
               m_name = target["name"].split(" | ")[-1]
               if "Unknown Payload" in m_name: m_name = rocket_name
