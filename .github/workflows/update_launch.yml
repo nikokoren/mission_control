@@ -28,7 +28,7 @@ jobs:
           from datetime import datetime, timezone
 
           # --- CONFIG ---
-          REPO_BASE = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main"
+          REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
 
           def load_json(filename):
               try:
