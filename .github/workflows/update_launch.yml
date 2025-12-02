@@ -234,21 +234,11 @@ jobs:
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
               
-              # Use the Status Abbreviation (e.g. "Success", "In Flight", "PENDING")
-              # instead of the long name so the image logic matches correctly.
+              # FIX: Use Abbrev for Visual Brain (Passes "In Flight" or "Success")
+              vis_status = target["status"]["abbrev"]
+              if vis_status == "PENDING": vis_status = "PENDING" # Explicitly pass PENDING if overridden
               
-              visual_status_code = target["status"]["abbrev"]
-              
-              # Handle our custom "Limbo" state override
-              if target["status"]["abbrev"] == "PENDING":
-                   visual_status_code = "PENDING"
-
-              rocket_visual_url = get_rocket_image_url(
-                  rocket_name, 
-                  visual_status_code, 
-                  landing_success, 
-                  REPO_BASE
-              )
+              vis_url = get_rocket_image_url(rocket_name, vis_status, success, REPO_BASE)
 
               m_name = target["name"].split(" | ")[-1]
               if "Unknown Payload" in m_name: m_name = rocket_name
