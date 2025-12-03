@@ -763,7 +763,7 @@ jobs:
 
               # --- TIMESTAMP CONVERSION ---
               # We send raw integers (seconds since epoch)
-              date_ts = int(target_dt_utc.timestamp())
+              date_ts = int(target_dt.timestamp())
               
               win_start_ts = date_ts
               win_end_ts = date_ts
