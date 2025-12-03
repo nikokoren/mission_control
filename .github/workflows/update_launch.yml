@@ -782,7 +782,7 @@ jobs:
                   "date_ts": date_ts,
                   "window_start_ts": win_start_ts,
                   "window_end_ts": win_end_ts,
-                  "countdown": get_countdown(target_dt_utc),
+                  "countdown": get_countdown(target_dt),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
                   "description": (raw_mission_desc or "").replace("\n", " ")[0:600], 
