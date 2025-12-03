@@ -616,11 +616,14 @@ jobs:
           def get_countdown(dt_event):
               now = datetime.now(timezone.utc)
               diff = dt_event - now
-              if diff.total_seconds() < 0: return "T- 00d 00h 00m"
-              days = diff.days
-              hours, remainder = divmod(diff.seconds, 3600)
+              
+              if diff.total_seconds() < 0:
+                return "T- 00h 00m"
+                
+              total_seconds = int(diff.total_seconds())
+              hours, remainder = divmod(total_seconds, 3600)
               minutes, _ = divmod(remainder, 60)
-              return f"T- {days:02}d {hours:02}h {minutes:02}m"
+              return f"T- {hours:02}h {minutes:02}m"
 
           # --- MAIN LOGIC ---
           def parse_time(t_str):
@@ -731,8 +734,11 @@ jobs:
                   footer_right = "Single-use configuration. No recovery planned."
               else:
                   if mode == "PRE_LAUNCH":
-                      if flight_n: footer_left = f"Booster flight #{flight_n}."
-                      else: footer_left = "Booster identity classified."
+                      if flight_n: 
+                          if flight_n == 1: footer_left = "Maiden flight for this booster."
+                          else: footer_left = f"Booster flight #{flight_n}."
+                      else:
+                          footer_left = "Booster identity classified/unavailable."
                       if l_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
                       else: footer_right = f"Targeting recovery at {l_loc}."
                   else:
@@ -768,8 +774,8 @@ jobs:
                   "countdown": get_countdown(parse_time(target["net"])),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
-                  "description": (raw_mission_desc or "").replace("\n", " ")[0:280], 
-                  "program_description": (raw_program_desc or "").replace("\n", " ")[0:280],
+                  "description": (raw_mission_desc or "").replace("\n", " ")[0:600], 
+                  "program_description": (raw_program_desc or "").replace("\n", " ")[0:400],
                   "rocket": rocket_name,
                   "orbit": target["mission"]["orbit"]["name"] if target.get("mission") and target.get("mission", {}).get("orbit") else "TBD",
                   "footer_left": footer_left,
