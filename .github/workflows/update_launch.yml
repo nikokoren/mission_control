@@ -796,7 +796,7 @@ jobs:
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
-                  "rocket_visual": vis_url
+                  "rocket_visual": vis_url,
                   "generic_visual": generic_vis_url
               }
 
