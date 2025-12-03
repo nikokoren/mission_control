@@ -763,10 +763,11 @@ jobs:
                   "provider": provider,
                   "location_str": location_str,
                   "date": target["net"],
+                  "window_start": target["window_start"],
+                  "window_end": target["window_end"],
                   "countdown": get_countdown(parse_time(target["net"])),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
-                  # DIET APPLIED HERE:
                   "description": (raw_mission_desc or "").replace("\n", " ")[0:280], 
                   "program_description": (raw_program_desc or "").replace("\n", " ")[0:280],
                   "rocket": rocket_name,
