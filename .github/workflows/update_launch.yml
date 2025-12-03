@@ -758,6 +758,10 @@ jobs:
               
               vis_url = get_rocket_image_url(rocket_name, vis_status, success, REPO_BASE)
 
+              # 2. GENERIC FALLBACK (NEW!)
+              # We ask the brain: "What would you show if the rocket was just 'generic'?"
+              generic_vis_url = get_rocket_image_url("generic", vis_status, success, REPO_BASE)
+
               m_name = target["name"].split(" | ")[-1]
               if "Unknown Payload" in m_name: m_name = rocket_name
 
@@ -793,6 +797,7 @@ jobs:
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
                   "rocket_visual": vis_url
+                  "generic_visual": generic_vis_url
               }
 
               with open("launch.json", "w") as f:
