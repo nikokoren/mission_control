@@ -761,6 +761,17 @@ jobs:
               m_name = target["name"].split(" | ")[-1]
               if "Unknown Payload" in m_name: m_name = rocket_name
 
+              # --- TIMESTAMP CONVERSION ---
+              # We send raw integers (seconds since epoch)
+              date_ts = int(target_dt_utc.timestamp())
+              
+              win_start_ts = date_ts
+              win_end_ts = date_ts
+              if target.get("window_start"):
+                   win_start_ts = int(parse_time(target["window_start"]).timestamp())
+              if target.get("window_end"):
+                   win_end_ts = int(parse_time(target["window_end"]).timestamp())
+
               output = {
                   "mode": mode,
                   "name": m_name,
@@ -768,10 +779,10 @@ jobs:
                   "agency": agency,
                   "provider": provider,
                   "location_str": location_str,
-                  "date": target["net"],
-                  "window_start": target["window_start"],
-                  "window_end": target["window_end"],
-                  "countdown": get_countdown(parse_time(target["net"])),
+                  "date_ts": date_ts,
+                  "window_start_ts": win_start_ts,
+                  "window_end_ts": win_end_ts,
+                  "countdown": get_countdown(target_dt_utc),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
                   "description": (raw_mission_desc or "").replace("\n", " ")[0:600], 
