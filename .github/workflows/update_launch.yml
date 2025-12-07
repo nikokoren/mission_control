@@ -335,34 +335,67 @@ jobs:
               
               return random.choice(pool)
 
-          # --- VISUAL BRAIN ---
-          def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
+# --- VISUAL BRAIN (FIXED ARGS) ---
+          def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
               r = rocket_name.lower()
+              m_type = str(mission_type).lower()
+              m_name = str(mission_name).lower()
+              
               key = "generic"
-              if "falcon 9" in r: key = "falcon9"
-              elif "falcon heavy" in r: key = "falconheavy"
-              elif "starship" in r: key = "starship"
-              elif "electron" in r: key = "electron"
-              elif "atlas" in r: key = "atlasv"
-              elif "vulcan" in r: key = "vulcan"
-              elif "delta" in r: key = "delta4"
-              elif "sls" in r: key = "sls"
-              elif "new glenn" in r: key = "newglenn"
-              elif "ariane" in r: key = "ariane6"
-              elif "soyuz" in r: key = "soyuz"
-              elif "long march" in r: key = "cz_classic"
-              elif "h3" in r: key = "h3"
-              elif "vega" in r: key = "vega"
-              elif "pslv" in r: key = "pslv"
-              elif "antares" in r: key = "antares"
-              elif "minotaur" in r: key = "minotaur"
-              elif "firefly" in r: key = "firefly"
+              
+              if rocket_name == "generic":
+                  key = "generic"
+              else:
+                  # 1. SpaceX Special Logic
+                  if "falcon 9" in r:
+                      if "human" in m_type or "crew" in m_name or "axiom" in m_name or "polaris" in m_name:
+                          key = "falcon9_crew"
+                      else:
+                          key = "falcon9"
+                  elif "falcon heavy" in r: key = "falconheavy"
+                  elif "starship" in r: key = "starship"
+
+              # 1. Heavy / Super Heavy
+              
+                  elif "sls" in r: key = "sls"
+                  elif "new glenn" in r: key = "newglenn"
+                  elif "delta iv heavy" in r: key = "delta4"
+                  elif "long march 5" in r: key = "cz_5"  
+                  elif "lvm3" in r: key = "lvm3"
+
+              # 2. Medium / Standard
+                  elif "falcon 9" in r: key = "falcon9"
+                  elif "vulcan" in r: key = "vulcan"
+                  elif "atlas" in r: key = "atlasv"
+                  elif "ariane" in r: key = "ariane6"
+                  elif "h3" in r: key = "h3"
+                  elif "soyuz" in r: key = "soyuz"
+                  elif "antares" in r: key = "antares"
+              
+              # 3. Chinese Variants
+                  elif "long march 7" in r: key = "cz_7"
+                  elif "long march 2f" in r: key = "cz_2f"
+                  elif "long march 3b" in r: key = "cz_3b"
+                  elif "long march" in r: key = "cz_classic" 
+              
+              # 4. Small / Light
+                  elif "electron" in r: key = "electron"
+                  elif "firefly" in r: key = "firefly"
+                  elif "minotaur" in r: key = "minotaur"
+                  elif "pslv" in r: key = "pslv"
+                  elif "vega" in r: key = "vega"
+                  elif "nuri" in r: key = "nuri"
+                  elif "ceres" in r: key = "ceres"
               
               suffix = "_idle"
-              if status == "In Flight" or status == "AWAITING CONFIRMATION": suffix = "_ascent"
+              if status == "In Flight" or status == "AWAITING CONFIRMATION":
+                  suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success and key in ["falcon9", "falconheavy", "starship", "newglenn"]: suffix = "_landed"
-                  else: key, suffix = "empty", ""
+                  if landing_success and key in ["falcon9", "falconheavy", "starship", "newglenn"]:
+                      suffix = "_landed"
+                  else:
+                      key = "empty" 
+                      suffix = ""
               
               if key == "empty": return f"{repo_url}/rockets/empty.png"
               return f"{repo_url}/rockets/{key}{suffix}.png"
