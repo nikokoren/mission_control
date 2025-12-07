@@ -560,7 +560,7 @@ jobs:
                   "context": mission_context.upper(),
                   "agency": agency,
                   "provider": provider,
-                  "full_location_str": location_str,
+                  "location_str": full_location_str,
                   "date": target["net"],
                   "date_ts": date_ts,
                   "window_start_ts": win_start_ts,
