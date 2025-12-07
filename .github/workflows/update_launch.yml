@@ -781,18 +781,28 @@ jobs:
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
               
-              # FIX: Use Abbrev for Visual Brain (Passes "In Flight" or "Success")
-              vis_status = target["status"]["abbrev"]
-              if vis_status == "PENDING": vis_status = "PENDING" # Explicitly pass PENDING if overridden
+              vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
+              mission_type = target.get("mission", {}).get("type") or ""
               
-              vis_url = get_rocket_image_url(rocket_name, vis_status, success, REPO_BASE)
-
-              # 2. GENERIC FALLBACK (NEW!)
-              # We ask the brain: "What would you show if the rocket was just 'generic'?"
-              generic_vis_url = get_rocket_image_url("generic", vis_status, success, REPO_BASE)
-
-              m_name = target["name"].split(" | ")[-1]
-              if "Unknown Payload" in m_name: m_name = rocket_name
+              # CALL 1: Specific Rocket Image (FIXED ARGS)
+              vis_url = get_rocket_image_url(
+                  rocket_name, 
+                  vis_status, 
+                  success, 
+                  mission_type, 
+                  target["name"], 
+                  REPO_BASE
+              )
+              
+              # CALL 2: Generic Fallback Image (FIXED ARGS)
+              generic_visual_url = get_rocket_image_url(
+                  "generic", 
+                  vis_status, 
+                  success, 
+                  mission_type, 
+                  target["name"], 
+                  REPO_BASE
+              )
 
               # --- TIMESTAMP CONVERSION ---
               # We send raw integers (seconds since epoch)
