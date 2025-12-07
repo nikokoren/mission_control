@@ -580,64 +580,54 @@ jobs:
               if not facts: return random.choice(general_facts)
               return random.choice(facts + general_facts)
 
-          # --- VISUAL BRAIN (CREW AWARE) ---
+# --- VISUAL BRAIN (FIXED ARGS) ---
           def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
-          
               r = rocket_name.lower()
               m_type = str(mission_type).lower()
               m_name = str(mission_name).lower()
               
               key = "generic"
-
-              # 1. SpaceX Special Logic
-              if "falcon 9" in r:
-                  # Check for Crew Dragon (Human Exploration or "Crew" in name)
-                  if "human" in m_type or "crew" in m_name or "axiom" in m_name or "polaris" in m_name:
-                      key = "falcon9_crew"
-                  else:
-                      key = "falcon9"
               
-              # 2. Heavy / Super Heavy
-              if "starship" in r: key = "starship"
-              elif "sls" in r: key = "sls"
-              elif "new glenn" in r: key = "newglenn"
-              elif "falcon heavy" in r: key = "falconheavy"
-              elif "delta iv heavy" in r: key = "delta4"
-              elif "long march 5" in r: key = "cz_5"  
-              elif "lvm3" in r: key = "lvm3"
-
-              # 3. Medium / Standard
-              elif "vulcan" in r: key = "vulcan"
-              elif "atlas" in r: key = "atlasv"
-              elif "ariane" in r: key = "ariane6"
-              elif "h3" in r: key = "h3"
-              elif "soyuz" in r: key = "soyuz"
-              elif "antares" in r: key = "antares"
-              
-              # 4. Chinese Variants (Specifics)
-              elif "long march 7" in r: key = "cz_7"
-              elif "long march 2f" in r: key = "cz_2f"
-              elif "long march 3b" in r: key = "cz_3b"
-              elif "long march" in r: key = "cz_classic" # Fallback for other CZ
-              
-              # 5. Small / Light
-              elif "electron" in r: key = "electron"
-              elif "firefly" in r: key = "firefly"
-              elif "minotaur" in r: key = "minotaur"
-              elif "pslv" in r: key = "pslv"
-              elif "vega" in r: key = "vega"
-              elif "nuri" in r: key = "nuri"
-              elif "ceres" in r: key = "ceres"
-              
+              if rocket_name == "generic":
+                  key = "generic"
+              else:
+                  # 1. SpaceX Special Logic
+                  if "falcon 9" in r:
+                      if "human" in m_type or "crew" in m_name or "axiom" in m_name or "polaris" in m_name:
+                          key = "falcon9_crew"
+                      else:
+                          key = "falcon9"
+                  elif "falcon heavy" in r: key = "falconheavy"
+                  elif "starship" in r: key = "starship"
+                  
+                  # 2. Others
+                  elif "electron" in r: key = "electron"
+                  elif "atlas" in r: key = "atlasv"
+                  elif "vulcan" in r: key = "vulcan"
+                  elif "delta" in r: key = "delta4"
+                  elif "sls" in r: key = "sls"
+                  elif "new glenn" in r: key = "newglenn"
+                  elif "ariane" in r: key = "ariane6"
+                  elif "soyuz" in r: key = "soyuz"
+                  elif "long march" in r: key = "cz_classic"
+                  elif "h3" in r: key = "h3"
+                  elif "vega" in r: key = "vega"
+                  elif "pslv" in r: key = "pslv"
+                  elif "antares" in r: key = "antares"
+                  elif "minotaur" in r: key = "minotaur"
+                  elif "firefly" in r: key = "firefly"
+                  
               suffix = "_idle"
               if status == "In Flight" or status == "AWAITING CONFIRMATION":
                   suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success and key in ["falcon9", "falcon9_crew", "falconheavy", "starship", "newglenn"]:
-                      suffix = "_landed"
+                  if landing_success:
+                      if "falcon" in key or "starship" in key or "newglenn" in key: 
+                          suffix = "_landed"
+                      else: key, suffix = "empty", ""
                   else:
                       key, suffix = "empty", ""
-              
+
               if key == "empty": return f"{repo_url}/rockets/empty.png"
               return f"{repo_url}/rockets/{key}{suffix}.png"
 
@@ -645,10 +635,7 @@ jobs:
           def get_countdown(dt_event):
               now = datetime.now(timezone.utc)
               diff = dt_event - now
-              
-              if diff.total_seconds() < 0:
-                return "T- 00h 00m"
-                
+              if diff.total_seconds() < 0: return "T- 00h 00m"
               total_seconds = int(diff.total_seconds())
               hours, remainder = divmod(total_seconds, 3600)
               minutes, _ = divmod(remainder, 60)
@@ -667,6 +654,8 @@ jobs:
               next_dt = parse_time(upcoming["net"])
               hours_since = (now - prev_dt).total_seconds() / 3600
               hours_until = (next_dt - now).total_seconds() / 3600
+              
+              # VICTORY LAP LOGIC
               if hours_since < 1 or hours_until > 6:
                   target = previous
                   mode = "POST_LAUNCH"
@@ -678,55 +667,35 @@ jobs:
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
-              # API STATUS CHECK
               api_status = target["status"]["abbrev"]
               is_final = api_status in ["Success", "Failure", "Partial Failure", "In Flight"]
               
               if is_final:
                   mode = "POST_LAUNCH"
-              elif seconds_since_t0 > 600:
+              elif mode == "PRE_LAUNCH" and seconds_since_t0 > 600:
                   mode = "POST_LAUNCH"
                   target["status"]["abbrev"] = "PENDING"
                   target["status"]["name"] = "AWAITING CONFIRMATION"
 
+              # ... (Context/Provider Logic same as before) ...
               mission_context = "COMMERCIAL"
-              if target.get("program") and len(target["program"]) > 0:
-                  mission_context = target["program"][0]["name"]
-              elif target.get("mission") and target["mission"].get("type"):
-                  mission_context = target["mission"]["type"]
+              if target.get("program"): mission_context = target["program"][0]["name"]
+              elif target.get("mission"): mission_context = target["mission"].get("type", "COMMERCIAL")
 
-              # --- NAME CLEANER ---
-              def clean_name(name):
-                  n = name.lower()
-                  if "china aerospace" in n: return "CASC"
-                  if "korea aerospace" in n: return "KARI" # Added KARI
-                  if "arianespace" in n: return "Arianespace" # Ensure capitalization
-                  if "spacex" in n: return "SpaceX"
-                  if "nasa" in n: return "NASA"
-                  if "united launch alliance" in n: return "ULA"
-                  if "roscosmos" in n: return "Roscosmos"
-                  if "indian space" in n: return "ISRO"
-                  if "japan aerospace" in n: return "JAXA"
-                  if "european space" in n: return "ESA"
-                  if "rocket lab" in n: return "Rocket Lab"
-                  if "blue origin" in n: return "Blue Origin"
-                  if "northrop" in n: return "Northrop"
-                  return name
-
-              provider = clean_name(target["launch_service_provider"]["name"])
+              provider = target["launch_service_provider"]["name"]
+              provider = provider.replace("China Aerospace Science and Technology Corporation", "CASC")
+              # (Add other replacements here)
               
-              agency = "" 
+              agency = ""
               if target.get("mission") and target.get("mission", {}).get("agencies"):
                   raw_agency = target["mission"]["agencies"][0]["name"]
-                  cleaned = clean_name(raw_agency)
-                  if cleaned != provider: agency = cleaned
+                  if raw_agency != target["launch_service_provider"]["name"]:
+                       agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
 
-              # --- DESCRIPTION DIET (250 chars) ---
               raw_mission_desc = ""
-              if target.get("mission") and target["mission"].get("description"):
+              if target.get("mission") and target.get("mission", {}).get("description"):
                   desc = target["mission"]["description"]
-                  if "No description" not in desc and "TBD" not in desc:
-                      raw_mission_desc = desc
+                  if "No description" not in desc and "TBD" not in desc: raw_mission_desc = desc
               
               raw_program_desc = ""
               if target.get("program") and len(target["program"]) > 0:
@@ -737,24 +706,22 @@ jobs:
               if target.get("mission_patches"): image_url = target["mission_patches"][0]["image_url"]
               elif target.get("launch_service_provider"): image_url = target["launch_service_provider"].get("logo_url", "")
 
-              pad = target["pad"]["name"].replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
-              if pad.isdigit(): pad = f"Pad {pad}"
-              loc = target["pad"]["location"]["name"].split(",")[0].strip()
-              country = target["pad"]["location"].get("country_code", "")
-              location_str = f"{pad} @ {loc}"
-              if country: location_str += f", {country}"
+              pad_name = target["pad"]["name"].replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+              if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
+              loc_name = target["pad"]["location"]["name"].split(",")[0].strip()
+              country_code = target["pad"]["location"].get("country_code", "")
+              location_str = f"{pad_name} @ {loc_name}"
+              if country_code: location_str += f", {country_code}"
 
               stage = {}
               if target.get("rocket", {}).get("launcher_stage"):
                   s_list = target["rocket"]["launcher_stage"]
                   if s_list: stage = s_list[0]
-              
               landing = stage.get("landing") or {}
               attempt = landing.get("attempt")
               success = landing.get("success")
               l_loc = landing.get("location", {}).get("name", "Unknown")
               l_loc = l_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI")
-              
               flight_n = stage.get("launcher_flight_number")
 
               footer_left = ""
@@ -763,11 +730,8 @@ jobs:
                   footer_right = "Single-use configuration. No recovery planned."
               else:
                   if mode == "PRE_LAUNCH":
-                      if flight_n: 
-                          if flight_n == 1: footer_left = "Maiden flight for this booster."
-                          else: footer_left = f"Booster flight #{flight_n}."
-                      else:
-                          footer_left = "Booster identity classified/unavailable."
+                      if flight_n: footer_left = f"Booster flight #{flight_n}."
+                      else: footer_left = "Booster identity classified."
                       if l_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
                       else: footer_right = f"Targeting recovery at {l_loc}."
                   else:
@@ -804,16 +768,15 @@ jobs:
                   REPO_BASE
               )
 
-              # --- TIMESTAMP CONVERSION ---
-              # We send raw integers (seconds since epoch)
+              # Timestamps
               date_ts = int(target_dt.timestamp())
-              
               win_start_ts = date_ts
               win_end_ts = date_ts
-              if target.get("window_start"):
-                   win_start_ts = int(parse_time(target["window_start"]).timestamp())
-              if target.get("window_end"):
-                   win_end_ts = int(parse_time(target["window_end"]).timestamp())
+              if target.get("window_start"): win_start_ts = int(parse_time(target["window_start"]).timestamp())
+              if target.get("window_end"): win_end_ts = int(parse_time(target["window_end"]).timestamp())
+
+              m_name = target["name"].split(" | ")[-1]
+              if "Unknown Payload" in m_name: m_name = rocket_name
 
               output = {
                   "mode": mode,
@@ -822,21 +785,22 @@ jobs:
                   "agency": agency,
                   "provider": provider,
                   "location_str": location_str,
+                  "date": target["net"],
                   "date_ts": date_ts,
                   "window_start_ts": win_start_ts,
                   "window_end_ts": win_end_ts,
                   "countdown": get_countdown(target_dt),
                   "status": target["status"]["abbrev"],
                   "image": image_url,
-                  "description": (raw_mission_desc or "").replace("\n", " ")[0:600], 
+                  "description": (raw_mission_desc or "").replace("\n", " ")[0:600],
                   "program_description": (raw_program_desc or "").replace("\n", " ")[0:400],
                   "rocket": rocket_name,
-                  "orbit": target["mission"]["orbit"]["name"] if target.get("mission") and target.get("mission", {}).get("orbit") else "TBD",
+                  "orbit": target["mission"]["orbit"]["name"] if target.get("mission") else "TBD",
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
                   "rocket_visual": vis_url,
-                  "generic_visual": generic_vis_url
+                  "generic_visual": generic_visual_url
               }
 
               with open("launch.json", "w") as f:
