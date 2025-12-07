@@ -17,7 +17,6 @@ jobs:
 
       - name: Fetch and Smart-Process Data
         run: |
-          # UPDATED URL: hide_recent_previous=true
           curl -sS "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=2&mode=detailed&hide_recent_previous=true&format=json" > upcoming.json
           curl -sS "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
 
@@ -28,6 +27,7 @@ jobs:
           from datetime import datetime, timezone
 
           # --- CONFIG ---
+          # REPLACE THIS WITH YOUR REPO URL
           REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
 
           def load_json(filename):
@@ -50,7 +50,6 @@ jobs:
           def get_rocket_fact(rocket_name):
               r_name = rocket_name.lower()
               
-              # 1. General High-Grade Facts
               general_facts = [
                   "Launch pad water deluge systems are primarily used for sound suppression to prevent acoustic waves from tearing the rocket apart.",
                   "To reach low Earth orbit, any rocket must travel at approximately 17,500 mph (28,000 km/h) sideways.",
@@ -71,7 +70,6 @@ jobs:
 
               facts = []
 
-              # 2. Specific Facts
               if "falcon 9" in r_name:
                   facts = [
                       "The Falcon 9's heat shield protecting the engines is covered in a layer of cork, similar to wine stoppers.",
@@ -104,17 +102,7 @@ jobs:
                       "Massive hydraulic rams are used to push the Falcon Heavy side boosters away to ensure they don't collide during separation.",
                       "The Falcon Heavy's center core throttles down almost immediately after launch to save fuel for the later stages.",
                       "The launch pad's 'rainbird' sound suppression system had to be upgraded to handle Falcon Heavy's acoustic energy.",
-                      "The three exhaust plumes of the Falcon Heavy interact to create a visible, massive single column of fire.",
-                      "Falcon Heavy has more thrust at liftoff than eighteen 747 aircraft at full power.",
-                      "It is capable of lifting 64 metric tons to orbit, more than a fully loaded Boeing 737 jetliner.",
-                      "Falcon Heavy was originally designed to carry humans to the Moon, but Starship has taken over that role.",
-                      "The side boosters of Falcon Heavy perform a 'boostback burn' to return to the launch site, creating a spectacular light show.",
-                      "Falcon Heavy's second stage can restart multiple times to deliver payloads to complex geostationary orbits.",
-                      "The sound of a Falcon Heavy launch is so loud it can be felt physically miles away from the pad.",
-                      "Falcon Heavy is currently the most powerful operational rocket in the world (until Starship fully enters service).",
-                      "The two side boosters land almost simultaneously, creating a double sonic boom heard across the coast.",
-                      "Falcon Heavy uses a modified transporter-erector at LC-39A to handle the wider fuselage.",
-                      "Unlike the side boosters, the center core of Falcon Heavy usually lands downrange on a drone ship due to high velocity."
+                      "The three exhaust plumes of the Falcon Heavy interact to create a visible, massive single column of fire."
                   ]
               elif "starship" in r_name:
                   facts = [
@@ -126,18 +114,7 @@ jobs:
                       "The Raptor engine uses a Full-Flow Staged Combustion cycle, a complex design only previously attempted by Soviet engineers.",
                       "Starship is pressurized with autogenous gas (gaseous methane/oxygen) instead of heavy helium bottles.",
                       "On the Super Heavy booster, the outer ring of 20 engines is fixed, while only the inner 13 can gimbal to steer.",
-                      "Starship is constructed from stainless steel rather than carbon fiber to better withstand reentry heat.",
-                      "The 'Hot Staging' ring allows the upper stage to ignite its engines while still attached to the booster.",
-                      "Starship is taller than the Saturn V moon rocket, standing nearly 400 feet (120 meters) tall.",
-                      "The Raptor engines are the first mass-produced full-flow staged combustion engines in history.",
-                      "Starship steers during descent using four massive 'elonerons' (flaps) that act like a skydiver's limbs.",
-                      "SpaceX plans to refuel Starship in orbit, allowing it to carry full payloads to the Moon or Mars.",
-                      "The launch tower for Starship is not just a support structure but an integral part of the catching mechanism.",
-                      "Starship's methane fuel burns clean blue, unlike the bright orange kerosene flame of the Falcon 9.",
-                      "The heat shield tiles on Starship must survive temperatures exceeding 2,500 degrees Fahrenheit.",
-                      "Super Heavy consumes propellant at a rate of tens of tons per second during liftoff.",
-                      "Starship is designed to fly up to three times a day in a rapid reuse airliner-style cadence.",
-                      "The nose cone of Starship houses a small header tank for landing fuel to prevent sloshing during the flip maneuver."
+                      "Starship is constructed from stainless steel rather than carbon fiber to better withstand reentry heat."
                   ]
               elif "electron" in r_name:
                   facts = [
@@ -150,17 +127,7 @@ jobs:
                       "Electron's tanks are carbon composite liners overwrapped with carbon fiber, holding cryogenic fluid without a metal liner.",
                       "Rocket Lab names their Electron missions with puns, such as 'It's a Business Time' and 'Rocket Like a Hurricane'.",
                       "Electron's exhaust sometimes appears to sparkle because the ablative liner of the engine nozzle erodes intentionally.",
-                      "Rocket Lab's Electron is surprisingly small, measuring only 4 feet wide.",
-                      "Electron launches from New Zealand's Mahia Peninsula, the world's only private orbital launch range.",
-                      "The 'Kick Stage' on Electron can remain in orbit for months to deploy satellites into precise constellations.",
-                      "Electron's batteries provide one megawatt of power to the pumps, enough to power a small city block for a few minutes.",
-                      "Rocket Lab essentially 3D prints the engine combustion chambers, injectors, and pumps.",
-                      "Electron uses a 'Curie' engine on its kick stage, a small bi-propellant 3D printed thruster.",
-                      "Launch Complex 1 in New Zealand allows Electron to launch into almost any orbital inclination.",
-                      "Rocket Lab built a second launch pad at Wallops Island, Virginia, to serve US government customers.",
-                      "Electron is designed for high-frequency launches, aiming for a weekly cadence.",
-                      "The entire Electron rocket can be shipped in a standard shipping container to the launch site.",
-                      "Electron's avionics system weighs just 19 pounds, significantly less than traditional rocket computers."
+                      "Rocket Lab's Electron is surprisingly small, measuring only 4 feet wide."
                   ]
               elif "atlas v" in r_name:
                   facts = [
@@ -170,20 +137,7 @@ jobs:
                       "ULA's Atlas V Centaur upper stage uses a 'common bulkhead'—a single metal sheet separating fuel and oxidizer.",
                       "Atlas V flies a remarkably steep trajectory compared to other rockets to get out of the thick atmosphere quickly.",
                       "The Atlas V 500 series flies with an offset fairing, making the rocket look slightly asymmetrical on the pad.",
-                      "Atlas V can fly with anywhere from 0 to 5 solid rocket boosters depending on the payload weight.",
-                      "The solid rocket boosters on Atlas V are mounted at an angle to ensure they fly clear of the core after separation.",
-                      "Atlas V's Centaur stage is pressure-stabilized, meaning it would crumple like a soda can if depressurized.",
-                      "ULA's Atlas V is the only rocket certified to launch nuclear-powered payloads like the Mars Curiosity rover.",
-                      "The Atlas V 401 configuration uses no solid boosters and a 4-meter fairing, making it the sleekest variant.",
-                      "Atlas V is being retired in favor of the new Vulcan Centaur rocket.",
-                      "The RL-10 engine on the Centaur upper stage has been in service in various forms since the 1960s.",
-                      "Atlas V launches from both Cape Canaveral (Florida) and Vandenberg (California) for different orbits.",
-                      "The 'V' in Atlas V represents the Roman numeral 5, distinguishing it from earlier Atlas rockets.",
-                      "Atlas V uses a 'slider' mechanism to deploy its solid boosters cleanly without recontact.",
-                      "The Centaur upper stage is considered one of the most efficient hydrogen stages ever built.",
-                      "Atlas V's flight computer can dynamically adjust the flight profile in real-time if an engine underperforms.",
-                      "The payload fairing of the Atlas V is made of a composite sandwich structure for lightness and strength.",
-                      "Atlas V has launched almost every major NASA planetary mission of the last two decades."
+                      "Atlas V can fly with anywhere from 0 to 5 solid rocket boosters depending on the payload weight."
                   ]
               elif "vulcan" in r_name:
                   facts = [
@@ -196,17 +150,7 @@ jobs:
                       "The Centaur upper stage engine lineage dates back to the 1960s.",
                       "Advanced laser ignition research led to Vulcan's torch ignition system.",
                       "The Vulcan main tank uses an 'orthogrid' milled pattern for strength.",
-                      "Mid-air helicopter capture of Vulcan engines was scrapped for ocean recovery.",
-                      "Vulcan replaces both the Atlas V and Delta IV Heavy rockets.",
-                      "The BE-4 engines produce 550,000 pounds of thrust each.",
-                      "Vulcan is designed to fly up to 20 times a year.",
-                      "The solid rocket boosters are graphite-epoxy motor cases.",
-                      "Vulcan's avionics are derived from the flight-proven Atlas V system.",
-                      "It uses a new mobile launch platform at SLC-41.",
-                      "The payload fairing is available in standard and long configurations.",
-                      "Vulcan can insert payloads directly into high-energy orbits.",
-                      "The fuel tanks are friction-stir welded for maximum strength.",
-                      "Vulcan's development began in 2014 to replace Russian engines."
+                      "Mid-air helicopter capture of Vulcan engines was scrapped for ocean recovery."
                   ]
               elif "new glenn" in r_name:
                   facts = [
@@ -219,17 +163,7 @@ jobs:
                       "The New Glenn booster uses wing-like strakes to provide aerodynamic lift during its return glide.",
                       "Blue Origin often skips static fire tests for New Glenn, trusting their rigorous factory testing process.",
                       "New Glenn is assembled vertically in a massive hangar to protect delicate satellite payloads.",
-                      "The New Glenn upper stage engines use an efficient 'expander cycle' to spin pumps.",
-                      "New Glenn stands 98 meters tall, towering over most other launch vehicles.",
-                      "The first stage is designed to be reused for a minimum of 25 flights.",
-                      "New Glenn's launch pad at LC-36 was completely rebuilt from the ground up.",
-                      "The rocket is named after John Glenn, the first American to orbit Earth.",
-                      "Blue Origin built a massive ship named 'Jacklyn' specifically for New Glenn landings.",
-                      "The seven BE-4 engines on the first stage produce 3.85 million pounds of thrust.",
-                      "New Glenn can launch dual payloads to different orbits in a single mission.",
-                      "The GS2 upper stage features restartable engines for complex orbital insertions.",
-                      "New Glenn's fins are actuated hydraulically to steer through the atmosphere.",
-                      "The massive fairing allows for larger telescope mirrors than ever before."
+                      "The New Glenn upper stage engines use an efficient 'expander cycle' to spin pumps."
                   ]
               elif "soyuz" in r_name:
                   facts = [
@@ -241,18 +175,7 @@ jobs:
                       "The Soyuz 'periscope' used by the crew for docking alignment is a literal system of mirrors sticking out of the capsule.",
                       "Soyuz crew buses stop for a traditional 'urination ritual' on the rear wheel on the way to the pad.",
                       "The Soyuz abort tower motors pull 14Gs, moving the crew away faster than the human eye can track.",
-                      "Soyuz boosters separate in the famous 'Korolev Cross' pattern caused by residual oxygen venting.",
-                      "The Soyuz design has flown over 1,900 times, making it the most reliable rocket family in history.",
-                      "Soyuz is assembled horizontally and erected at the pad, a tradition dating back to the R-7 ICBM.",
-                      "The launch pad at Baikonur is the same one used by Yuri Gagarin in 1961.",
-                      "Soyuz engines use Vernier thrusters for steering instead of gimballing the main engines.",
-                      "The third stage of Soyuz ignites while the second stage is still attached ('hot staging').",
-                      "Soyuz capsules land on land in Kazakhstan, using retro-rockets to soften the impact.",
-                      "The 'Kurs' docking system allows Soyuz to dock automatically to the ISS.",
-                      "Soyuz crews carry a survival kit that includes a machete and fishing gear for remote landings.",
-                      "The rocket is transported to the pad by a train moving at human walking speed.",
-                      "Soyuz launches are rarely scrubbed for weather, launching even in blizzards.",
-                      "The four strap-on boosters are actually considered the 'first stage' in Russian nomenclature."
+                      "Soyuz boosters separate in the famous 'Korolev Cross' pattern caused by residual oxygen venting."
                   ]
               elif "ariane 6" in r_name:
                   facts = [
@@ -263,19 +186,7 @@ jobs:
                       "The water deluge system at the Ariane 6 launch site dumps 400 cubic meters of water in just 30 seconds.",
                       "Ariane 6 uses Laser Ignition Systems for its engines, reducing weight and increasing reliability.",
                       "The Ariane 6 nozzle rim is cooled by dumping exhaust from the turbopump directly into it.",
-                      "Launching Ariane 6 from French Guiana provides a 'slingshot' speed boost of nearly 1,000 mph due to Earth's rotation.",
-                      "Ariane 6 solid boosters are identical to the first stage of the Vega-C rocket, saving manufacturing costs.",
-                      "The massive mobile gantry for Ariane 6 weighs 8,200 tons and rolls back on rails before launch.",
-                      "Ariane 6 comes in two versions: A62 (2 boosters) and A64 (4 boosters).",
-                      "The Vulcain 2.1 main engine is a simplified, cheaper version of the engine used on Ariane 5.",
-                      "Ariane 6's fairing protects payloads from acoustic vibrations using a special noise-dampening pattern.",
-                      "The upper stage uses a carbon composite nozzle extension to save weight.",
-                      "Ariane 6 is designed to launch constellations by deploying satellites in multiple orbits.",
-                      "The launch control center is located safely 4km away from the pad.",
-                      "Ariane 6 uses a 'pyrotechnic cord' to unzip the fairing in space.",
-                      "The rocket is held down by mechanical clamps until full thrust is reached.",
-                      "Ariane 6 aims to cut the cost per kilo to orbit in half compared to Ariane 5.",
-                      "The solid boosters provide the vast majority of thrust at liftoff."
+                      "Launching Ariane 6 from French Guiana provides a 'slingshot' speed boost of nearly 1,000 mph due to Earth's rotation."
                   ]
               elif "long march 5" in r_name:
                   facts = [
@@ -286,19 +197,7 @@ jobs:
                       "CASC's Long March 5 appears to change color from orange to white as frost shakes off during launch.",
                       "The Long March 5 fairing was large enough to launch the Tiangong space station core module in one piece.",
                       "Ten liquid engines fire simultaneously at the liftoff of a Long March 5.",
-                      "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters.",
-                      "The exhaust is mostly clean steam and kerosene, unlike older toxic hypergolic Chinese rockets.",
-                      "Future Long March 5 versions may use maglev rail transport to move stages to the pad.",
-                      "Long March 5B variant removes the second stage to lift heavy payloads to low Earth orbit.",
-                      "It launches from Wenchang, which is closer to the equator for a performance boost.",
-                      "The YF-77 hydrogen engines were redesigned after a turbopump failure in 2017.",
-                      "Long March 5 is crucial for China's lunar exploration and Mars sample return missions.",
-                      "The rocket stands nearly 57 meters tall and weighs over 800 tons at liftoff.",
-                      "Its payload capacity rivals that of the American Delta IV Heavy.",
-                      "The four boosters are each as wide as a standard Long March 2 rocket.",
-                      "Long March 5 uses acoustic suppression water jets that fire seconds before ignition.",
-                      "The control systems use triple-redundancy to ensure reliability.",
-                      "It uses a moveable launch platform that rolls the rocket out vertically."
+                      "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters."
                   ]
               elif "long march 7" in r_name:
                   facts = [
@@ -308,20 +207,7 @@ jobs:
                       "Long March 7 launches exclusively from the coastal Wenchang Space Launch Site.",
                       "Long March 7 uses four massive strap-on boosters that are liquid-fueled.",
                       "Long March 7 uses high-pressure staged combustion engines (YF-100).",
-                      "Long March 7 uses a totally digital flight control system.",
-                      "Long March 7 was developed to replace the medium-lift Long March 2F.",
-                      "Long March 7 can deploy multiple satellites into different orbits in one go.",
-                      "Long March 7 components travel by sea from Tianjin to Hainan Island.",
-                      "Long March 7 uses a kerolox-based propulsion system, which is much cleaner than previous generations.",
-                      "The core stage of Long March 7 is 3.35 meters in diameter, matching the limit of China's rail tunnels.",
-                      "Long March 7's boosters are 2.25 meters in diameter, larger than many full-sized small rockets.",
-                      "It can launch up to 13.5 tonnes into Low Earth Orbit.",
-                      "Long March 7 made its maiden flight in 2016 from a new coastal launch pad.",
-                      "The rocket is capable of re-igniting its upper stage to deploy payloads into precise orbits.",
-                      "Long March 7 is a key component of China's manned space station logistics.",
-                      "It uses a new unified launch tower that protects the rocket from tropical storms.",
-                      "The guidance system of Long March 7 is designed to handle high-wind conditions.",
-                      "Long March 7 represents a major leap in China's move away from toxic hydrazine fuels."
+                      "Long March 7 uses a totally digital flight control system."
                   ]
               elif "delta" in r_name:
                   facts = [
@@ -329,22 +215,7 @@ jobs:
                       "Delta IV Heavy was the most powerful rocket in the world before Falcon Heavy.",
                       "Delta IV Heavy launches massive NRO spy satellites.",
                       "Delta IV Heavy uses three Common Booster Cores bolted together.",
-                      "Delta IV Heavy engines run on liquid hydrogen, creating a clear flame.",
-                      "The Delta II rocket was famous for its distinctive 'Delta Blue' color scheme.",
-                      "Delta II launched NASA's Spirit and Opportunity rovers to Mars in 2003.",
-                      "The Delta II completed 100 consecutive successful missions before its retirement.",
-                      "Delta IV Heavy's RS-68A engine is the largest hydrogen engine ever flown.",
-                      "The orange insulation on Delta IV Heavy prevents ice from forming on the cryogenic tanks.",
-                      "Delta IV Heavy launches from both Cape Canaveral and Vandenberg Space Force Base.",
-                      "The Delta family of rockets has been in service since the 1960s.",
-                      "Delta IV Heavy's payload capacity to GTO is over 14,000 kg.",
-                      "The center core of Delta IV Heavy throttles down to conserve fuel during ascent.",
-                      "Delta IV Heavy is being retired in favor of ULA's new Vulcan Centaur.",
-                      "The charred look of Delta IV Heavy after launch is due to the hydrogen fireball at ignition.",
-                      "Delta IV Heavy uses a metallic trisector payload fairing for heavy satellites.",
-                      "The Common Booster Cores are manufactured in Decatur, Alabama.",
-                      "Delta IV Heavy is capable of launching payloads directly to geostationary orbit.",
-                      "The final Delta IV Heavy launch marked the end of an era for the Delta rocket family."
+                      "Delta IV Heavy engines run on liquid hydrogen, creating a clear flame."
                   ]
               elif "pslv" in r_name:
                   facts = [
@@ -352,45 +223,14 @@ jobs:
                       "PSLV launched India's first mission to Mars (Mangalyaan).",
                       "PSLV alternates solid and liquid stages (Solid-Liquid-Solid-Liquid).",
                       "PSLV set a world record by launching 104 satellites in a single mission.",
-                      "PSLV uses strap-on boosters that look like miniature rockets.",
-                      "The PSLV-XL variant uses extended solid strap-on boosters for heavier payloads.",
-                      "PSLV was the first Indian launch vehicle to be equipped with liquid stages.",
-                      "PSLV launched India's first lunar probe, Chandrayaan-1, in 2008.",
-                      "The fourth stage of PSLV uses two liquid engines for precise orbit injection.",
-                      "PSLV has launched satellites for over 30 different countries.",
-                      "The solid first stage of PSLV is one of the largest solid rocket boosters in the world.",
-                      "PSLV can launch into Sun-Synchronous Orbits (SSO) and Geostationary Transfer Orbits (GTO).",
-                      "The 'DL' variant of PSLV uses only two strap-on boosters.",
-                      "PSLV's liquid second stage uses the Vikas engine, derived from the French Viking engine.",
-                      "PSLV has a success rate of over 90% across dozens of missions.",
-                      "The rocket stands 44 meters tall and weighs 320 tonnes at liftoff.",
-                      "PSLV uses a 'sit-on-top' payload integration method.",
-                      "The PSLV-C37 mission deployed 104 satellites, mostly CubeSats.",
-                      "PSLV is capable of multiple restart operations for its upper stage.",
-                      "ISRO developed PSLV to gain independence in launching remote sensing satellites."
+                      "PSLV uses strap-on boosters that look like miniature rockets."
                   ]
               elif "vega" in r_name:
                   facts = [
                       "ESA's Vega is named after the second brightest star in the northern hemisphere.",
                       "Vega is composed mostly of solid-fuel stages.",
                       "Vega launches from the same jungle spaceport as Ariane 6.",
-                      "Vega is designed specifically for small scientific and earth observation satellites.",
-                      "The P80 first stage of Vega is a single-piece carbon fiber solid rocket motor.",
-                      "Vega uses a liquid upper stage called AVUM for precise orbit placement.",
-                      "Vega-C is a more powerful version of the original Vega rocket.",
-                      "Vega can launch multiple small satellites into different orbits in a single mission.",
-                      "The Vega launch site was originally built for the Ariane 1 rocket.",
-                      "Vega fills the gap for small payloads that are too small for Ariane 6.",
-                      "The P120C booster used on Vega-C also serves as the strap-on booster for Ariane 6.",
-                      "Vega's development was led by the Italian Space Agency (ASI).",
-                      "Vega stands about 30 meters tall and weighs 137 tonnes at liftoff.",
-                      "The Zefiro solid rocket motors power Vega's second and third stages.",
-                      "Vega's AVUM stage can be restarted up to five times.",
-                      "Vega provides Europe with independent access to space for small satellites.",
-                      "The first Vega launch took place in February 2012.",
-                      "Vega is capable of launching payloads into Sun-Synchronous Orbit.",
-                      "The fairing of Vega protects the payload during ascent through the atmosphere.",
-                      "Vega's launch rate is designed to be about 2-4 missions per year."
+                      "Vega is designed specifically for small scientific and earth observation satellites."
                   ]
               elif "h3" in r_name:
                   facts = [
@@ -403,17 +243,7 @@ jobs:
                       "H3 insulation is sprayed-on silicone instead of hand-glued cork.",
                       "H3 can coast for hours to insert directly to Geostationary Orbit.",
                       "H3 Pogo suppression is built into the piping geometry.",
-                      "H3 launches from Tanegashima, considered the world's most beautiful launch site.",
-                      "JAXA developed the LE-9 engine specifically to be cheaper and more reliable than the LE-7A.",
-                      "H3 is designed to be flexible, launching with 0, 2, or 4 solid boosters.",
-                      "The fairing separation system uses pneumatic actuators instead of explosives for a smoother release.",
-                      "H3's launch price aims to be half that of its predecessor, the H-IIA.",
-                      "The mobile launch platform shields the rocket from wind and rain until launch day.",
-                      "H3 can launch dual payloads using a specialized attachment structure.",
-                      "The first stage LH2 turbopump spins at 40,000 rpm.",
-                      "H3 uses a simplified engine start sequence to reduce the number of valves.",
-                      "The rocket body is painted white to reduce boil-off of the cryogenic propellants.",
-                      "H3 is vital for Japan's independent access to space for security satellites."
+                      "H3 launches from Tanegashima, considered the world's most beautiful launch site."
                   ]
               elif "lvm3" in r_name:
                   facts = [
@@ -423,211 +253,148 @@ jobs:
                       "The LVM3's solid boosters are among the largest in the world, each containing 200 tons of propellant.",
                       "ISRO's LVM3 cryogenic upper stage engine was developed entirely indigenously in India.",
                       "The LVM3 launch pad uses a water suppression system that keeps the acoustic energy below 142 decibels.",
-                      "ISRO's LVM3 liquid core engines do not ignite until the rocket is already 110 seconds into the flight.",
-                      "LVM3 is one of the most cost-efficient heavy launchers in the global market.",
-                      "The rocket was human-rated for the Gaganyaan mission, requiring vibration reduction.",
-                      "LVM3 launched the Chandrayaan-3 mission that successfully landed on the Moon's south pole.",
-                      "The core stage uses two Vikas engines, a derivative of the French Viking engine.",
-                      "LVM3 stands 43.5 meters tall, shorter than many other heavy-lift rockets.",
-                      "The payload fairing is 5 meters wide, allowing it to carry large communication satellites.",
-                      "LVM3 uses a 'strap-on' configuration where the boosters provide the initial lift.",
-                      "The cryogenic stage uses Liquid Hydrogen and Liquid Oxygen at extreme low temperatures.",
-                      "ISRO developed a new facility to manufacture the massive S200 booster segments.",
-                      "LVM3's guidance system steers the rocket to avoid dropping stages on populated land.",
-                      "The rocket has a lift-off mass of 640 tonnes.",
-                      "LVM3 made its first orbital flight in 2017.",
-                      "The manufacturing process is moving to green techniques to eliminate hazardous chemicals."
+                      "ISRO's LVM3 liquid core engines do not ignite until the rocket is already 110 seconds into the flight."
                   ]
               elif "gslv" in r_name:
                   facts = [
                       "GSLV Mk II is affectionately nicknamed the 'Naughty Boy' by ISRO due to early reliability issues.",
                       "The GSLV Mk II features an indigenously developed Cryogenic Upper Stage (CUS).",
                       "GSLV Mk II uses four liquid strap-on boosters derived from the PSLV's core stage.",
-                      "The GSLV Mk II is designed primarily to launch INSAT communication satellites.",
-                      "GSLV Mk II uses a complex staging sequence involving liquid, solid, and cryogenic propulsion.",
-                      "The cryogenic stage of GSLV Mk II burns liquid hydrogen and liquid oxygen.",
-                      "GSLV Mk II stands 49 meters tall and weighs 414 tonnes.",
-                      "The rocket is capable of placing 2.5 tonnes into Geostationary Transfer Orbit.",
-                      "GSLV Mk II launches from the Satish Dhawan Space Centre in Sriharikota.",
-                      "The indigenously developed cryogenic engine was a major milestone for Indian space technology.",
-                      "GSLV Mk II uses a metallic payload fairing to protect satellites during ascent.",
-                      "The four liquid strap-ons burn for about 160 seconds during the first stage of flight.",
-                      "GSLV Mk II's core stage is a solid rocket motor, similar to the PSLV's first stage.",
-                      "The rocket's guidance system ensures precise injection into transfer orbits.",
-                      "GSLV Mk II is a key enabler for India's communication and weather satellite networks.",
-                      "The cryogenic stage provides the high specific impulse needed for GTO missions.",
-                      "GSLV Mk II has undergone several upgrades to improve its payload capacity and reliability.",
-                      "The rocket's launch vehicle health monitoring system provides real-time data during flight.",
-                      "GSLV Mk II supports India's self-reliance in launching heavy communication satellites.",
-                      "The development of the CUS for GSLV Mk II took nearly two decades."
+                      "The GSLV Mk II is designed primarily to launch INSAT communication satellites."
                   ]
               elif "proton" in r_name:
                   facts = [
                       "The Proton rocket uses toxic hypergolic propellants that ignite on contact.",
                       "Proton has launched every Soviet and Russian space station module, including Mir.",
                       "The Proton rocket is transported horizontally by rail and erected at the launch pad.",
-                      "Proton uses a Briz-M upper stage that can restart multiple times.",
-                      "The first stage of Proton features six engines fed by a central oxidizer tank.",
-                      "Proton was originally designed as a 'super ICBM' to carry a 100-megaton nuclear warhead.",
-                      "Proton has been the workhorse of the Russian space program for over 50 years.",
-                      "The distinctive red-orange cloud at Proton launch is caused by nitrogen tetroxide oxidizer.",
-                      "Proton launches from the Baikonur Cosmodrome in Kazakhstan.",
-                      "The rocket stands 53 meters tall and weighs about 700 tonnes at liftoff.",
-                      "Proton has launched interplanetary missions to Mars, Venus, and the Moon.",
-                      "The Briz-M upper stage allows Proton to deliver payloads to a wide range of orbits.",
-                      "Proton's first stage engines gimbal to steer the rocket during ascent.",
-                      "The rocket's reliability has improved significantly after a series of upgrades in the 2000s.",
-                      "Proton is capable of launching over 20 tonnes to Low Earth Orbit.",
-                      "The Proton-M variant features improved avionics and lighter structures.",
-                      "Proton's oxidizer tank is surrounded by six fuel tanks in the first stage.",
-                      "The rocket is assembled in Moscow and shipped to Baikonur by rail for final integration.",
-                      "Proton has launched commercial satellites for companies around the world.",
-                      "The Angara rocket family is being developed to eventually replace Proton."
+                      "Proton uses a Briz-M upper stage that can restart multiple times."
                   ]
               elif "angara" in r_name:
                   facts = [
                       "Angara is the first all-new launch vehicle family developed by Russia since the Soviet era.",
                       "Angara uses Universal Rocket Modules (URMs) that can be strapped together.",
-                      "Angara burns clean kerosene and oxygen, replacing the toxic Proton rocket.",
-                      "The Angara A5 heavy-lift variant uses five URM-1 cores as its first stage.",
-                      "Angara launches from both the Plesetsk Cosmodrome and the Vostochny Cosmodrome.",
-                      "The URM-1 modules are designed to be transported by standard rail cars.",
-                      "Angara's RD-191 engine is derived from the powerful RD-170 engine family.",
-                      "Angara allows Russia to launch heavy payloads from its own territory.",
-                      "The modular design allows Angara to be configured for light, medium, and heavy payloads.",
-                      "Angara's development began in the 1990s to ensure independent access to space.",
-                      "The Angara 1.2 light variant uses a single URM-1 core and a modified second stage.",
-                      "Angara A5 is capable of lifting 24.5 tonnes to Low Earth Orbit.",
-                      "The rocket features modern digital avionics and control systems.",
-                      "Angara's clean propellants eliminate the environmental hazards of hypergolic fuels.",
-                      "The URM-2 second stage uses the RD-0124A engine for high efficiency.",
-                      "Angara is a key part of Russia's future lunar exploration plans.",
-                      "The rocket can use a Briz-M or KVTK upper stage for high-energy orbits.",
-                      "Angara's launch pad at Vostochny was built specifically for this new family of rockets.",
-                      "The first successful orbital flight of Angara A5 took place in 2014.",
-                      "Angara is designed to be more cost-effective and reliable than its predecessors."
+                      "Angara burns clean kerosene and oxygen, replacing the toxic Proton rocket."
                   ]
               elif "antares" in r_name:
                   facts = [
                       "Antares is designed specifically to launch the Cygnus cargo spacecraft to the ISS.",
                       "The Antares first stage was built in Ukraine, while its engines were originally Russian.",
-                      "Antares launches from Wallops Island, Virginia, visible to the US East Coast.",
-                      "The Antares 230+ series uses RD-181 engines, which are cleaner and more powerful than the original AJ-26s.",
-                      "Antares features a Castor 30XL solid rocket motor as its second stage.",
-                      "The rocket stands 42.5 meters tall and is optimized for medium-lift cargo missions.",
-                      "Antares uses a 'late load' capability to allow time-sensitive cargo to be loaded just before launch.",
-                      "The first stage burns kerosene and liquid oxygen, producing a bright yellow flame.",
-                      "Antares is operated by Northrop Grumman as part of NASA's Commercial Resupply Services.",
-                      "The rocket's avionics system manages the transition from liquid first stage to solid second stage.",
-                      "Antares launches usually occur at night or early morning to align with the ISS orbit.",
-                      "The Cygnus spacecraft launched by Antares is named after the Swan constellation.",
-                      "Antares has a payload capacity of about 8,000 kg to Low Earth Orbit.",
-                      "The launch pad at Wallops, Pad 0A, was rebuilt after a launch failure in 2014.",
-                      "Antares uses a transporter-erector-launcher to move from the assembly building to the pad.",
-                      "The RD-181 engines gimbal to provide steering control during the first stage burn.",
-                      "Antares is one of the few rockets that launches from the Mid-Atlantic Regional Spaceport.",
-                      "The solid second stage spins up before ignition for stability.",
-                      "Antares missions are named after astronauts and pioneers in spaceflight.",
-                      "Future versions of Antares may use Firefly Aerospace's Miranda engines."
+                      "Antares launches from Wallops Island, Virginia, visible to the US East Coast."
                   ]
               elif "minotaur" in r_name:
                   facts = [
                       "Minotaur rockets are built from decommissioned Minuteman and Peacekeeper ICBM stages.",
                       "The Minotaur I can be assembled and launched in weeks due to its solid-fuel design.",
-                      "Minotaur launches often look different because they use a yellow-flamed solid propellant.",
-                      "Minotaur IV uses three Peacekeeper solid rocket stages and a commercial Orion 38 fourth stage.",
-                      "Minotaur rockets are used primarily for US government and military payloads.",
-                      "The Minotaur family provides a cost-effective way to use surplus missile motors.",
-                      "Minotaur I launches from Wallops Island, Vandenberg, and Kodiak Island, Alaska.",
-                      "The solid-fuel design allows for rapid response launch capabilities.",
-                      "Minotaur rockets have a high thrust-to-weight ratio, accelerating very quickly off the pad.",
-                      "The Minotaur V is a five-stage vehicle designed for high-energy trajectories like lunar missions.",
-                      "Minotaur launches are known for their distinct roaring sound compared to liquid rockets.",
-                      "The rocket uses a protective thermal blanket that peels off during ascent.",
-                      "Minotaur's guidance system is adapted from modern commercial launch vehicle avionics.",
-                      "The Rocket Systems Launch Program (RSLP) manages the Minotaur fleet.",
-                      "Minotaur can launch multiple small satellites in a single mission.",
-                      "The first Minotaur launch took place in 2000.",
-                      "Minotaur IV is capable of launching payloads to sun-synchronous orbit.",
-                      "The Minotaur C is a commercial variant that does not use ICBM motors.",
-                      "Minotaur launches are often used for technology demonstration missions.",
-                      "The solid motors have a long shelf life, allowing them to be stored for years."
+                      "Minotaur launches often look different because they use a yellow-flamed solid propellant."
                   ]
               elif "firefly" in r_name:
                   facts = [
                       "Firefly Alpha's Reaver engines use a 'combustion tap-off' cycle, a rare design.",
                       "The Firefly Alpha airframe is built entirely from carbon-fiber composite.",
-                      "Firefly Alpha launched the 'Victus Nox' mission with just 27 hours of notice.",
-                      "The Alpha rocket is designed to address the needs of the small-satellite market.",
-                      "Firefly Alpha uses four Reaver engines on the first stage and one Lightning engine on the second.",
-                      "The tap-off cycle simplifies the engine plumbing by using combustion chamber pressure to drive pumps.",
-                      "Firefly Alpha stands 29 meters tall and can lift 1,000 kg to Low Earth Orbit.",
-                      "The rocket uses kerosene and liquid oxygen propellants.",
-                      "Firefly Aerospace focuses on economical and convenient access to space.",
-                      "The carbon-fiber structure reduces weight, increasing payload capacity.",
-                      "Firefly Alpha's first successful orbital launch occurred in 2022.",
-                      "The rocket is manufactured in Texas, using advanced composite manufacturing techniques.",
-                      "Firefly Alpha features a payload fairing that protects satellites during ascent.",
-                      "The Lightning engine on the second stage is restartable for precise orbit insertion.",
-                      "Firefly aims to launch Alpha frequently to meet growing demand.",
-                      "The company uses 3D printing for many engine components.",
-                      "Firefly Alpha's launch control system is highly automated.",
-                      "The rocket is transported by truck to launch sites like Vandenberg.",
-                      "Firefly is developing a larger rocket, the Medium Launch Vehicle (MLV), with Northrop Grumman.",
-                      "The Reaver engines produce a bright, clean flame during flight."
+                      "Firefly Alpha launched the 'Victus Nox' mission with just 27 hours of notice."
+                  ]
+              elif "sls" in r_name:
+                  facts = [
+                      "NASA's SLS Block 1 produces 8.8 million pounds of thrust, which is 15% more power than the legendary Saturn V.",
+                      "The SLS core stage stores 733,000 gallons of super-cooled liquid hydrogen and liquid oxygen.",
+                      "SLS uses four RS-25 engines that are refurbished veterans from the Space Shuttle program.",
+                      "The twin solid rocket boosters on SLS provide more than 75% of the total thrust during the first two minutes.",
+                      "SLS is designed to be 'evolvable', with future variants planning to lift up to 130 metric tons.",
+                      "The SLS solid boosters are five-segment versions of the Shuttle boosters, adding 25% more impulse.",
+                      "SLS stands 322 feet tall, taller than the Statue of Liberty but slightly shorter than Saturn V.",
+                      "The core stage uses friction stir welding for its barrel sections, creating stronger bonds.",
+                      "SLS is capable of sending the Orion spacecraft and four astronauts directly to the Moon.",
+                      "The propellant for the SLS solid boosters has the consistency of a rubber eraser."
+                  ]
+              elif "long march 2f" in r_name:
+                  facts = [
+                      "The Long March 2F is nicknamed 'Shenjian' (Divine Arrow) and is used for China's crewed missions.",
+                      "Long March 2F features an advanced fault monitoring system to trigger the launch escape tower.",
+                      "Unlike other Long March variants, the 2F is assembled vertically and rolled out upright.",
+                      "Long March 2F uses redundant control systems to ensure crew safety.",
+                      "The launch escape tower is jettisoned exactly 2 minutes into the flight if no emergency occurs.",
+                      "Long March 2F has achieved a perfect success rate, launching every Chinese astronaut since 2003.",
+                      "The 2F/G variant features improved grid fins to guide boosters to a safe zone.",
+                      "Long March 2F's payload fairing is equipped with solid rockets for abort scenarios.",
+                      "Incremental upgrades have reduced the vibration on the Long March 2F by 50%.",
+                      "Crew members can exit the launch pad via a canvas slide into an underground shelter."
+                  ]
+              elif "long march 3b" in r_name:
+                  facts = [
+                      "Long March 3B is China's primary workhorse for high-orbit Geostationary missions.",
+                      "Long March 3B uses hypergolic propellants which can be stored at room temperature.",
+                      "The Long March 3B features four liquid-fueled strap-on boosters.",
+                      "Long March 3B's third stage uses cryogenic liquid hydrogen and liquid oxygen engines.",
+                      "Long March 3B launched the Chang'e 3 lunar lander and Yutu rover to the Moon.",
+                      "The 3B/E variant has a larger first stage and boosters for increased payload.",
+                      "Long March 3B has launched over 100 missions, making it a fleet staple.",
+                      "It launches from Xichang, meaning spent stages often fall over land.",
+                      "Long March 3B was crucial for building China's BeiDou Navigation Satellite System.",
+                      "After an early failure in 1996, the Long March 3B has become highly reliable."
+                  ]
+              elif "nuri" in r_name:
+                  facts = [
+                      "Nuri is the first orbital launch vehicle developed entirely with indigenous South Korean technology.",
+                      "Nuri's first stage uses four clustered KRE-075 engines, generating 300 tons of thrust.",
+                      "Unlike its predecessor Naro-1, every component of Nuri was built in South Korea.",
+                      "Nuri's third stage had a failure on its maiden flight but succeeded on the second attempt.",
+                      "Nuri is designed to launch 1.5-ton payloads into Sun-Synchronous Orbit.",
+                      "The KRE-075 engines on Nuri run on Jet A-1 kerosene and Liquid Oxygen.",
+                      "South Korea plans to use Nuri technology to launch a lunar lander by 2031.",
+                      "Nuri's launch complex at Naro Space Center was built specifically for this rocket.",
+                      "Nuri successfully deployed a performance verification satellite and CubeSats in 2022.",
+                      "Nuri stands 47.2 meters tall, roughly the height of a 15-story building."
+                  ]
+              elif "ceres" in r_name:
+                  facts = [
+                      "Ceres-1 is named after the first asteroid discovered, the Roman goddess of agriculture.",
+                      "Ceres-1 is a four-stage rocket with three solid stages and one liquid upper stage.",
+                      "Ceres-1 can be launched from a mobile transporter or a sea-launch barge.",
+                      "Galactic Energy achieved 9 consecutive successful launches with Ceres-1 before a failure.",
+                      "The Ceres-1S is a sea-launched variant that debuted from a barge in the Yellow Sea.",
+                      "Ceres-1 is surprisingly small, standing only 19 meters tall.",
+                      "The fourth stage uses a hydrazine propulsion system for accurate injection.",
+                      "Ceres-1's solid motors allow it to launch quickly for rapid response.",
+                      "Galactic Energy was the second private Chinese firm to ever reach orbit.",
+                      "Ceres-1 can lift about 400 kg to Low Earth Orbit."
                   ]
               
-              if not facts: return random.choice(general_facts)
-              return random.choice(facts + general_facts)
-
-# --- VISUAL BRAIN (FIXED ARGS) ---
-          def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
-              r = rocket_name.lower()
-              m_type = str(mission_type).lower()
-              m_name = str(mission_name).lower()
-              
-              key = "generic"
-              
-              if rocket_name == "generic":
-                  key = "generic"
+              if not facts:
+                  pool = general_facts
               else:
-                  # 1. SpaceX Special Logic
-                  if "falcon 9" in r:
-                      if "human" in m_type or "crew" in m_name or "axiom" in m_name or "polaris" in m_name:
-                          key = "falcon9_crew"
-                      else:
-                          key = "falcon9"
-                  elif "falcon heavy" in r: key = "falconheavy"
-                  elif "starship" in r: key = "starship"
-                  
-                  # 2. Others
-                  elif "electron" in r: key = "electron"
-                  elif "atlas" in r: key = "atlasv"
-                  elif "vulcan" in r: key = "vulcan"
-                  elif "delta" in r: key = "delta4"
-                  elif "sls" in r: key = "sls"
-                  elif "new glenn" in r: key = "newglenn"
-                  elif "ariane" in r: key = "ariane6"
-                  elif "soyuz" in r: key = "soyuz"
-                  elif "long march" in r: key = "cz_classic"
-                  elif "h3" in r: key = "h3"
-                  elif "vega" in r: key = "vega"
-                  elif "pslv" in r: key = "pslv"
-                  elif "antares" in r: key = "antares"
-                  elif "minotaur" in r: key = "minotaur"
-                  elif "firefly" in r: key = "firefly"
-                  
-              suffix = "_idle"
-              if status == "In Flight" or status == "AWAITING CONFIRMATION":
-                  suffix = "_ascent"
-              elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success:
-                      if "falcon" in key or "starship" in key or "newglenn" in key: 
-                          suffix = "_landed"
-                      else: key, suffix = "empty", ""
-                  else:
-                      key, suffix = "empty", ""
+                  pool = facts + general_facts
+              
+              return random.choice(pool)
 
+          # --- VISUAL BRAIN ---
+          def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
+              r = rocket_name.lower()
+              key = "generic"
+              if "falcon 9" in r: key = "falcon9"
+              elif "falcon heavy" in r: key = "falconheavy"
+              elif "starship" in r: key = "starship"
+              elif "electron" in r: key = "electron"
+              elif "atlas" in r: key = "atlasv"
+              elif "vulcan" in r: key = "vulcan"
+              elif "delta" in r: key = "delta4"
+              elif "sls" in r: key = "sls"
+              elif "new glenn" in r: key = "newglenn"
+              elif "ariane" in r: key = "ariane6"
+              elif "soyuz" in r: key = "soyuz"
+              elif "long march" in r: key = "cz_classic"
+              elif "h3" in r: key = "h3"
+              elif "vega" in r: key = "vega"
+              elif "pslv" in r: key = "pslv"
+              elif "antares" in r: key = "antares"
+              elif "minotaur" in r: key = "minotaur"
+              elif "firefly" in r: key = "firefly"
+              
+              suffix = "_idle"
+              if status == "In Flight" or status == "AWAITING CONFIRMATION": suffix = "_ascent"
+              elif status in ["Success", "Failure", "Partial Failure"]:
+                  if landing_success and key in ["falcon9", "falconheavy", "starship", "newglenn"]: suffix = "_landed"
+                  else: key, suffix = "empty", ""
+              
               if key == "empty": return f"{repo_url}/rockets/empty.png"
               return f"{repo_url}/rockets/{key}{suffix}.png"
 
@@ -654,9 +421,8 @@ jobs:
               next_dt = parse_time(upcoming["net"])
               hours_since = (now - prev_dt).total_seconds() / 3600
               hours_until = (next_dt - now).total_seconds() / 3600
-              
-              # VICTORY LAP LOGIC
-              if hours_since < 1 or hours_until > 6:
+
+              if hours_since < 12 and hours_until > 1:
                   target = previous
                   mode = "POST_LAUNCH"
               else:
@@ -667,35 +433,40 @@ jobs:
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
+              # API STATUS CHECK
               api_status = target["status"]["abbrev"]
               is_final = api_status in ["Success", "Failure", "Partial Failure", "In Flight"]
               
               if is_final:
                   mode = "POST_LAUNCH"
-              elif mode == "PRE_LAUNCH" and seconds_since_t0 > 600:
+              elif seconds_since_t0 > 600:
                   mode = "POST_LAUNCH"
                   target["status"]["abbrev"] = "PENDING"
                   target["status"]["name"] = "AWAITING CONFIRMATION"
 
-              # ... (Context/Provider Logic same as before) ...
               mission_context = "COMMERCIAL"
-              if target.get("program"): mission_context = target["program"][0]["name"]
-              elif target.get("mission"): mission_context = target["mission"].get("type", "COMMERCIAL")
+              if target.get("program") and len(target["program"]) > 0:
+                  mission_context = target["program"][0]["name"]
+              elif target.get("mission") and target["mission"].get("type"):
+                  mission_context = target["mission"]["type"]
 
               provider = target["launch_service_provider"]["name"]
               provider = provider.replace("China Aerospace Science and Technology Corporation", "CASC")
-              # (Add other replacements here)
+              provider = provider.replace("National Aeronautics and Space Administration", "NASA")
+              provider = provider.replace("Space Exploration Technologies", "SpaceX")
               
-              agency = ""
-              if target.get("mission") and target.get("mission", {}).get("agencies"):
+              agency = "" 
+              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
                   raw_agency = target["mission"]["agencies"][0]["name"]
-                  if raw_agency != target["launch_service_provider"]["name"]:
-                       agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
+                  raw_agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
+                  raw_agency = raw_agency.replace("National Aeronautics and Space Administration", "NASA")
+                  if raw_agency != provider:
+                      agency = raw_agency
 
               raw_mission_desc = ""
-              if target.get("mission") and target.get("mission", {}).get("description"):
+              if target.get("mission") and target["mission"].get("description"):
                   desc = target["mission"]["description"]
-                  if "No description" not in desc and "TBD" not in desc: raw_mission_desc = desc
+                  if "No description" not in desc: raw_mission_desc = desc
               
               raw_program_desc = ""
               if target.get("program") and len(target["program"]) > 0:
@@ -703,77 +474,82 @@ jobs:
                   if "No description" not in p_desc: raw_program_desc = p_desc
 
               image_url = ""
-              if target.get("mission_patches"): image_url = target["mission_patches"][0]["image_url"]
-              elif target.get("launch_service_provider"): image_url = target["launch_service_provider"].get("logo_url", "")
+              if target.get("mission_patches") and len(target["mission_patches"]) > 0:
+                  image_url = target["mission_patches"][0]["image_url"]
+              if not image_url and target.get("launch_service_provider"):
+                  image_url = target["launch_service_provider"].get("logo_url", "")
 
-              pad_name = target["pad"]["name"].replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
-              if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
-              loc_name = target["pad"]["location"]["name"].split(",")[0].strip()
+              pad_name = target["pad"]["name"] or "Unknown Pad"
+              loc_name = target["pad"]["location"]["name"] or "Unknown Loc"
               country_code = target["pad"]["location"].get("country_code", "")
-              location_str = f"{pad_name} @ {loc_name}"
-              if country_code: location_str += f", {country_code}"
+              
+              pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+              if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
+              
+              loc_short = loc_name.split(",")[0].strip()
+              if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
+              else: full_location_str = f"{pad_name} @ {loc_short}"
 
               stage = {}
               if target.get("rocket", {}).get("launcher_stage"):
-                  s_list = target["rocket"]["launcher_stage"]
-                  if s_list: stage = s_list[0]
+                  stages = target["rocket"]["launcher_stage"]
+                  if isinstance(stages, list) and len(stages) > 0:
+                      stage = stages[0]
+              
               landing = stage.get("landing") or {}
-              attempt = landing.get("attempt")
-              success = landing.get("success")
-              l_loc = landing.get("location", {}).get("name", "Unknown")
-              l_loc = l_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI")
               flight_n = stage.get("launcher_flight_number")
+              landing_attempt = landing.get("attempt")
+              landing_loc = landing.get("location", {}).get("name", "Unknown")
+              landing_success = landing.get("success")
+              
+              landing_loc = landing_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI").replace("A Shortfall of Gravitas", "ASOG")
 
               footer_left = ""
               footer_right = ""
-              if attempt is not True:
+
+              if landing_attempt is not True: 
+                  footer_left = "" 
                   footer_right = "Single-use configuration. No recovery planned."
               else:
                   if mode == "PRE_LAUNCH":
-                      if flight_n: footer_left = f"Booster flight #{flight_n}."
-                      else: footer_left = "Booster identity classified."
-                      if l_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
-                      else: footer_right = f"Targeting recovery at {l_loc}."
+                      if flight_n: 
+                          if flight_n == 1: footer_left = "Maiden flight for this booster."
+                          else: footer_left = f"Booster flight #{flight_n}."
+                      else:
+                          footer_left = "Booster identity classified/unavailable."
+                  
+                  if mode == "PRE_LAUNCH":
+                      if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
+                      else: footer_right = f"Targeting recovery at {landing_loc}."
                   else:
-                      footer_left = ""
-                      if target["status"]["abbrev"] == "PENDING": footer_right = "Launch window open. Status pending."
-                      elif success: footer_right = f"SUCCESS: Landed at {l_loc}."
-                      elif success is False: footer_right = f"FAILURE: Missed {l_loc}."
-                      else: footer_right = f"Landing pending at {l_loc}."
+                      footer_left = "" 
+                      if target["status"]["abbrev"] == "PENDING":
+                          footer_right = "Launch window open. Status pending confirmation."
+                      elif landing_success is True: 
+                          footer_right = f"SUCCESS: Landed at {landing_loc}."
+                      elif landing_success is False: 
+                          footer_right = f"FAILURE: Missed {landing_loc}."
+                      else: 
+                          footer_right = f"Landing pending at {landing_loc}."
 
               rocket_name = target["rocket"]["configuration"]["name"]
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
-              
+
               vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
-              mission_type = target.get("mission", {}).get("type") or ""
+              rocket_visual_url = get_rocket_image_url(rocket_name, vis_status, landing_success, REPO_BASE)
               
-              # CALL 1: Specific Rocket Image (FIXED ARGS)
-              vis_url = get_rocket_image_url(
-                  rocket_name, 
-                  vis_status, 
-                  success, 
-                  mission_type, 
-                  target["name"], 
-                  REPO_BASE
-              )
-              
-              # CALL 2: Generic Fallback Image (FIXED ARGS)
-              generic_visual_url = get_rocket_image_url(
-                  "generic", 
-                  vis_status, 
-                  success, 
-                  mission_type, 
-                  target["name"], 
-                  REPO_BASE
-              )
+              # Generic Fallback
+              generic_visual_url = get_rocket_image_url("generic", vis_status, landing_success, REPO_BASE)
 
               # Timestamps
               date_ts = int(target_dt.timestamp())
               win_start_ts = date_ts
               win_end_ts = date_ts
-              if target.get("window_start"): win_start_ts = int(parse_time(target["window_start"]).timestamp())
-              if target.get("window_end"): win_end_ts = int(parse_time(target["window_end"]).timestamp())
+              if target.get("window_start"):
+                   win_start_ts = int(parse_time(target["window_start"]).timestamp())
+              if target.get("window_end"):
+                   win_end_ts = int(parse_time(target["window_end"]).timestamp())
 
               m_name = target["name"].split(" | ")[-1]
               if "Unknown Payload" in m_name: m_name = rocket_name
@@ -799,7 +575,7 @@ jobs:
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
-                  "rocket_visual": vis_url,
+                  "rocket_visual": rocket_visual_url,
                   "generic_visual": generic_visual_url
               }
 
