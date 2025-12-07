@@ -2,7 +2,7 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
 
           # --- CONFIG ---
           # REPLACE THIS WITH YOUR REPO URL
-          REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
+          REPO_BASE = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main"
 
           def load_json(filename):
               try:
@@ -88,7 +88,8 @@ jobs:
                       "Falcon 9 uses sub-cooled propellants, meaning the fuel is chilled near its freezing point to increase density.",
                       "The 'Octaweb' engine arrangement is designed to protect surrounding engines if one Merlin engine explodes.",
                       "Falcon 9's landing legs contain single-use crush cores that absorb the impact of a hard landing.",
-                      "SpaceX's Falcon 9 is the first orbital class rocket capable of reflight."                  
+                      "SpaceX's Falcon 9 is the first orbital class rocket capable of reflight.",
+                      "The Falcon 9 telemetry signal often cuts out right at landing due to the vibration of the landing burn shaking the antenna."
                   ]
               elif "falcon heavy" in r_name:
                   facts = [
@@ -101,7 +102,17 @@ jobs:
                       "Massive hydraulic rams are used to push the Falcon Heavy side boosters away to ensure they don't collide during separation.",
                       "The Falcon Heavy's center core throttles down almost immediately after launch to save fuel for the later stages.",
                       "The launch pad's 'rainbird' sound suppression system had to be upgraded to handle Falcon Heavy's acoustic energy.",
-                      "The three exhaust plumes of the Falcon Heavy interact to create a visible, massive single column of fire."
+                      "The three exhaust plumes of the Falcon Heavy interact to create a visible, massive single column of fire.",
+                      "Falcon Heavy has more thrust at liftoff than eighteen 747 aircraft at full power.",
+                      "It is capable of lifting 64 metric tons to orbit, more than a fully loaded Boeing 737 jetliner.",
+                      "Falcon Heavy was originally designed to carry humans to the Moon, but Starship has taken over that role.",
+                      "The side boosters of Falcon Heavy perform a 'boostback burn' to return to the launch site, creating a spectacular light show.",
+                      "Falcon Heavy's second stage can restart multiple times to deliver payloads to complex geostationary orbits.",
+                      "The sound of a Falcon Heavy launch is so loud it can be felt physically miles away from the pad.",
+                      "Falcon Heavy is currently the most powerful operational rocket in the world (until Starship fully enters service).",
+                      "The two side boosters land almost simultaneously, creating a double sonic boom heard across the coast.",
+                      "Falcon Heavy uses a modified transporter-erector at LC-39A to handle the wider fuselage.",
+                      "Unlike the side boosters, the center core of Falcon Heavy usually lands downrange on a drone ship due to high velocity."
                   ]
               elif "starship" in r_name:
                   facts = [
@@ -191,15 +202,22 @@ jobs:
                   facts = [
                       "CASC's Long March 5 is nicknamed 'Fat-Five' because its diameter broke the limits of Chinese railway tunnels.",
                       "Long March 5 is the first Chinese rocket that must be transported by ship to the launch site.",
+                      "The Long March 5 uses YF-100 engines that run on an Oxygen-Rich Staged Combustion cycle.",
                       "The Long March 5 core stage is so cold after fueling that it creates its own weather system of fog.",
-                      "The Long March 5 fairing was large enough to launch the Tiangong space station core module in one piece."                      "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters."
+                      "CASC's Long March 5 appears to change color from orange to white as frost shakes off during launch.",
+                      "The Long March 5 fairing was large enough to launch the Tiangong space station core module in one piece.",
+                      "Ten liquid engines fire simultaneously at the liftoff of a Long March 5.",
+                      "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters."
                   ]
               elif "long march 7" in r_name:
                   facts = [
                       "CASC's Long March 7 is the primary cargo truck for the Tiangong Space Station.",
                       "Long March 7 uses non-toxic kerosene/LOX, replacing older hypergolic rockets.",
                       "Long March 7 is designed to be weather-proof, able to launch even in moderate rain.",
-                      "Long March 7 launches exclusively from the coastal Wenchang Space Launch Site."
+                      "Long March 7 launches exclusively from the coastal Wenchang Space Launch Site.",
+                      "Long March 7 uses four massive strap-on boosters that are liquid-fueled.",
+                      "Long March 7 uses high-pressure staged combustion engines (YF-100).",
+                      "Long March 7 uses a totally digital flight control system."
                   ]
               elif "delta" in r_name:
                   facts = [
@@ -288,9 +306,12 @@ jobs:
               elif "sls" in r_name:
                   facts = [
                       "NASA's SLS Block 1 produces 8.8 million pounds of thrust, which is 15% more power than the legendary Saturn V.",
+                      "The SLS core stage stores 733,000 gallons of super-cooled liquid hydrogen and liquid oxygen.",
                       "SLS uses four RS-25 engines that are refurbished veterans from the Space Shuttle program.",
+                      "The twin solid rocket boosters on SLS provide more than 75% of the total thrust during the first two minutes.",
+                      "SLS is designed to be evolvable, with future variants planning to lift up to 130 metric tons.",
                       "The SLS solid boosters are five-segment versions of the Shuttle boosters, adding 25% more impulse.",
-                      "SLS stands taller than the Statue of Liberty but slightly shorter than Saturn V.",
+                      "SLS stands 322 feet tall, taller than the Statue of Liberty but slightly shorter than Saturn V.",
                       "The core stage uses friction stir welding for its barrel sections, creating stronger bonds.",
                       "SLS is capable of sending the Orion spacecraft and four astronauts directly to the Moon.",
                       "The propellant for the SLS solid boosters has the consistency of a rubber eraser."
@@ -300,30 +321,50 @@ jobs:
                       "The Long March 2F is nicknamed 'Shenjian' (Divine Arrow) and is used for China's crewed missions.",
                       "Long March 2F features an advanced fault monitoring system to trigger the launch escape tower.",
                       "Unlike other Long March variants, the 2F is assembled vertically and rolled out upright.",
+                      "Long March 2F uses redundant control systems to ensure crew safety.",
+                      "The launch escape tower is jettisoned exactly 2 minutes into the flight if no emergency occurs.",
                       "Long March 2F has achieved a perfect success rate, launching every Chinese astronaut since 2003.",
+                      "The 2F/G variant features improved grid fins to guide boosters to a safe zone.",
+                      "Long March 2F's payload fairing is equipped with solid rockets for abort scenarios.",
+                      "Incremental upgrades have reduced the vibration on the Long March 2F by 50%.",
                       "Crew members can exit the launch pad via a canvas slide into an underground shelter."
                   ]
               elif "long march 3b" in r_name:
                   facts = [
                       "Long March 3B is China's primary workhorse for high-orbit Geostationary missions.",
                       "Long March 3B uses hypergolic propellants which can be stored at room temperature.",
+                      "The Long March 3B features four liquid-fueled strap-on boosters.",
+                      "Long March 3B's third stage uses cryogenic liquid hydrogen and liquid oxygen engines.",
                       "Long March 3B launched the Chang'e 3 lunar lander and Yutu rover to the Moon.",
-                      "The Long March 3B launches from Xichang, meaning spent stages often fall over land.",
-                      "Long March 3B was crucial for building China's BeiDou Navigation Satellite System."
+                      "The 3B/E variant has a larger first stage and boosters for increased payload.",
+                      "Long March 3B has launched over 100 missions, making it a fleet staple.",
+                      "It launches from Xichang, meaning spent stages often fall over land.",
+                      "Long March 3B was crucial for building China's BeiDou Navigation Satellite System.",
+                      "After an early failure in 1996, the Long March 3B has become highly reliable."
                   ]
               elif "nuri" in r_name:
                   facts = [
+                      "Nuri is the first orbital launch vehicle developed entirely with indigenous South Korean technology.",
+                      "Nuri's first stage uses four clustered KRE-075 engines, generating 300 tons of thrust.",
                       "Unlike its predecessor Naro-1, every component of Nuri was built in South Korea.",
+                      "Nuri's third stage had a failure on its maiden flight but succeeded on the second attempt.",
                       "Nuri is designed to launch 1.5-ton payloads into Sun-Synchronous Orbit.",
+                      "The KRE-075 engines on Nuri run on Jet A-1 kerosene and Liquid Oxygen.",
                       "South Korea plans to use Nuri technology to launch a lunar lander by 2031.",
                       "Nuri's launch complex at Naro Space Center was built specifically for this rocket.",
-                      "Nuri successfully deployed a performance verification satellite and CubeSats in 2022."
+                      "Nuri successfully deployed a performance verification satellite and CubeSats in 2022.",
+                      "Nuri stands 47.2 meters tall, roughly the height of a 15-story building."
                   ]
               elif "ceres" in r_name:
                   facts = [
                       "Ceres-1 is named after the first asteroid discovered, the Roman goddess of agriculture.",
+                      "Ceres-1 is a four-stage rocket with three solid stages and one liquid upper stage.",
                       "Ceres-1 can be launched from a mobile transporter or a sea-launch barge.",
+                      "Galactic Energy achieved 9 consecutive successful launches with Ceres-1 before a failure.",
                       "The Ceres-1S is a sea-launched variant that debuted from a barge in the Yellow Sea.",
+                      "Ceres-1 is surprisingly small, standing only 19 meters tall.",
+                      "The fourth stage uses a hydrazine propulsion system for accurate injection.",
+                      "Ceres-1's solid motors allow it to launch quickly for rapid response.",
                       "Galactic Energy was the second private Chinese firm to ever reach orbit.",
                       "Ceres-1 can lift about 400 kg to Low Earth Orbit."
                   ]
@@ -335,7 +376,7 @@ jobs:
               
               return random.choice(pool)
 
-# --- VISUAL BRAIN (FIXED ARGS) ---
+          # --- VISUAL BRAIN ---
           def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
               r = rocket_name.lower()
               m_type = str(mission_type).lower()
@@ -354,31 +395,30 @@ jobs:
                           key = "falcon9"
                   elif "falcon heavy" in r: key = "falconheavy"
                   elif "starship" in r: key = "starship"
-
-              # 1. Heavy / Super Heavy
-              
+                  
+                  # 2. Heavy
                   elif "sls" in r: key = "sls"
                   elif "new glenn" in r: key = "newglenn"
                   elif "delta iv heavy" in r: key = "delta4"
                   elif "long march 5" in r: key = "cz_5"  
                   elif "lvm3" in r: key = "lvm3"
 
-              # 2. Medium / Standard
-                  elif "falcon 9" in r: key = "falcon9"
+                  # 3. Medium
                   elif "vulcan" in r: key = "vulcan"
                   elif "atlas" in r: key = "atlasv"
                   elif "ariane" in r: key = "ariane6"
                   elif "h3" in r: key = "h3"
                   elif "soyuz" in r: key = "soyuz"
                   elif "antares" in r: key = "antares"
-              
-              # 3. Chinese Variants
+                  elif "delta" in r: key = "delta4" # Fallback
+                  
+                  # 4. Chinese Specifics
                   elif "long march 7" in r: key = "cz_7"
                   elif "long march 2f" in r: key = "cz_2f"
                   elif "long march 3b" in r: key = "cz_3b"
-                  elif "long march" in r: key = "cz_classic" 
-              
-              # 4. Small / Light
+                  elif "long march" in r: key = "cz_classic"
+                  
+                  # 5. Small
                   elif "electron" in r: key = "electron"
                   elif "firefly" in r: key = "firefly"
                   elif "minotaur" in r: key = "minotaur"
@@ -386,17 +426,18 @@ jobs:
                   elif "vega" in r: key = "vega"
                   elif "nuri" in r: key = "nuri"
                   elif "ceres" in r: key = "ceres"
-              
+                  
               suffix = "_idle"
               if status == "In Flight" or status == "AWAITING CONFIRMATION":
                   suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success and key in ["falcon9", "falconheavy", "starship", "newglenn"]:
-                      suffix = "_landed"
+                  if landing_success:
+                      if "falcon" in key or "starship" in key or "newglenn" in key: 
+                          suffix = "_landed"
+                      else: key, suffix = "empty", ""
                   else:
-                      key = "empty" 
-                      suffix = ""
-              
+                      key, suffix = "empty", ""
+
               if key == "empty": return f"{repo_url}/rockets/empty.png"
               return f"{repo_url}/rockets/{key}{suffix}.png"
 
@@ -435,7 +476,6 @@ jobs:
               target_dt = parse_time(target["net"])
               seconds_since_t0 = (now - target_dt).total_seconds()
               
-              # API STATUS CHECK
               api_status = target["status"]["abbrev"]
               is_final = api_status in ["Success", "Failure", "Partial Failure", "In Flight"]
               
@@ -458,17 +498,15 @@ jobs:
               provider = provider.replace("Space Exploration Technologies", "SpaceX")
               
               agency = "" 
-              if target.get("mission") and target["mission"].get("agencies") and len(target["mission"]["agencies"]) > 0:
+              if target.get("mission") and target.get("mission", {}).get("agencies"):
                   raw_agency = target["mission"]["agencies"][0]["name"]
-                  raw_agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC")
-                  raw_agency = raw_agency.replace("National Aeronautics and Space Administration", "NASA")
-                  if raw_agency != provider:
-                      agency = raw_agency
+                  if raw_agency != target["launch_service_provider"]["name"]:
+                       agency = raw_agency.replace("China Aerospace Science and Technology Corporation", "CASC").replace("National Aeronautics and Space Administration", "NASA")
 
               raw_mission_desc = ""
-              if target.get("mission") and target["mission"].get("description"):
+              if target.get("mission") and target.get("mission", {}).get("description"):
                   desc = target["mission"]["description"]
-                  if "No description" not in desc: raw_mission_desc = desc
+                  if "No description" not in desc and "TBD" not in desc: raw_mission_desc = desc
               
               raw_program_desc = ""
               if target.get("program") and len(target["program"]) > 0:
@@ -476,82 +514,89 @@ jobs:
                   if "No description" not in p_desc: raw_program_desc = p_desc
 
               image_url = ""
-              if target.get("mission_patches") and len(target["mission_patches"]) > 0:
-                  image_url = target["mission_patches"][0]["image_url"]
-              if not image_url and target.get("launch_service_provider"):
-                  image_url = target["launch_service_provider"].get("logo_url", "")
+              if target.get("mission_patches"): image_url = target["mission_patches"][0]["image_url"]
+              elif target.get("launch_service_provider"): image_url = target["launch_service_provider"].get("logo_url", "")
 
-              pad_name = target["pad"]["name"] or "Unknown Pad"
-              loc_name = target["pad"]["location"]["name"] or "Unknown Loc"
-              country_code = target["pad"]["location"].get("country_code", "")
-              
-              pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+              pad_name = target["pad"]["name"].replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
               if pad_name.isdigit(): pad_name = f"Pad {pad_name}"
-              
-              loc_short = loc_name.split(",")[0].strip()
-              if country_code: full_location_str = f"{pad_name} @ {loc_short}, {country_code}"
-              else: full_location_str = f"{pad_name} @ {loc_short}"
+              loc_name = target["pad"]["location"]["name"].split(",")[0].strip()
+              country_code = target["pad"]["location"].get("country_code", "")
+              if country_code: full_location_str = f"{pad_name} @ {loc_name}, {country_code}"
+              else: full_location_str = f"{pad_name} @ {loc_name}"
 
               stage = {}
               if target.get("rocket", {}).get("launcher_stage"):
-                  stages = target["rocket"]["launcher_stage"]
-                  if isinstance(stages, list) and len(stages) > 0:
-                      stage = stages[0]
+                  s_list = target["rocket"]["launcher_stage"]
+                  if s_list: stage = s_list[0]
               
               landing = stage.get("landing") or {}
+              attempt = landing.get("attempt")
+              success = landing.get("success")
+              l_loc = landing.get("location", {}).get("name", "Unknown")
+              l_loc = l_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI").replace("A Shortfall of Gravitas", "ASOG")
               flight_n = stage.get("launcher_flight_number")
-              landing_attempt = landing.get("attempt")
-              landing_loc = landing.get("location", {}).get("name", "Unknown")
-              landing_success = landing.get("success")
-              
-              landing_loc = landing_loc.replace("Of Course I Still Love You", "OCISLY").replace("Just Read The Instructions", "JRTI").replace("A Shortfall of Gravitas", "ASOG")
 
               footer_left = ""
               footer_right = ""
+              
+              is_reusable = False
+              r_check = target["rocket"]["configuration"]["name"].lower()
+              if "falcon" in r_check or "starship" in r_check or "new glenn" in r_check or "electron" in r_check: is_reusable = True
 
-              if landing_attempt is not True: 
-                  footer_left = "" 
-                  footer_right = "Single-use configuration. No recovery planned."
-              else:
-                  if mode == "PRE_LAUNCH":
-                      if flight_n: 
-                          if flight_n == 1: footer_left = "Maiden flight for this booster."
-                          else: footer_left = f"Booster flight #{flight_n}."
-                      else:
-                          footer_left = "Booster identity classified/unavailable."
-                  
-                  if mode == "PRE_LAUNCH":
-                      if landing_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
-                      else: footer_right = f"Targeting recovery at {landing_loc}."
+              if is_reusable:
+                  if attempt is False:
+                      footer_right = "Expendable profile. No recovery planned."
+                  elif attempt is None:
+                      if flight_n: footer_left = f"Booster flight #{flight_n}."
+                      else: footer_left = "Booster identity classified."
+                      footer_right = "Recovery likely planned (Location TBD)."
                   else:
-                      footer_left = "" 
-                      if target["status"]["abbrev"] == "PENDING":
-                          footer_right = "Launch window open. Status pending confirmation."
-                      elif landing_success is True: 
-                          footer_right = f"SUCCESS: Landed at {landing_loc}."
-                      elif landing_success is False: 
-                          footer_right = f"FAILURE: Missed {landing_loc}."
-                      else: 
-                          footer_right = f"Landing pending at {landing_loc}."
+                      if mode == "PRE_LAUNCH":
+                          if flight_n: footer_left = f"Booster flight #{flight_n}."
+                          else: footer_left = "Booster identity classified."
+                          if l_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
+                          else: footer_right = f"Targeting recovery at {l_loc}."
+                      else:
+                          footer_left = "" 
+                          if target["status"]["abbrev"] == "PENDING":
+                               footer_right = "Launch window open. Status pending."
+                          elif success: footer_right = f"SUCCESS: Landed at {l_loc}."
+                          elif success is False: footer_right = f"FAILURE: Missed {l_loc}."
+                          else: footer_right = f"Landing pending at {l_loc}."
+              else:
+                  footer_right = "Single-use configuration. No recovery planned."
 
               rocket_name = target["rocket"]["configuration"]["name"]
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
-
-              vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
-              rocket_visual_url = get_rocket_image_url(rocket_name, vis_status, landing_success, REPO_BASE)
               
-              # Generic Fallback
-              generic_visual_url = get_rocket_image_url("generic", vis_status, landing_success, REPO_BASE)
+              vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
+              mission_type = target.get("mission", {}).get("type") or ""
+              
+              vis_url = get_rocket_image_url(
+                  rocket_name, 
+                  vis_status, 
+                  success, 
+                  mission_type, 
+                  target["name"], 
+                  REPO_BASE
+              )
+              
+              generic_visual_url = get_rocket_image_url(
+                  "generic", 
+                  vis_status, 
+                  success, 
+                  mission_type, 
+                  target["name"], 
+                  REPO_BASE
+              )
 
               # Timestamps
               date_ts = int(target_dt.timestamp())
               win_start_ts = date_ts
               win_end_ts = date_ts
-              if target.get("window_start"):
-                   win_start_ts = int(parse_time(target["window_start"]).timestamp())
-              if target.get("window_end"):
-                   win_end_ts = int(parse_time(target["window_end"]).timestamp())
+              if target.get("window_start"): win_start_ts = int(parse_time(target["window_start"]).timestamp())
+              if target.get("window_end"): win_end_ts = int(parse_time(target["window_end"]).timestamp())
 
               m_name = target["name"].split(" | ")[-1]
               if "Unknown Payload" in m_name: m_name = rocket_name
@@ -577,7 +622,7 @@ jobs:
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
-                  "rocket_visual": rocket_visual_url,
+                  "rocket_visual": vis_url,
                   "generic_visual": generic_visual_url
               }
 
