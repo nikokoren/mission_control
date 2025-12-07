@@ -570,7 +570,13 @@ jobs:
               try: the_fact = get_rocket_fact(rocket_name)
               except: the_fact = "Rockets are cool."
               
-              vis_status = target["status"]["name"] if target["status"]["abbrev"] != "PENDING" else "AWAITING CONFIRMATION"
+              # This sends "Success", which the brain recognizes!
+              vis_status = target["status"]["abbrev"]
+
+              # Handle the edge case where WE forced it to PENDING
+              if vis_status == "PENDING":
+                vis_status = "AWAITING CONFIRMATION"
+    
               mission_type = target.get("mission", {}).get("type") or ""
               
               vis_url = get_rocket_image_url(
