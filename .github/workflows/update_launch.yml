@@ -580,8 +580,9 @@ jobs:
               if not facts: return random.choice(general_facts)
               return random.choice(facts + general_facts)
 
-# --- VISUAL BRAIN ---
-          def get_rocket_image_url(rocket_name, status, landing_success, repo_url):
+              # --- VISUAL BRAIN (CREW AWARE) ---
+              def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
+          
               r = rocket_name.lower()
               key = "generic"
 
