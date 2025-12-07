@@ -88,8 +88,7 @@ jobs:
                       "Falcon 9 uses sub-cooled propellants, meaning the fuel is chilled near its freezing point to increase density.",
                       "The 'Octaweb' engine arrangement is designed to protect surrounding engines if one Merlin engine explodes.",
                       "Falcon 9's landing legs contain single-use crush cores that absorb the impact of a hard landing.",
-                      "SpaceX's Falcon 9 is the first orbital class rocket capable of reflight.",
-                      "The Falcon 9 telemetry signal often cuts out right at landing due to the vibration of the landing burn shaking the antenna."
+                      "SpaceX's Falcon 9 is the first orbital class rocket capable of reflight."                  
                   ]
               elif "falcon heavy" in r_name:
                   facts = [
@@ -192,22 +191,15 @@ jobs:
                   facts = [
                       "CASC's Long March 5 is nicknamed 'Fat-Five' because its diameter broke the limits of Chinese railway tunnels.",
                       "Long March 5 is the first Chinese rocket that must be transported by ship to the launch site.",
-                      "The Long March 5 uses YF-100 engines that run on an Oxygen-Rich Staged Combustion cycle.",
                       "The Long March 5 core stage is so cold after fueling that it creates its own weather system of fog.",
-                      "CASC's Long March 5 appears to change color from orange to white as frost shakes off during launch.",
-                      "The Long March 5 fairing was large enough to launch the Tiangong space station core module in one piece.",
-                      "Ten liquid engines fire simultaneously at the liftoff of a Long March 5.",
-                      "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters."
+                      "The Long March 5 fairing was large enough to launch the Tiangong space station core module in one piece."                      "Long March 5 is a hybrid rocket, using a hydrogen core stage surrounded by kerosene boosters."
                   ]
               elif "long march 7" in r_name:
                   facts = [
                       "CASC's Long March 7 is the primary cargo truck for the Tiangong Space Station.",
                       "Long March 7 uses non-toxic kerosene/LOX, replacing older hypergolic rockets.",
                       "Long March 7 is designed to be weather-proof, able to launch even in moderate rain.",
-                      "Long March 7 launches exclusively from the coastal Wenchang Space Launch Site.",
-                      "Long March 7 uses four massive strap-on boosters that are liquid-fueled.",
-                      "Long March 7 uses high-pressure staged combustion engines (YF-100).",
-                      "Long March 7 uses a totally digital flight control system."
+                      "Long March 7 launches exclusively from the coastal Wenchang Space Launch Site."
                   ]
               elif "delta" in r_name:
                   facts = [
@@ -296,12 +288,9 @@ jobs:
               elif "sls" in r_name:
                   facts = [
                       "NASA's SLS Block 1 produces 8.8 million pounds of thrust, which is 15% more power than the legendary Saturn V.",
-                      "The SLS core stage stores 733,000 gallons of super-cooled liquid hydrogen and liquid oxygen.",
                       "SLS uses four RS-25 engines that are refurbished veterans from the Space Shuttle program.",
-                      "The twin solid rocket boosters on SLS provide more than 75% of the total thrust during the first two minutes.",
-                      "SLS is designed to be 'evolvable', with future variants planning to lift up to 130 metric tons.",
                       "The SLS solid boosters are five-segment versions of the Shuttle boosters, adding 25% more impulse.",
-                      "SLS stands 322 feet tall, taller than the Statue of Liberty but slightly shorter than Saturn V.",
+                      "SLS stands taller than the Statue of Liberty but slightly shorter than Saturn V.",
                       "The core stage uses friction stir welding for its barrel sections, creating stronger bonds.",
                       "SLS is capable of sending the Orion spacecraft and four astronauts directly to the Moon.",
                       "The propellant for the SLS solid boosters has the consistency of a rubber eraser."
@@ -311,50 +300,30 @@ jobs:
                       "The Long March 2F is nicknamed 'Shenjian' (Divine Arrow) and is used for China's crewed missions.",
                       "Long March 2F features an advanced fault monitoring system to trigger the launch escape tower.",
                       "Unlike other Long March variants, the 2F is assembled vertically and rolled out upright.",
-                      "Long March 2F uses redundant control systems to ensure crew safety.",
-                      "The launch escape tower is jettisoned exactly 2 minutes into the flight if no emergency occurs.",
                       "Long March 2F has achieved a perfect success rate, launching every Chinese astronaut since 2003.",
-                      "The 2F/G variant features improved grid fins to guide boosters to a safe zone.",
-                      "Long March 2F's payload fairing is equipped with solid rockets for abort scenarios.",
-                      "Incremental upgrades have reduced the vibration on the Long March 2F by 50%.",
                       "Crew members can exit the launch pad via a canvas slide into an underground shelter."
                   ]
               elif "long march 3b" in r_name:
                   facts = [
                       "Long March 3B is China's primary workhorse for high-orbit Geostationary missions.",
                       "Long March 3B uses hypergolic propellants which can be stored at room temperature.",
-                      "The Long March 3B features four liquid-fueled strap-on boosters.",
-                      "Long March 3B's third stage uses cryogenic liquid hydrogen and liquid oxygen engines.",
                       "Long March 3B launched the Chang'e 3 lunar lander and Yutu rover to the Moon.",
-                      "The 3B/E variant has a larger first stage and boosters for increased payload.",
-                      "Long March 3B has launched over 100 missions, making it a fleet staple.",
-                      "It launches from Xichang, meaning spent stages often fall over land.",
-                      "Long March 3B was crucial for building China's BeiDou Navigation Satellite System.",
-                      "After an early failure in 1996, the Long March 3B has become highly reliable."
+                      "The Long March 3B launches from Xichang, meaning spent stages often fall over land.",
+                      "Long March 3B was crucial for building China's BeiDou Navigation Satellite System."
                   ]
               elif "nuri" in r_name:
                   facts = [
-                      "Nuri is the first orbital launch vehicle developed entirely with indigenous South Korean technology.",
-                      "Nuri's first stage uses four clustered KRE-075 engines, generating 300 tons of thrust.",
                       "Unlike its predecessor Naro-1, every component of Nuri was built in South Korea.",
-                      "Nuri's third stage had a failure on its maiden flight but succeeded on the second attempt.",
                       "Nuri is designed to launch 1.5-ton payloads into Sun-Synchronous Orbit.",
-                      "The KRE-075 engines on Nuri run on Jet A-1 kerosene and Liquid Oxygen.",
                       "South Korea plans to use Nuri technology to launch a lunar lander by 2031.",
                       "Nuri's launch complex at Naro Space Center was built specifically for this rocket.",
-                      "Nuri successfully deployed a performance verification satellite and CubeSats in 2022.",
-                      "Nuri stands 47.2 meters tall, roughly the height of a 15-story building."
+                      "Nuri successfully deployed a performance verification satellite and CubeSats in 2022."
                   ]
               elif "ceres" in r_name:
                   facts = [
                       "Ceres-1 is named after the first asteroid discovered, the Roman goddess of agriculture.",
-                      "Ceres-1 is a four-stage rocket with three solid stages and one liquid upper stage.",
                       "Ceres-1 can be launched from a mobile transporter or a sea-launch barge.",
-                      "Galactic Energy achieved 9 consecutive successful launches with Ceres-1 before a failure.",
                       "The Ceres-1S is a sea-launched variant that debuted from a barge in the Yellow Sea.",
-                      "Ceres-1 is surprisingly small, standing only 19 meters tall.",
-                      "The fourth stage uses a hydrazine propulsion system for accurate injection.",
-                      "Ceres-1's solid motors allow it to launch quickly for rapid response.",
                       "Galactic Energy was the second private Chinese firm to ever reach orbit.",
                       "Ceres-1 can lift about 400 kg to Low Earth Orbit."
                   ]
