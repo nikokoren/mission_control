@@ -584,6 +584,9 @@ jobs:
           def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
           
               r = rocket_name.lower()
+              m_type = str(mission_type).lower()
+              m_name = str(mission_name).lower()
+              
               key = "generic"
 
               # 1. SpaceX Special Logic
