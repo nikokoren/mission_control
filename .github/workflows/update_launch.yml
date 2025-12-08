@@ -219,6 +219,21 @@ jobs:
                       "Long March 7 uses high-pressure staged combustion engines (YF-100).",
                       "Long March 7 uses a totally digital flight control system."
                   ]
+              elif "long march 6a" in r_name:
+                  facts = [
+                      "Long March 6A is China's first rocket to combine liquid-fueled core stages with solid-fueled strap-on boosters.",
+                      "The four solid boosters on Long March 6A provide extra thrust at liftoff before being jettisoned.",
+                      "Long March 6A uses a 'smart' health monitoring system to automatically diagnose issues before launch.",
+                      "The Long March 6A launches from a dedicated complex in Taiyuan that features a fixed umbilical tower and rotary launch platform.",
+                      "Long March 6A bridges the gap between medium and heavy-lift vehicles in the Chinese fleet."
+                  ]
+              elif "long march 2d" in r_name:
+                  facts = [
+                      "Known as a 'Gold Medal Rocket', Long March 2D has an exceptionally high reliability record over 30+ years.",
+                      "Long March 2D is primarily used to launch spy satellites and remote sensing payloads into Low Earth Orbit.",
+                      "Long March 2D uses toxic hypergolic propellants, which explains the reddish smoke often seen at liftoff.",
+                      "Long March 2D can launch multiple small satellites in a single mission using a specialized dispenser."
+                  ]
               elif "delta" in r_name:
                   facts = [
                       "Delta IV Heavy sets itself on fire at launch to burn off excess hydrogen.",
