@@ -395,12 +395,20 @@ jobs:
                           key = "falcon9"
                   elif "falcon heavy" in r: key = "falconheavy"
                   elif "starship" in r: key = "starship"
+
+                  # --- NEW CHINESE ROCKET LOGIC ---
+                  elif "long march 5" in r: key = "cz_5"
+                  elif "long march 7" in r: key = "cz_7"
+                  elif "long march 6a" in r: key = "cz_6a"
+                  elif "long march 3b" in r: key = "cz_3b"
+                  elif "long march 2d" in r: key = "cz_2d"
+                  elif "long march 2f" in r: key = "cz_2f"
+                  elif "long march" in r: key = "cz_classic"
                   
                   # 2. Heavy
                   elif "sls" in r: key = "sls"
                   elif "new glenn" in r: key = "newglenn"
                   elif "delta iv heavy" in r: key = "delta4"
-                  elif "long march 5" in r: key = "cz_5"  
                   elif "lvm3" in r: key = "lvm3"
 
                   # 3. Medium
@@ -410,13 +418,7 @@ jobs:
                   elif "h3" in r: key = "h3"
                   elif "soyuz" in r: key = "soyuz"
                   elif "antares" in r: key = "antares"
-                  elif "delta" in r: key = "delta4" # Fallback
-                  
-                  # 4. Chinese Specifics
-                  elif "long march 7" in r: key = "cz_7"
-                  elif "long march 2f" in r: key = "cz_2f"
-                  elif "long march 3b" in r: key = "cz_3b"
-                  elif "long march" in r: key = "cz_classic"
+                  elif "delta" in r: key = "delta4"
                   
                   # 5. Small
                   elif "electron" in r: key = "electron"
