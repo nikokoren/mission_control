@@ -140,15 +140,39 @@ jobs:
                       "Rocket Lab's Electron is surprisingly small, measuring only 4 feet wide."
                   ]
               elif "atlas v" in r_name:
-                  facts = [
-                      "ULA's Atlas V has a 100% mission success rate for National Security payloads.",
-                      "The Atlas V launched NASA's Mars Perseverance Rover and the New Horizons Pluto probe.",
-                      "Atlas V's RD-180 main engine is a high-performance Russian engine known for its efficiency.",
-                      "ULA's Atlas V Centaur upper stage uses a 'common bulkhead'—a single metal sheet separating fuel and oxidizer.",
-                      "Atlas V flies a remarkably steep trajectory compared to other rockets to get out of the thick atmosphere quickly.",
-                      "The Atlas V 500 series flies with an offset fairing, making the rocket look slightly asymmetrical on the pad.",
-                      "Atlas V can fly with anywhere from 0 to 5 solid rocket boosters depending on the payload weight."
-                  ]
+                  # Check for N22 or 551 specifics
+                  if "n22" in r_name:
+                      facts = [
+                          "The Atlas V N22 is unique because it has no payload fairing; the Starliner capsule sits directly on top.",
+                          "The 'N' in N22 stands for 'No Fairing', while '22' means 2 boosters and 2 Centaur engines.",
+                          "Atlas V N22 uses a Dual Engine Centaur (DEC), a configuration not used since the Atlas II era.",
+                          "An 'Aeroskirt' is attached to the Atlas V N22 to smooth the airflow over the Starliner/Centaur connection.",
+                          "This specific Atlas V configuration is human-rated to carry astronauts to the ISS.",
+                          "The N22's two solid rocket boosters are made by Aerojet Rocketdyne (AJ-60A) or Northrop Grumman (GEM 63).",
+                          "Atlas V N22 does not use a launch escape tower; Starliner's abort engines are built into the capsule.",
+                          "The dual-engine Centaur on the N22 provides a flatter trajectory, safer for crew abort scenarios."
+                      ]
+                  elif "551" in r_name:
+                      facts = [
+                          "Atlas V 551 launched the New Horizons probe, the fastest object ever launched from Earth at that time.",
+                          "The '551' code means: 5-meter fairing, 5 solid boosters, and 1 Centaur engine.",
+                          "Because it has 5 boosters, the Atlas V 551 is asymmetrical and requires significant engine gimballing.",
+                          "Atlas V 551 was the ride for the Curiosity and Perseverance rovers to Mars.",
+                          "This configuration launched the Juno spacecraft to Jupiter.",
+                          "The 5 solid boosters provide nearly 2 million pounds of thrust at liftoff.",
+                          "Atlas V 551 weighs about 1.2 million pounds (569,000 kg) fully fueled on the pad.",
+                          "It is often nicknamed 'The Bruiser' due to its heavy-lift capability.",
+                          "The 5-meter fairing on the 551 is made of carbon fiber composites by RUAG Space."
+                      ]
+                  else:
+                      # Generic Atlas V Facts
+                      facts = [
+                          "The Atlas V launched NASA's Mars Perseverance Rover and the New Horizons Pluto probe.",
+                          "Atlas V's RD-180 main engine is a high-performance Russian engine known for its efficiency.",
+                          "Atlas V flies a remarkably steep trajectory compared to other rockets to get out of the thick atmosphere quickly.",
+                          "The Atlas V 500 series flies with an offset fairing, making the rocket look slightly asymmetrical on the pad.",
+                          "Atlas V can fly with anywhere from 0 to 5 solid rocket boosters depending on the payload weight."
+                      ]
               elif "vulcan" in r_name:
                   facts = [
                       "The Vulcan Centaur's stainless steel upper tank is as thin as a dime.",
@@ -187,6 +211,23 @@ jobs:
                       "The Soyuz abort tower motors pull 14Gs, moving the crew away faster than the human eye can track.",
                       "Soyuz boosters separate in the famous 'Korolev Cross' pattern caused by residual oxygen venting."
                   ]
+              elif "ariane 62" in r_name:
+                  facts = [
+                      "Ariane 62 is the medium-lift variant of Europe's new launcher, equipped with two solid boosters.",
+                      "The Ariane 62 variant is specifically optimized for government and scientific missions that don't need heavy lift capability.",
+                      "Ariane 62 can lift about 4.5 tonnes to Geostationary Transfer Orbit (GTO).",
+                      "Ariane 62 replaces the role previously filled by the Russian Soyuz rocket launched from French Guiana.",
+                      "The launch cost of an Ariane 62 is targeted to be roughly half that of its predecessor."
+                  ]
+              elif "ariane 64" in r_name:
+                  facts = [
+                      "Ariane 64 is the heavy-lift configuration, boasting four solid rocket boosters.",
+                      "The Ariane 64 is designed primarily for dual-launch commercial missions, carrying two heavy satellites at once.",
+                      "Ariane 64 can deliver 11.5 tonnes to Geostationary Transfer Orbit, rivaling heavy commercial competitors.",
+                      "Ariane 64 uses a larger 20-meter payload fairing to accommodate bulky satellite constellations.",
+                      "The modular design allows Arianespace to swap from 62 to 64 configuration relatively quickly.",
+                      "Ariane 64's upper stage can perform a de-orbit burn to prevent space debris after mission completion."
+                  ]
               elif "ariane 6" in r_name:
                   facts = [
                       "ESA's Ariane 6 components are transported to French Guiana on a ship called 'Canopée' that uses massive wingsails.",
@@ -197,6 +238,14 @@ jobs:
                       "Ariane 6 uses Laser Ignition Systems for its engines, reducing weight and increasing reliability.",
                       "The Ariane 6 nozzle rim is cooled by dumping exhaust from the turbopump directly into it.",
                       "Launching Ariane 6 from French Guiana provides a 'slingshot' speed boost of nearly 1,000 mph due to Earth's rotation."
+                  ]
+              elif "long march 12" in r_name:
+                  facts = [
+                      "Long March 12 is designed to lift at least 10 tonnes to Low Earth Orbit.",
+                      "Long March 12 uses a completely new launch pad designed for rapid commercial launch cadence.",
+                      "Long March 12's YF-100K engines are upgraded versions of the engines used on the Long March 7.",
+                      "The 3.8m diameter allows the Long March 12 to be transported by rail, unlike the sea-only Long March 5.",
+                      "Long March 12 is a key player in China's growing commercial satellite internet plans."
                   ]
               elif "long march 5" in r_name:
                   facts = [
@@ -357,6 +406,20 @@ jobs:
                       "Long March 3B was crucial for building China's BeiDou Navigation Satellite System.",
                       "After an early failure in 1996, the Long March 3B has become highly reliable."
                   ]
+              elif "long march 6a" in r_name:
+                  facts = [
+                      "Long March 6A is China's first rocket to combine liquid-fueled core stages with solid-fueled strap-on boosters.",
+                      "The four solid boosters on Long March 6A provide extra thrust at liftoff before being jettisoned.",
+                      "Long March 6A uses a 'smart' health monitoring system to automatically diagnose issues before launch.",
+                      "Long March 6A bridges the gap between medium and heavy-lift vehicles in the Chinese fleet."
+                  ]
+              elif "long march 2d" in r_name:
+                  facts = [
+                      "Long March 2D is a two-stage rocket with no side boosters, giving it a very sleek, simple appearance.",
+                      "Known as a 'Golden Rocket', Long March 2D has an exceptionally high reliability record over 30+ years.",
+                      "Long March 2D is primarily used to launch spy satellites and remote sensing payloads into Low Earth Orbit.",
+                      "Long March 2D can launch multiple small satellites in a single mission using a specialized dispenser."
+                  ]
               elif "nuri" in r_name:
                   facts = [
                       "Nuri is the first orbital launch vehicle developed entirely with indigenous South Korean technology.",
@@ -369,6 +432,18 @@ jobs:
                       "Nuri's launch complex at Naro Space Center was built specifically for this rocket.",
                       "Nuri successfully deployed a performance verification satellite and CubeSats in 2022.",
                       "Nuri stands 47.2 meters tall, roughly the height of a 15-story building."
+                  ]
+              elif "ceres-2" in r_name:
+                  facts = [
+                      "Ceres-2 is an evolved version of Ceres-1 with significantly higher payload capacity.",
+                      "Unlike the solid-upper-stage Ceres-1, Ceres-2 features a liquid fourth stage for precision orbits.",
+                      "Ceres-2 is designed to launch 2,000 kg to Low Earth Orbit, a major upgrade from Ceres-1.",
+                      "Ceres-2 targets the growing medium-class satellite constellation market in China.",
+                      "Galactic Energy developed Ceres-2 to compete directly with Long March 6 and 11.",
+                      "The liquid upper stage allows Ceres-2 to deploy multiple satellites into different orbits in one mission.",
+                      "Ceres-2 maintains the mobile launch capability of its predecessor.",
+                      "Ceres-2 is one of the few private Chinese rockets capable of lifting over 1.5 tonnes.",
+                      "Ceres-2 aims to launch from both land pads and sea platforms."
                   ]
               elif "ceres" in r_name:
                   facts = [
@@ -383,6 +458,25 @@ jobs:
                       "Galactic Energy was the second private Chinese firm to ever reach orbit.",
                       "Ceres-1 can lift about 400 kg to Low Earth Orbit."
                   ]
+              elif "hanbit" in r_name:
+                  facts = [
+                      "Hanbit-Nano is South Korea's first commercial launch vehicle, built by the startup Innospace.",
+                      "Hanbit-Nano uses a unique Hybrid Rocket Engine that burns solid paraffin (wax) fuel with liquid oxygen.",
+                      "Hanbit-Nano's hybrid engine design allows it to be throttled and even shut down safely in an emergency.",
+                      "Hanbit-Nano is designed for the rapid-response small satellite market.",
+                      "Hanbit-Nano's fuel is essentially high-grade candle wax, making it much safer to handle than traditional rocket fuels.",
+                      "Its name 'Hanbit' means 'One Light' or 'Great Light' in Korean."
+                  ]
+              elif "new shepard" in r_name:
+                  facts = [
+                      "New Shepard is named after Alan Shepard, the first American to go to space.",
+                      "New Shepard is fully reusable: the booster lands vertically, and the capsule lands with parachutes.",
+                      "New Shepard's crew capsule features the largest windows ever flown in space, offering 360-degree views.",
+                      "New Shepard is designed for suborbital tourism, taking passengers just above the 100km Kármán line.",
+                      "New Shepard's entire flight lasts only about 11 minutes from liftoff to touchdown.",
+                      "New Shepard's booster uses a single BE-3 engine that runs on liquid hydrogen and oxygen, emitting only steam.",
+                      "New Shepard's engine throttles down to just 5 mph for a gentle landing on the concrete pad.",
+                      "New Shepard's capsule has a solid-rocket escape motor in the center that can blast the crew to safety in milliseconds."                  ]
               
               if not facts:
                   pool = general_facts
@@ -411,29 +505,50 @@ jobs:
                   elif "falcon heavy" in r: key = "falconheavy"
                   elif "starship" in r: key = "starship"
 
-                  # --- NEW CHINESE ROCKET LOGIC ---
-                  elif "long march 5" in r: key = "cz_5"
-                  elif "long march 7" in r: key = "cz_7"
-                  elif "long march 6a" in r: key = "cz_6a"
-                  elif "long march 3b" in r: key = "cz_3b"
-                  elif "long march 2d" in r: key = "cz_2d"
-                  elif "long march 2f" in r: key = "cz_2f"
-                  elif "long march" in r: key = "cz_classic"
-                  
                   # 2. Heavy
                   elif "sls" in r: key = "sls"
                   elif "new glenn" in r: key = "newglenn"
                   elif "delta iv heavy" in r: key = "delta4"
+                  elif "long march 5b" in r: key = "cz_5b"
+                  elif "long march 5" in r: key = "cz_5"
+                  elif "long march 12" in r: key = "cz_12"
                   elif "lvm3" in r: key = "lvm3"
+                  elif "ariane 64" in r: key = "ariane_64"
 
                   # 3. Medium
                   elif "vulcan" in r: key = "vulcan"
-                  elif "atlas" in r: key = "atlasv"
+                  elif "atlas" in r:
+                      if "n22" in r: key = "atlasv_n22"
+                      elif "551" in r: key = "atlasv_551"
+                      else: key = "atlasv"
+                  elif "ariane 62" in r: key = "ariane_62"
                   elif "ariane" in r: key = "ariane6"
-                  elif "h3" in r: key = "h3"
                   elif "soyuz" in r: key = "soyuz"
+                  elif "h3" in r: key = "h3"
                   elif "antares" in r: key = "antares"
                   elif "delta" in r: key = "delta4"
+                  
+                  # 4. Chinese Specifics
+                  elif "long march 7a" in r: key = "cz_7a"
+                  elif "long march 7" in r: key = "cz_7"
+                  elif "long march 8" in r: key = "cz_8"
+                  elif "long march 6a" in r: key = "cz_6a"
+                  elif "long march 6c" in r: key = "cz_6c"
+                  elif "long march 6" in r: key = "cz_6"
+                  
+                  elif "long march 2f" in r: key = "cz_2f"
+                  elif "long march 2c" in r: key = "cz_2c"
+                  elif "long march 2d" in r: key = "cz_2d"
+                  
+                  elif "long march 3a" in r: key = "cz_3a"
+                  elif "long march 3b" in r: key = "cz_3b"
+                  elif "long march 3c" in r: key = "cz_3c"
+                  
+                  elif "long march 4b" in r: key = "cz_4b"
+                  elif "long march 4c" in r: key = "cz_4c"
+                  
+                  elif "long march 11" in r: key = "cz_11"
+                  elif "long march" in r: key = "cz_classic"
                   
                   # 5. Small
                   elif "electron" in r: key = "electron"
@@ -442,14 +557,17 @@ jobs:
                   elif "pslv" in r: key = "pslv"
                   elif "vega" in r: key = "vega"
                   elif "nuri" in r: key = "nuri"
+                  elif "ceres-2" in r: key = "ceres_2"
                   elif "ceres" in r: key = "ceres"
+                  elif "hanbit" in r_name: key = "hanbitnano"
+                  elif "new shepard" in r_name: key = "newshepard"
                   
               suffix = "_idle"
               if status == "In Flight" or status == "AWAITING CONFIRMATION":
                   suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
                   if landing_success:
-                      if "falcon" in key or "starship" in key or "newglenn" in key: 
+                      if "falcon" in key or "starship" in key or "newglenn" in key or "newshepard" in key: 
                           suffix = "_landed"
                       else: key, suffix = "empty", ""
                   else:
@@ -558,21 +676,21 @@ jobs:
               
               is_reusable = False
               r_check = target["rocket"]["configuration"]["name"].lower()
-              if "falcon" in r_check or "starship" in r_check or "new glenn" in r_check or "electron" in r_check: is_reusable = True
+              if "falcon" in r_check or "starship" in r_check or "newglenn" in r_check or "electron" in r_check or "newshepard" in r_check: is_reusable = True
 
               if is_reusable:
                   if attempt is False:
-                      footer_right = "Expendable profile. No recovery planned."
+                      footer_right = "Single-use configuration. No recovery planned."
                   elif attempt is None:
                       if flight_n: footer_left = f"Booster flight #{flight_n}."
                       else: footer_left = "Booster identity classified."
-                      footer_right = "Recovery likely planned (Location TBD)."
+                      footer_right = "Recovery likely (Location TBD)."
                   else:
                       if mode == "PRE_LAUNCH":
                           if flight_n: footer_left = f"Booster flight #{flight_n}."
                           else: footer_left = "Booster identity classified."
                           if l_loc == "Unknown": footer_right = "Recovery planned (Location TBD)."
-                          else: footer_right = f"Targeting recovery at {l_loc}."
+                          else: footer_right = f"Planned recovery at {l_loc}."
                       else:
                           footer_left = "" 
                           if target["status"]["abbrev"] == "PENDING":
