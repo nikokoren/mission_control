@@ -559,8 +559,8 @@ jobs:
                   elif "nuri" in r: key = "nuri"
                   elif "ceres-2" in r: key = "ceres_2"
                   elif "ceres" in r: key = "ceres"
-                  elif "hanbit" in r_name: key = "hanbitnano"
-                  elif "new shepard" in r_name: key = "newshepard"
+                  elif "hanbit" in r: key = "hanbitnano"
+                  elif "new shepard" in r: key = "newshepard"
                   
               suffix = "_idle"
               if status == "In Flight" or status == "AWAITING CONFIRMATION":
