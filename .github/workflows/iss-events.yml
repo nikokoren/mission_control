@@ -1,0 +1,23 @@
+# .github/workflows/iss-events.yml
+name: ISS Events
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  # Manual trigger for testing from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  push-events:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Compute and push ISS event
+        env:
+          PUSH_TOKEN: ${{ secrets.PUSH_TOKEN }}
+          WORKER_URL: https://iss-events.5g5wqr7kzx-466.workers.dev
+        run: node scripts/iss-events.mjs
