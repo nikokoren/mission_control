@@ -1,16 +1,15 @@
 // scripts/iss-events.mjs
-// Runs in GitHub Actions. Fetches LL2 from GitHub runner IPs (not rate
-// starved like Cloudflare egress), computes the active ISS event using
-// the same logic as the worker, and POSTs the result to the worker's
-// /push endpoint, which writes it to KV.
+// Runs in GitHub Actions every 30 minutes. Asks LL2 what's happening at
+// the ISS, then sends the answer to the Cloudflare worker.
 //
-// Required env:
-//   PUSH_TOKEN  - shared secret, must match the worker's REFRESH_TOKEN
-//   WORKER_URL  - e.g. https://iss-events.5g5wqr7kzx-466.workers.dev
+// This version is patient and sturdy: each call to LL2 gets up to 30
+// seconds, and if a call fails the script logs it and moves on instead
+// of crashing.
 
 const LL2_API_BASE = "https://ll.thespacedevs.com/2.2.0";
 const POST_EVENT_WINDOW_HOURS = 4;
 const ISS_STATION_ID = 4;
+const CALL_TIMEOUT_MS = 30000; // how long we wait for LL2 to answer
 
 const PUSH_TOKEN = process.env.PUSH_TOKEN;
 const WORKER_URL = process.env.WORKER_URL;
@@ -22,15 +21,26 @@ if (!PUSH_TOKEN || !WORKER_URL) {
 
 const now = Date.now();
 
+// One call to LL2. Never throws: on any problem it logs what went
+// wrong and returns an empty result so the script can continue.
 const getJson = async (path) => {
-  const res = await fetch(`${LL2_API_BASE}${path}`, {
-    signal: AbortSignal.timeout(10000)
-  });
-  if (!res.ok) {
-    console.log(`LL2 ${res.status} on ${path}`);
+  const started = Date.now();
+  try {
+    const res = await fetch(`${LL2_API_BASE}${path}`, {
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
+    });
+    const secs = ((Date.now() - started) / 1000).toFixed(1);
+    if (!res.ok) {
+      console.log(`LL2 ${res.status} on ${path} (after ${secs}s)`);
+      return {};
+    }
+    console.log(`LL2 OK on ${path} (${secs}s)`);
+    return res.json();
+  } catch (e) {
+    const secs = ((Date.now() - started) / 1000).toFixed(1);
+    console.log(`LL2 no answer on ${path} (gave up after ${secs}s): ${e.name}`);
     return {};
   }
-  return res.json();
 };
 
 async function computeEvent() {
@@ -107,10 +117,8 @@ async function computeEvent() {
 
   // 3. PRIORITY: LAUNCHES
   if (!activeEvent) {
-    const [prev, upcoming] = await Promise.all([
-      getJson("/launch/previous/?limit=5"),
-      getJson("/launch/upcoming/?limit=5")
-    ]);
+    const prev = await getJson("/launch/previous/?limit=5");
+    const upcoming = await getJson("/launch/upcoming/?limit=5");
     const allLaunches = [...(prev.results || []), ...(upcoming.results || [])];
     for (const launch of allLaunches) {
       const isIss = (launch.program || []).some(p => (p.name || "").includes("International Space Station"));
@@ -151,7 +159,7 @@ const res = await fetch(`${WORKER_URL}/push`, {
     "Content-Type": "application/json"
   },
   body: JSON.stringify(event),
-  signal: AbortSignal.timeout(10000)
+  signal: AbortSignal.timeout(15000)
 });
 
 if (!res.ok) {
