@@ -2,39 +2,54 @@ name: Update Rocket Launch Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: update-launch-data
+  cancel-in-progress: false
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Fetch and Smart-Process Data
         run: |
           echo "Fetching launch data from The Space Devs API..."
-          curl -sS "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=2&mode=detailed&hide_recent_previous=true&format=json" > upcoming.json
-          curl -sS "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
-
+          UA="mission-control-trmnl (github.com/nikokoren)"
+          curl -sS --retry 3 --retry-delay 10 -H "User-Agent: $UA" \
+            "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=2&mode=detailed&hide_recent_previous=true&format=json" > upcoming.json
+          curl -sS --retry 3 --retry-delay 10 -H "User-Agent: $UA" \
+            "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
           python3 - <<'EOF'
           import json
           import sys
           import random
           from datetime import datetime, timezone
-
           # --- CONFIG ---
-          # REPLACE THIS WITH YOUR REPO URL
           REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
-
           # --- CONSTANTS ---
+          # Rocket names as the API writes them (with spaces). Used for footer text.
           REUSABLE_ROCKETS = ["falcon", "starship", "new glenn", "electron", "new shepard"]
-
+          # Image file keys (no spaces). Used to decide if a _landed drawing exists.
+          LANDABLE_KEYS = ["falcon9", "falconheavy", "starship", "newglenn", "electron", "newshepard"]
+          # Fields that change on every single run. On their own they should not
+          # force a new commit while we are in POST_LAUNCH mode.
+          VOLATILE_FIELDS = ["countdown", "next_countdown"]
           # --- HELPER FUNCTIONS ---
+          def dig(d, *keys, default=None):
+              """Walk nested dicts safely. Treats an explicit null the same as a missing key."""
+              for k in keys:
+                  if not isinstance(d, dict):
+                      return default
+                  d = d.get(k)
+              return default if d is None else d
           def normalize_org_name(name):
               """Normalize long organization names to abbreviations"""
               replacements = {
@@ -47,14 +62,12 @@ jobs:
                   "Indian Space Research Organisation": "ISRO",
                   "Japan Aerospace Exploration Agency": "JAXA",
                   "Roscosmos State Corporation": "Roscosmos",
-                  "Arianespace": "Arianespace",
                   "Isar Aerospace": "Isar Aerospace"
               }
               for old, new in replacements.items():
                   if old in name:
                       return new
               return name
-
           def normalize_location_name(name):
               """Normalize long location names"""
               replacements = {
@@ -65,14 +78,13 @@ jobs:
               for old, new in replacements.items():
                   name = name.replace(old, new)
               return name
-
           def load_json(filename):
               """Load JSON file and return results array, or None if invalid"""
               try:
                   with open(filename) as f:
                       data = json.load(f)
                       if "detail" in data:
-                          print(f"Warning: API returned error detail in {filename}")
+                          print(f"Warning: API returned error detail in {filename}: {data.get('detail')}")
                           return None
                       if not data.get("results"):
                           print(f"Warning: No results found in {filename}")
@@ -81,9 +93,8 @@ jobs:
               except Exception as e:
                   print(f"Error loading {filename}: {e}")
                   return None
-
           # --- TRIVIA BRAIN (TITANIUM EDITION) ---
-          def get_rocket_fact(rocket_name):
+          def get_rocket_fact(rocket_name, seed=""):
               r_name = rocket_name.lower()
               
               general_facts = [
@@ -103,9 +114,7 @@ jobs:
                   "A rocket launch is essentially a continuous controlled explosion that lasts for about eight minutes.",
                   "Ion thrusters used on satellites produce about as much force as the weight of a single sheet of paper."
               ]
-
               facts = []
-
               if "falcon 9" in r_name:
                   facts = [
                       "The Falcon 9's heat shield protecting the engines is covered in a layer of cork, similar to wine stoppers.",
@@ -522,11 +531,13 @@ jobs:
                   pool = facts + general_facts
               
               try:
-                  return random.choice(pool)
+                  # Seeded so the same launch always gets the same fact.
+                  # Without this the fact re-rolls on every run, which both flickers
+                  # on the display and forces a new git commit every time.
+                  return random.Random(f"{seed}|{rocket_name}").choice(pool)
               except (IndexError, KeyError) as e:
                   print(f"Warning: Fact selection failed for {rocket_name}: {e}")
                   return "Rockets are cool."
-
           # --- VISUAL BRAIN ---
           def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mission_name, repo_url):
               r = rocket_name.lower()
@@ -546,7 +557,6 @@ jobs:
                           key = "falcon9"
                   elif "falcon heavy" in r: key = "falconheavy"
                   elif "starship" in r: key = "starship"
-
                   # 2. Heavy Lift
                   elif "sls" in r: key = "sls"
                   elif "artemis" in r: key = "sls"  # Artemis uses SLS
@@ -557,7 +567,6 @@ jobs:
                   elif "long march 12" in r: key = "cz_12"
                   elif "lvm3" in r: key = "lvm3"
                   elif "ariane 64" in r: key = "ariane_64"
-
                   # 3. Medium Lift
                   elif "vulcan" in r: key = "vulcan"
                   elif "atlas" in r:
@@ -605,131 +614,148 @@ jobs:
                   elif "hanbit" in r: key = "hanbitnano"
                   elif "new shepard" in r: key = "newshepard"
                   
-                  # 6. NEW: Isar Aerospace
+                  # 6. Isar Aerospace
                   elif "spectrum" in r or "isar" in r: key = "spectrum"
                   
               suffix = "_idle"
               if status == "In Flight" or status == "AWAITING CONFIRMATION":
                   suffix = "_ascent"
               elif status in ["Success", "Failure", "Partial Failure"]:
-                  if landing_success:
-                      if any(reusable in key for reusable in REUSABLE_ROCKETS):
-                          suffix = "_landed"
-                      else: 
-                          key, suffix = "empty", ""
+                  # An empty pad after the launch is intentional: it shows the
+                  # rocket is gone. Only draw a landed booster when we actually
+                  # have that artwork. Match on the image key (no spaces), not on
+                  # the API rocket name, or newglenn/newshepard never match.
+                  if landing_success and any(key.startswith(p) for p in LANDABLE_KEYS):
+                      suffix = "_landed"
                   else:
                       key, suffix = "empty", ""
-
               if key == "empty": 
                   return f"{repo_url}/rockets/empty.png"
               return f"{repo_url}/rockets/{key}{suffix}.png"
-
           # --- COUNTDOWN ---
           def get_countdown(dt_event):
               now = datetime.now(timezone.utc)
               diff = dt_event - now
-              if diff.total_seconds() < 0: 
-                  return "T+ 00h 00m"
-              total_seconds = int(diff.total_seconds())
+              total_seconds = int(abs(diff.total_seconds()))
               hours, remainder = divmod(total_seconds, 3600)
               minutes, _ = divmod(remainder, 60)
-              return f"T- {hours:02}h {minutes:02}m"
-
+              sign = "T-" if diff.total_seconds() >= 0 else "T+"
+              return f"{sign} {hours:02}h {minutes:02}m"
           # --- MAIN LOGIC ---
           def parse_time(t_str):
-              return datetime.strptime(t_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-
+              """Parse an API timestamp. Returns None rather than raising on bad input."""
+              if not t_str:
+                  return None
+              try:
+                  dt = datetime.fromisoformat(str(t_str).replace("Z", "+00:00"))
+                  if dt.tzinfo is None:
+                      dt = dt.replace(tzinfo=timezone.utc)
+                  return dt.astimezone(timezone.utc)
+              except (ValueError, TypeError):
+                  try:
+                      return datetime.strptime(t_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                  except (ValueError, TypeError):
+                      print(f"Warning: could not parse timestamp {t_str!r}")
+                      return None
           def process_launch_data(launch_data, mode_override=None):
               """Process a single launch and return structured data"""
               if not launch_data:
                   return None
-                  
-              target_dt = parse_time(launch_data["net"])
+              
+              target_dt = parse_time(launch_data.get("net"))
+              if target_dt is None:
+                  print("Warning: launch has no usable NET time, skipping")
+                  return None
+              
               now = datetime.now(timezone.utc)
               seconds_since_t0 = (now - target_dt).total_seconds()
               
-              api_status = launch_data["status"]["abbrev"]
+              # Make sure status is a dict before we read or write into it
+              if not isinstance(launch_data.get("status"), dict):
+                  launch_data["status"] = {"abbrev": "TBD", "name": "TBD"}
+              
+              api_status = dig(launch_data, "status", "abbrev", default="TBD")
               is_final = api_status in ["Success", "Failure", "Partial Failure", "In Flight"]
               
-              # Determine mode
-              if mode_override:
-                  mode = mode_override
-              elif is_final:
-                  mode = "POST_LAUNCH"
-              elif seconds_since_t0 > 600:  # 10 minutes past T-0
-                  mode = "POST_LAUNCH"
+              # Work out the mode first, so the AWAITING CONFIRMATION status change
+              # still happens even when the caller passes a mode_override.
+              if is_final:
+                  computed_mode = "POST_LAUNCH"
+              elif seconds_since_t0 > 600:  # 10 minutes past T-0 with no result yet
+                  computed_mode = "POST_LAUNCH"
                   launch_data["status"]["abbrev"] = "PENDING"
                   launch_data["status"]["name"] = "AWAITING CONFIRMATION"
               else:
-                  mode = "PRE_LAUNCH"
-
-              # Mission context
-              mission_context = "COMMERCIAL"
-              if launch_data.get("program") and len(launch_data["program"]) > 0:
-                  mission_context = launch_data["program"][0]["name"]
-              elif launch_data.get("mission") and launch_data["mission"].get("type"):
-                  mission_context = launch_data["mission"]["type"]
-
-              # Provider and Agency
-              provider = normalize_org_name(launch_data["launch_service_provider"]["name"])
+                  computed_mode = "PRE_LAUNCH"
               
-              agency = "" 
-              if launch_data.get("mission") and launch_data.get("mission", {}).get("agencies"):
-                  raw_agency = launch_data["mission"]["agencies"][0]["name"]
-                  if raw_agency != launch_data["launch_service_provider"]["name"]:
-                       agency = normalize_org_name(raw_agency)
-
+              mode = mode_override or computed_mode
+              
+              programs = launch_data.get("program") or []
+              
+              # Provider and Agency
+              provider_raw = dig(launch_data, "launch_service_provider", "name", default="Unknown")
+              provider = normalize_org_name(provider_raw)
+              
+              agency = ""
+              agencies = dig(launch_data, "mission", "agencies", default=[]) or []
+              if agencies:
+                  raw_agency = dig(agencies[0], "name", default="")
+                  if raw_agency and raw_agency != provider_raw:
+                      agency = normalize_org_name(raw_agency)
+              
               # Descriptions
               raw_mission_desc = ""
-              if launch_data.get("mission") and launch_data.get("mission", {}).get("description"):
-                  desc = launch_data["mission"]["description"]
-                  if "No description" not in desc and "TBD" not in desc: 
-                      raw_mission_desc = desc
+              desc = dig(launch_data, "mission", "description", default="")
+              if desc and "No description" not in desc and desc.strip() != "TBD":
+                  raw_mission_desc = desc
               
               raw_program_desc = ""
-              if launch_data.get("program") and len(launch_data["program"]) > 0:
-                  p_desc = launch_data["program"][0].get("description", "")
-                  if "No description" not in p_desc: 
+              if programs:
+                  p_desc = dig(programs[0], "description", default="")
+                  if p_desc and "No description" not in p_desc:
                       raw_program_desc = p_desc
-
+              
               # Image
               image_url = ""
-              if launch_data.get("mission_patches"): 
-                  image_url = launch_data["mission_patches"][0]["image_url"]
-              elif launch_data.get("launch_service_provider"): 
-                  image_url = launch_data["launch_service_provider"].get("logo_url", "")
-
+              patches = launch_data.get("mission_patches") or []
+              if patches:
+                  image_url = dig(patches[0], "image_url", default="")
+              if not image_url:
+                  image_url = dig(launch_data, "launch_service_provider", "logo_url", default="")
+              
               # Location
-              pad_name = launch_data["pad"]["name"].replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
-              if pad_name.isdigit(): 
+              pad_name = dig(launch_data, "pad", "name", default="Unknown Pad")
+              pad_name = pad_name.replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+              if pad_name.isdigit():
                   pad_name = f"Pad {pad_name}"
-              loc_name = launch_data["pad"]["location"]["name"].split(",")[0].strip()
-              country_code = launch_data["pad"]["location"].get("country_code", "")
-              if country_code: 
+              loc_name = dig(launch_data, "pad", "location", "name", default="Unknown").split(",")[0].strip()
+              country_code = dig(launch_data, "pad", "location", "country_code", default="")
+              if country_code:
                   full_location_str = f"{pad_name} @ {loc_name}, {country_code}"
-              else: 
+              else:
                   full_location_str = f"{pad_name} @ {loc_name}"
-
+              
               # Landing info
               stage = {}
-              if launch_data.get("rocket", {}).get("launcher_stage"):
-                  s_list = launch_data["rocket"]["launcher_stage"]
-                  if s_list: 
-                      stage = s_list[0]
+              s_list = dig(launch_data, "rocket", "launcher_stage", default=[]) or []
+              if s_list:
+                  stage = s_list[0] or {}
               
-              landing = stage.get("landing") or {}
+              landing = dig(stage, "landing", default={}) or {}
               attempt = landing.get("attempt")
               success = landing.get("success")
-              l_loc = normalize_location_name(landing.get("location", {}).get("name", "Unknown"))
+              l_loc = normalize_location_name(dig(landing, "location", "name", default="Unknown"))
               flight_n = stage.get("launcher_flight_number")
-
+              
+              rocket_name = dig(launch_data, "rocket", "configuration", "name", default="Unknown Rocket")
+              launch_name = launch_data.get("name") or rocket_name
+              
               # Footer logic
               footer_left = ""
               footer_right = ""
               
-              rocket_name_lower = launch_data["rocket"]["configuration"]["name"].lower()
+              rocket_name_lower = rocket_name.lower()
               is_reusable = any(r in rocket_name_lower for r in REUSABLE_ROCKETS)
-
               if is_reusable:
                   if attempt is False:
                       footer_right = "Single-use configuration. No recovery planned."
@@ -761,28 +787,28 @@ jobs:
                               footer_right = f"Landing pending at {l_loc}."
               else:
                   footer_right = "Single-use configuration. No recovery planned."
-
-              # Rocket fact
-              rocket_name = launch_data["rocket"]["configuration"]["name"]
+              
+              # Rocket fact, seeded off the launch so it stays stable between runs
+              fact_seed = str(launch_data.get("id") or launch_name)
               try: 
-                  the_fact = get_rocket_fact(rocket_name)
+                  the_fact = get_rocket_fact(rocket_name, fact_seed)
               except Exception as e:
                   print(f"Warning: Fact generation failed for {rocket_name}: {e}")
                   the_fact = "Rockets are cool."
               
               # Visuals
-              vis_status = launch_data["status"]["abbrev"]
+              vis_status = dig(launch_data, "status", "abbrev", default="TBD")
               if vis_status == "PENDING":
                   vis_status = "AWAITING CONFIRMATION"
-    
-              mission_type = launch_data.get("mission", {}).get("type") or ""
+              
+              mission_type = dig(launch_data, "mission", "type", default="")
               
               vis_url = get_rocket_image_url(
                   rocket_name, 
                   vis_status, 
                   success, 
                   mission_type, 
-                  launch_data["name"], 
+                  launch_name, 
                   REPO_BASE
               )
               
@@ -791,130 +817,166 @@ jobs:
                   vis_status, 
                   success, 
                   mission_type, 
-                  launch_data["name"], 
+                  launch_name, 
                   REPO_BASE
               )
-
+              
               # Timestamps
               date_ts = int(target_dt.timestamp())
               win_start_ts = date_ts
               win_end_ts = date_ts
-              if launch_data.get("window_start"): 
-                  win_start_ts = int(parse_time(launch_data["window_start"]).timestamp())
-              if launch_data.get("window_end"): 
-                  win_end_ts = int(parse_time(launch_data["window_end"]).timestamp())
-
+              w_start = parse_time(launch_data.get("window_start"))
+              w_end = parse_time(launch_data.get("window_end"))
+              if w_start: 
+                  win_start_ts = int(w_start.timestamp())
+              if w_end: 
+                  win_end_ts = int(w_end.timestamp())
+              
               # Mission name
-              m_name = launch_data["name"].split(" | ")[-1]
+              m_name = launch_name.split(" | ")[-1]
               if "Unknown Payload" in m_name: 
                   m_name = rocket_name
-
+              
               return {
                   "mode": mode,
                   "name": m_name,
-                  "context": mission_context.upper(),
                   "agency": agency,
                   "provider": provider,
                   "location_str": full_location_str,
-                  "date": launch_data["net"],
                   "date_ts": date_ts,
                   "window_start_ts": win_start_ts,
                   "window_end_ts": win_end_ts,
                   "countdown": get_countdown(target_dt),
-                  "status": launch_data["status"]["abbrev"],
+                  "status": dig(launch_data, "status", "abbrev", default="TBD"),
                   "image": image_url,
                   "description": (raw_mission_desc or "").replace("\n", " ")[0:600],
                   "program_description": (raw_program_desc or "").replace("\n", " ")[0:400],
                   "rocket": rocket_name,
-                  "orbit": launch_data["mission"]["orbit"]["name"] if launch_data.get("mission") else "TBD",
+                  "orbit": dig(launch_data, "mission", "orbit", "name", default="TBD"),
                   "footer_left": footer_left,
                   "footer_right": footer_right,
                   "rocket_fact": the_fact,
                   "rocket_visual": vis_url,
                   "generic_visual": generic_visual_url
               }
-
-          # --- LOAD DATA ---
-          print("Loading launch data...")
-          upcoming_results = load_json("upcoming.json")
-          previous_results = load_json("previous.json")
-
-          upcoming = upcoming_results[0] if upcoming_results and len(upcoming_results) > 0 else None
-          next_upcoming = upcoming_results[1] if upcoming_results and len(upcoming_results) > 1 else None
-          previous = previous_results[0] if previous_results and len(previous_results) > 0 else None
-
-          if not upcoming and not previous:
-              print("Error: No valid launch data available")
-              sys.exit(0)
-
-          # --- SMART LAUNCH SELECTION ---
-          now = datetime.now(timezone.utc)
-          target = upcoming
-          mode = "PRE_LAUNCH"
-
-          if previous and upcoming:
-              prev_dt = parse_time(previous["net"])
-              next_dt = parse_time(upcoming["net"])
-              hours_since = (now - prev_dt).total_seconds() / 3600
-              hours_until = (next_dt - now).total_seconds() / 3600
-
-              print(f"Decision: {hours_since:.1f}h since previous, {hours_until:.1f}h until next")
-
-              if hours_since < 1 or hours_until > 6:
+          def strip_volatile(d):
+              """Copy of the payload without the fields that change every run."""
+              return {k: v for k, v in (d or {}).items() if k not in VOLATILE_FIELDS}
+          # Everything below is wrapped so an unexpected API shape leaves the old
+          # launch.json in place instead of failing the workflow red.
+          try:
+              # --- LOAD DATA ---
+              print("Loading launch data...")
+              upcoming_results = load_json("upcoming.json")
+              previous_results = load_json("previous.json")
+              
+              upcoming = upcoming_results[0] if upcoming_results and len(upcoming_results) > 0 else None
+              next_upcoming = upcoming_results[1] if upcoming_results and len(upcoming_results) > 1 else None
+              previous = previous_results[0] if previous_results and len(previous_results) > 0 else None
+              
+              if not upcoming and not previous:
+                  print("Error: No valid launch data available")
+                  sys.exit(0)
+              
+              # --- SMART LAUNCH SELECTION ---
+              now = datetime.now(timezone.utc)
+              target = upcoming
+              mode = "PRE_LAUNCH"
+              
+              if previous and upcoming:
+                  prev_dt = parse_time(previous.get("net"))
+                  next_dt = parse_time(upcoming.get("net"))
+                  
+                  if prev_dt is None or next_dt is None:
+                      target = upcoming if next_dt else previous
+                      mode = "PRE_LAUNCH" if next_dt else "POST_LAUNCH"
+                      print("Selected: fallback, one of the launches had no usable time")
+                  else:
+                      hours_since = (now - prev_dt).total_seconds() / 3600
+                      hours_until = (next_dt - now).total_seconds() / 3600
+                      
+                      print(f"Decision: {hours_since:.1f}h since previous, {hours_until:.1f}h until next")
+                      
+                      # Show the previous launch if it just happened, or if the next
+                      # one is still far off. But never show a previous launch that
+                      # is more than a day old, it stops being news.
+                      if hours_since < 1 or (hours_until > 6 and hours_since < 24):
+                          target = previous
+                          mode = "POST_LAUNCH"
+                          print("Selected: Previous launch (POST_LAUNCH mode)")
+                      else:
+                          target = upcoming
+                          mode = "PRE_LAUNCH"
+                          print("Selected: Upcoming launch (PRE_LAUNCH mode)")
+              elif previous:
                   target = previous
                   mode = "POST_LAUNCH"
-                  print("Selected: Previous launch (POST_LAUNCH mode)")
+                  print("Selected: Previous launch only")
               else:
                   target = upcoming
                   mode = "PRE_LAUNCH"
-                  print("Selected: Upcoming launch (PRE_LAUNCH mode)")
-          elif previous:
-              target = previous
-              mode = "POST_LAUNCH"
-              print("Selected: Previous launch only")
-          else:
-              target = upcoming
-              mode = "PRE_LAUNCH"
-              print("Selected: Upcoming launch only")
-
-          # --- PROCESS PRIMARY LAUNCH ---
-          output = process_launch_data(target, mode)
-
-          if not output:
-              print("Error: Failed to process launch data")
+                  print("Selected: Upcoming launch only")
+              
+              # --- PROCESS PRIMARY LAUNCH ---
+              output = process_launch_data(target, mode)
+              
+              if not output:
+                  print("Error: Failed to process launch data")
+                  sys.exit(0)
+              
+              # --- ADD NEXT LAUNCH DATA (for POST_LAUNCH mode) ---
+              if mode == "POST_LAUNCH" and next_upcoming:
+                  print("Adding next launch data...")
+                  next_data = process_launch_data(next_upcoming, "PRE_LAUNCH")
+                  if next_data:
+                      output["next_name"] = next_data["name"]
+                      output["next_provider"] = next_data["provider"]
+                      output["next_rocket"] = next_data["rocket"]
+                      output["next_countdown"] = next_data["countdown"]
+                      output["next_status"] = next_data["status"]
+                      output["next_date_ts"] = next_data["date_ts"]
+                  else:
+                      print("Warning: Failed to process next launch data")
+              elif mode == "POST_LAUNCH" and upcoming:
+                  # Fallback: use first upcoming if no second one exists
+                  print("Adding next launch data (fallback to first upcoming)...")
+                  next_data = process_launch_data(upcoming, "PRE_LAUNCH")
+                  if next_data:
+                      output["next_name"] = next_data["name"]
+                      output["next_provider"] = next_data["provider"]
+                      output["next_rocket"] = next_data["rocket"]
+                      output["next_countdown"] = next_data["countdown"]
+                      output["next_status"] = next_data["status"]
+                      output["next_date_ts"] = next_data["date_ts"]
+              
+              # --- SKIP POINTLESS WRITES ---
+              # If the only thing that moved is the countdown, and we are already
+              # post launch (where the countdown is not shown), leave the file alone.
+              old_output = None
+              try:
+                  with open("launch.json") as f:
+                      old_output = json.load(f)
+              except Exception:
+                  old_output = None
+              
+              if old_output is not None and strip_volatile(old_output) == strip_volatile(output):
+                  if output["mode"] == "POST_LAUNCH":
+                      print("Only the countdown moved and we are post launch. Leaving launch.json untouched.")
+                      sys.exit(0)
+                  print("Only the countdown moved, but we are pre launch so the display needs it.")
+              
+              # --- WRITE OUTPUT ---
+              print(f"Writing launch.json for {output['name']}...")
+              with open("launch.json", "w") as f:
+                  json.dump(output, f, separators=(',', ':'))
+              
+              print("Launch data updated successfully!")
+          except SystemExit:
+              raise
+          except Exception as e:
+              print(f"Error: unexpected failure while processing launch data: {e}")
+              print("Leaving the existing launch.json in place.")
               sys.exit(0)
-
-          # --- ADD NEXT LAUNCH DATA (for POST_LAUNCH mode) ---
-          if mode == "POST_LAUNCH" and next_upcoming:
-              print("Adding next launch data...")
-              next_data = process_launch_data(next_upcoming, "PRE_LAUNCH")
-              if next_data:
-                  output["next_name"] = next_data["name"]
-                  output["next_provider"] = next_data["provider"]
-                  output["next_rocket"] = next_data["rocket"]
-                  output["next_countdown"] = next_data["countdown"]
-                  output["next_status"] = next_data["status"]
-                  output["next_date_ts"] = next_data["date_ts"]
-              else:
-                  print("Warning: Failed to process next launch data")
-          elif mode == "POST_LAUNCH" and upcoming:
-              # Fallback: use first upcoming if no second one exists
-              print("Adding next launch data (fallback to first upcoming)...")
-              next_data = process_launch_data(upcoming, "PRE_LAUNCH")
-              if next_data:
-                  output["next_name"] = next_data["name"]
-                  output["next_provider"] = next_data["provider"]
-                  output["next_rocket"] = next_data["rocket"]
-                  output["next_countdown"] = next_data["countdown"]
-                  output["next_status"] = next_data["status"]
-                  output["next_date_ts"] = next_data["date_ts"]
-
-          # --- WRITE OUTPUT ---
-          print(f"Writing launch.json for {output['name']}...")
-          with open("launch.json", "w") as f:
-              json.dump(output, f, separators=(',', ':'))
-          
-          print("Launch data updated successfully!")
           EOF
 
       - name: Commit and Push
