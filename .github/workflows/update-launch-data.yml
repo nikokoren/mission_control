@@ -34,7 +34,15 @@ jobs:
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add launch.json
+          git add launch.json boosters/ 2>/dev/null || git add launch.json
+
+          if git diff --staged --quiet; then
+            echo "No changes to launch.json, skipping commit"
+          else
+            git commit -m "Update launch data [$(date -u +'%Y-%m-%d %H:%M UTC')]"
+            git push
+            echo "Pushed."
+          fi          git add launch.json
 
           if git diff --staged --quiet; then
             echo "No changes to launch.json, skipping commit"
