@@ -244,6 +244,10 @@ def process_launch_data(launch, mode_override=None):
         raw_agency = dig(agencies[0], "name", default="")
         if raw_agency and raw_agency != provider_raw:
             agency = normalize_org_name(raw_agency)
+            # Fall back to the API's own abbreviation when the name is too
+            # long for the narrow info row field.
+            if len(agency) > 18:
+                agency = dig(agencies[0], "abbrev", default="") or agency
 
     description = ""
     desc = dig(launch, "mission", "description", default="")
