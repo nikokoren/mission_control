@@ -81,6 +81,57 @@ def gap_phrase(days, hours):
     return f"{plural(days, 'day')} since the last one"
 
 
+NUM_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
+             7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven",
+             12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen",
+             16: "sixteen", 17: "seventeen", 18: "eighteen", 19: "nineteen",
+             20: "twenty"}
+
+
+def num_word(n):
+    """Small numbers read better as words in prose."""
+    return NUM_WORDS.get(int(n), str(int(n)))
+
+
+def join_list(items):
+    """['a', 'b', 'c'] -> 'a, b, and c'. Handles one and two item lists."""
+    items = [i for i in items if i]
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
+
+
+# Mission families worth naming. Anything unmatched is counted as "other".
+MISSION_FAMILIES = [
+    "Starlink", "Transporter", "Bandwagon", "NROL", "Crew", "Cargo Dragon",
+    "SDA Tranche", "Globalstar", "O3b", "Galileo", "Kuiper", "OneWeb",
+    "Axiom", "SES", "Intelsat", "Eutelsat", "GPS", "USSF", "Koreasat",
+]
+
+
+def mission_family(name):
+    n = (name or "").strip().lower()
+    for fam in MISSION_FAMILIES:
+        if n.startswith(fam.lower()):
+            return fam
+    return None
+
+
+def days_between(iso_a, iso_b):
+    """Whole days between two ISO timestamps. None if either is unusable."""
+    from datetime import datetime
+    try:
+        a = datetime.fromisoformat(str(iso_a).replace("Z", "+00:00"))
+        b = datetime.fromisoformat(str(iso_b).replace("Z", "+00:00"))
+        return abs((b - a).days)
+    except (ValueError, TypeError):
+        return None
+
+
 def short_pad(name):
     return (name or "").replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
 
@@ -327,6 +378,83 @@ def booster_label(launch):
     return f"BOOSTER {serial}" if serial else "BOOSTER"
 
 
+def booster_career_card(launch, history=None, fleet=None):
+    """
+    The booster's career rather than this one flight. Needs the cached
+    history from history.py, so it returns None until that exists.
+    """
+    if not history or not history.get("launches"):
+        return None
+
+    serial = history.get("serial") or ""
+    flights = history.get("launches") or []
+    n = len(flights)
+    if n < 3:
+        # One or two flights is not a career worth summarising.
+        return None
+
+    parts = []
+
+    # 1. Span. How long it has been flying, and how often.
+    span = days_between(flights[0]["net"], flights[-1]["net"])
+    if span and span > 60:
+        months = round(span / 30.0)
+        parts.append(f"{serial} has flown {num_word(n)} times over {plural(months, 'month')}.")
+    else:
+        parts.append(f"{serial} has flown {num_word(n)} times.")
+
+    # 2. Mission mix. Grouped by family so it reads as a career, not a list.
+    counts = {}
+    for f in flights:
+        fam = mission_family(f.get("name")) or "other"
+        counts[fam] = counts.get(fam, 0) + 1
+
+    named = sorted(((k, v) for k, v in counts.items() if k != "other"),
+                   key=lambda kv: -kv[1])
+    if named:
+        top_fam, top_n = named[0]
+        if top_n == n:
+            # A single-purpose core. Listing one item as a breakdown reads badly.
+            parts.append(f"Every one of those was a {top_fam} mission.")
+        elif top_n >= n - 1:
+            parts.append(f"All but {plural(n - top_n, 'flight')} were {top_fam} missions.")
+        else:
+            bits = [f"{num_word(v)} {k}" for k, v in named[:3]]
+            leftover = n - sum(v for _, v in named[:3])
+            if leftover > 0:
+                bits.append(f"{num_word(leftover)} other")
+            parts.append(f"Its flights break down as {join_list(bits)}.")
+
+    # 3. Personal best turnaround.
+    gaps = []
+    for i in range(1, len(flights)):
+        g = days_between(flights[i - 1]["net"], flights[i]["net"])
+        if g is not None and g > 0:
+            gaps.append(g)
+    if gaps:
+        parts.append(f"Its quickest turnaround was {plural(min(gaps), 'day')}.")
+
+    # 4. Pad spread. Only interesting when it has moved around.
+    pads = {f.get("pad") for f in flights if f.get("pad")}
+    if len(pads) >= 3:
+        parts.append(f"It has flown from {num_word(len(pads))} different pads.")
+
+    # 5. Fleet rank. The best line available, when we have the fleet list.
+    if fleet and serial:
+        ahead = sum(1 for c in fleet if c.get("flights", 0) > n)
+        if ahead == 0:
+            parts.append("No core in the fleet has flown more.")
+        elif ahead <= 4:
+            parts.append(f"Only {num_word(ahead)} cores in the fleet have flown more.")
+
+    return " ".join(parts) if len(parts) >= 2 else None
+
+
+def career_label(history):
+    serial = (history or {}).get("serial") or ""
+    return f"{serial} CAREER" if serial else "BOOSTER CAREER"
+
+
 def program_card(launch, program_description):
     return program_description.strip() if program_description and program_description.strip() else None
 
@@ -340,7 +468,8 @@ def pad_card(launch):
 # slot selection
 # ============================================================
 
-def build_slots(launch, mode, description, program_description, rocket_fact):
+def build_slots(launch, mode, description, program_description, rocket_fact,
+                history=None, fleet=None):
     """
     Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
     A card claimed by slot A is skipped by slot B, so nothing appears twice.
@@ -350,6 +479,7 @@ def build_slots(launch, mode, description, program_description, rocket_fact):
     cards = {
         "brief":   ("MISSION BRIEF", brief),
         "booster": (booster_label(launch), booster_card(launch, mode)),
+        "career":  (career_label(history), booster_career_card(launch, history, fleet)),
         "pad":     ("PAD HISTORY", pad_card(launch)),
         "program": ("PROGRAM CONTEXT", program_card(launch, program_description)),
         "outlook": ("LAUNCH OUTLOOK", outlook_card(launch, mode)),
@@ -358,10 +488,14 @@ def build_slots(launch, mode, description, program_description, rocket_fact):
     }
 
     order_a = ["brief", "booster", "pad", "program"]
+    # Slot A usually takes the booster, which leaves the career for slot B.
+    # When slot A takes a real mission brief instead, the booster wins slot B
+    # and the career stands down. That is deliberate: this flight matters more
+    # than the back catalogue.
     if mode == "PRE_LAUNCH":
-        order_b = ["outlook", "booster", "cadence", "fact"]
+        order_b = ["outlook", "booster", "career", "cadence", "fact"]
     else:
-        order_b = ["booster", "cadence", "fact"]
+        order_b = ["booster", "career", "cadence", "fact"]
 
     used = set()
 
