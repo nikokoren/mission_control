@@ -1,0 +1,45 @@
+name: Update Rocket Launch Data
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-launch-data
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch launch data
+        run: |
+          UA="mission-control-trmnl (github.com/nikokoren)"
+          curl -sS --retry 3 --retry-delay 10 -H "User-Agent: $UA" \
+            "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=2&mode=detailed&hide_recent_previous=true&format=json" > upcoming.json
+          curl -sS --retry 3 --retry-delay 10 -H "User-Agent: $UA" \
+            "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=1&mode=detailed&format=json" > previous.json
+
+      - name: Build launch.json
+        run: python3 scripts/update_launch.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add launch.json
+
+          if git diff --staged --quiet; then
+            echo "No changes to launch.json, skipping commit"
+          else
+            git commit -m "Update launch data [$(date -u +'%Y-%m-%d %H:%M UTC')]"
+            git push
+            echo "Pushed."
+          fi
