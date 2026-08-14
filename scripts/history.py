@@ -37,6 +37,18 @@ def _get(url, timeout=20):
         return None
 
 
+def _name_of(value):
+    """
+    LL2 returns nested objects in detailed mode but bare strings in list mode
+    for some fields. Accept either without exploding.
+    """
+    if isinstance(value, dict):
+        return (value.get("name") or "").strip()
+    if isinstance(value, str):
+        return value.strip()
+    return ""
+
+
 def _cache_path(name):
     return os.path.join(CACHE_DIR, f"{name}.json")
 
@@ -71,8 +83,17 @@ def _write_cache(name, data):
 def get_booster_history(serial, flights_now):
     """
     Returns {'serial', 'flights', 'launches': [{'name','net','pad'}, ...]}
-    or None if unavailable. Never raises.
+    or None if unavailable. Never raises: the career card is a bonus and
+    must never be able to stop launch.json being written.
     """
+    try:
+        return _get_booster_history(serial, flights_now)
+    except Exception as e:
+        print(f"Warning: booster history lookup failed for {serial}: {e}")
+        return None
+
+
+def _get_booster_history(serial, flights_now):
     if not serial:
         return None
 
@@ -94,15 +115,21 @@ def get_booster_history(serial, flights_now):
         return None
 
     launches = []
-    for r in data.get("results") or []:
-        net = r.get("net")
-        if not net:
-            continue
-        launches.append({
-            "name": (r.get("name") or "").split(" | ")[-1].strip(),
-            "net": net,
-            "pad": ((r.get("pad") or {}).get("name") or "").strip(),
-        })
+    try:
+        for r in data.get("results") or []:
+            if not isinstance(r, dict):
+                continue
+            net = r.get("net")
+            if not net:
+                continue
+            launches.append({
+                "name": _name_of(r.get("name")).split(" | ")[-1].strip(),
+                "net": net,
+                "pad": _name_of(r.get("pad")),
+            })
+    except Exception as e:
+        print(f"Warning: could not parse booster history for {serial}: {e}")
+        return None
 
     if not launches:
         return None
@@ -120,7 +147,16 @@ def get_booster_history(serial, flights_now):
 def get_fleet(config_id):
     """
     Returns [{'serial','flights'}, ...] sorted most flown first, or None.
+    Never raises, for the same reason as get_booster_history.
     """
+    try:
+        return _get_fleet(config_id)
+    except Exception as e:
+        print(f"Warning: fleet lookup failed for config {config_id}: {e}")
+        return None
+
+
+def _get_fleet(config_id):
     if not config_id:
         return None
 
