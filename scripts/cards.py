@@ -387,7 +387,22 @@ def booster_career_card(launch, history=None, fleet=None):
         return None
 
     serial = history.get("serial") or ""
-    flights = history.get("launches") or []
+    all_flights = history.get("launches") or []
+
+    # The API returns upcoming launches too, so drop anything that has not
+    # happened yet. Otherwise a booster still on the pad gets credited with
+    # a flight it has not made.
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    flights = []
+    for f in all_flights:
+        try:
+            when = datetime.fromisoformat(str(f.get("net")).replace("Z", "+00:00"))
+            if when <= now:
+                flights.append(f)
+        except (ValueError, TypeError):
+            continue
+
     n = len(flights)
     if n < 3:
         # One or two flights is not a career worth summarising.
@@ -422,7 +437,8 @@ def booster_career_card(launch, history=None, fleet=None):
             bits = [f"{num_word(v)} {k}" for k, v in named[:3]]
             leftover = n - sum(v for _, v in named[:3])
             if leftover > 0:
-                bits.append(f"{num_word(leftover)} other")
+                noun = "other" if leftover == 1 else "others"
+                bits.append(f"{num_word(leftover)} {noun}")
             parts.append(f"Its flights break down as {join_list(bits)}.")
 
     # 3. Personal best turnaround.
