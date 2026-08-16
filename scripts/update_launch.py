@@ -14,7 +14,7 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from cards import build_slots, dig, short_pad
+from cards import build_slots, dig, short_pad, is_placeholder
 from history import get_booster_history, get_fleet
 from facts import get_rocket_fact
 
@@ -36,7 +36,7 @@ VOLATILE_FIELDS = ["countdown", "next_countdown"]
 # --- how long each launch holds the screen ---
 IMMINENT_HOURS = 1.5   # next launch this close always wins
 FRESH_HOURS = 4.0      # a result holds the screen at least this long
-QUIET_HOURS = 12.0      # if the next launch is further off than this, keep showing the result
+QUIET_HOURS = 6.0      # if the next launch is further off than this, keep showing the result
 STALE_HOURS = 24.0     # but never show a result older than this
 
 
@@ -248,13 +248,13 @@ def process_launch_data(launch, mode_override=None, with_history=False):
 
     description = ""
     desc = dig(launch, "mission", "description", default="")
-    if desc and "No description" not in desc and desc.strip() != "TBD":
+    if not is_placeholder(desc, launch.get("name", "")):
         description = desc.replace("\n", " ")[:600]
 
     program_description = ""
     if programs:
         p_desc = dig(programs[0], "description", default="")
-        if p_desc and "No description" not in p_desc:
+        if not is_placeholder(p_desc):
             program_description = p_desc.replace("\n", " ")[:400]
 
     image_url = ""
@@ -329,6 +329,13 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     win_start_ts = int(w_start.timestamp()) if w_start else date_ts
     win_end_ts = int(w_end.timestamp()) if w_end else date_ts
 
+    # LL2 uses the literal string "Unknown" for an unknown orbit, which is
+    # noise in a one line sidebar field. Fall back to the destination we do
+    # know something about, or nothing at all.
+    orbit_name = dig(launch, "mission", "orbit", "name", default="")
+    if orbit_name.strip().lower() in ("", "unknown", "n/a", "tbd"):
+        orbit_name = "TBD"
+
     m_name = launch_name.split(" | ")[-1]
     if "Unknown Payload" in m_name:
         m_name = rocket_name
@@ -346,7 +353,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "status": dig(launch, "status", "abbrev", default="TBD"),
         "image": image_url,
         "rocket": rocket_name,
-        "orbit": dig(launch, "mission", "orbit", "name", default="TBD"),
+        "orbit": orbit_name,
 
         # new: the two variable slots
         "slot_a_label": slot_a["label"],
