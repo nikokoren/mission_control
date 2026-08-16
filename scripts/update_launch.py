@@ -36,7 +36,7 @@ VOLATILE_FIELDS = ["countdown", "next_countdown"]
 # --- how long each launch holds the screen ---
 IMMINENT_HOURS = 1.5   # next launch this close always wins
 FRESH_HOURS = 4.0      # a result holds the screen at least this long
-QUIET_HOURS = 6.0      # if the next launch is further off than this, keep showing the result
+QUIET_HOURS = 12.0      # if the next launch is further off than this, keep showing the result
 STALE_HOURS = 24.0     # but never show a result older than this
 
 
