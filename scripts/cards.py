@@ -137,6 +137,56 @@ def short_pad(name):
 
 
 # ============================================================
+# junk detection
+# ============================================================
+
+# Things the API says when it has nothing to say. Matched after lowercasing
+# and stripping trailing punctuation, so "Details TBD." catches on "details tbd".
+PLACEHOLDER_TEXT = (
+    "tbd", "details tbd", "details are tbd", "to be determined",
+    "unknown", "details unknown", "payload unknown", "unknown payload",
+    "no description", "no description available", "n/a", "na", "none",
+    "information unavailable", "no information", "not available",
+    "classified", "details forthcoming",
+)
+
+# Shortest description that could plausibly say something. "Yaogan-42 remote
+# sensing satellite." is 35 characters and is legitimate, so the floor sits
+# below that. Anything under it is a stub rather than a brief.
+MIN_USEFUL_CHARS = 25
+
+
+def is_placeholder(text, name=""):
+    """
+    True when a description field is a stub rather than actual content.
+
+    The old check compared against the literal string "TBD", so "Details TBD."
+    passed straight through and rendered as a mission brief.
+    """
+    if not text:
+        return True
+
+    t = text.strip().rstrip(".!").strip().lower()
+    if not t:
+        return True
+
+    if t in PLACEHOLDER_TEXT:
+        return True
+
+    # "Details TBD" and friends, wherever the stub phrase sits in a short string
+    if len(t) < 60:
+        for p in PLACEHOLDER_TEXT:
+            if p in t and len(t) - len(p) < 15:
+                return True
+
+    # A description that only restates the mission name tells you nothing
+    if name and t == name.strip().rstrip(".").lower():
+        return True
+
+    return len(t) < MIN_USEFUL_CHARS
+
+
+# ============================================================
 # is the mission description worth showing?
 # ============================================================
 
@@ -146,7 +196,7 @@ def is_boilerplate(launch, description):
     flight. Catches Starlink, Kuiper, OneWeb, Guowang and anything else where
     the constellation name is also the mission name.
     """
-    if not description or not description.strip():
+    if is_placeholder(description, launch.get("name", "")):
         return True
 
     programs = launch.get("program") or []
@@ -503,7 +553,11 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         "fact":    ("DID YOU KNOW?", (rocket_fact or "").strip() or None),
     }
 
-    order_a = ["brief", "booster", "pad", "program"]
+    # Cadence and fact sit at the end as real fallbacks. Without them a
+    # launch with a stub description dropped straight to the hardcoded
+    # "details unavailable" line, which is just a different stub. Better to
+    # promote a card that always has something to say.
+    order_a = ["brief", "booster", "pad", "program", "cadence", "fact"]
     # Slot A usually takes the booster, which leaves the career for slot B.
     # When slot A takes a real mission brief instead, the booster wins slot B
     # and the career stands down. That is deliberate: this flight matters more
