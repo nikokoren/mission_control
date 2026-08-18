@@ -430,6 +430,92 @@ def get_rocket_fact(rocket_name, seed=""):
             "Hanbit-Nano's fuel is essentially high-grade candle wax, making it much safer to handle than traditional rocket fuels.",
             "Its name 'Hanbit' means 'One Light' or 'Great Light' in Korean.",
         ]
+    elif "zhuque-3" in r_name or "zq-3" in r_name:
+        facts = [
+            "Zhuque-3 is China's first stainless steel rocket, built the same way SpaceX builds Starship.",
+            "Zhuque-3's first stage is designed to fly again, landing on a pad downrange in the Gansu desert.",
+            "At 76.6 metres, Zhuque-3 is taller than any other Chinese commercial rocket flying today.",
+            "Zhuque-3 is built by LandSpace, a private company founded in 2015, not by the Chinese state.",
+            "Zhuque-3 burns methane and liquid oxygen, which leaves engines far cleaner than kerosene does.",
+            "Zhuque means 'Vermilion Bird', one of the four guardian creatures of Chinese constellations.",
+        ]
+    elif "zhuque" in r_name or "zq-2" in r_name:
+        facts = [
+            "Zhuque-2 was the first methane-fuelled rocket in the world to reach orbit, beating both SpaceX and Blue Origin to it.",
+            "Zhuque-2 is built by LandSpace, one of the first Chinese private companies licensed to build orbital rockets.",
+            "Methane engines can be reused far more often than kerosene ones, because kerosene leaves soot behind.",
+            "Zhuque-2's upgraded 2E variant lifts about 50% more payload than the original.",
+        ]
+    elif "kinetica" in r_name or "lijian" in r_name:
+        facts = [
+            "Kinetica-1 is a solid-fuelled rocket, so it can sit fuelled and ready for long periods before launch.",
+            "Kinetica-1 is built by CAS Space, a spinoff of the Chinese Academy of Sciences.",
+            "Kinetica-1 set a Chinese record on its first flight by carrying 26 satellites at once.",
+            "Its Chinese name Lijian means 'strong arrow'.",
+        ]
+    elif "tianlong" in r_name:
+        facts = [
+            "Tianlong-3 is designed by Space Pioneer to launch China's answer to Starlink.",
+            "Tianlong-3's first stage is intended to be recovered and reflown.",
+            "In 2024 a Tianlong-3 static fire test went wrong and the rocket tore free of its stand and flew briefly before crashing.",
+            "Tianlong means 'heavenly dragon'.",
+        ]
+    elif "gravity-1" in r_name or "yinli" in r_name:
+        facts = [
+            "Gravity-1 launches from a ship at sea rather than from a pad, so it can move to suit the orbit it needs.",
+            "Gravity-1 is the most powerful solid-fuelled rocket flying anywhere in the world.",
+            "Gravity-1 is built by Orienspace, a Chinese company founded in 2020.",
+            "Its Chinese name Yinli means 'gravity', the thing every rocket is built to escape.",
+        ]
+    elif "neutron" in r_name:
+        facts = [
+            "Neutron's fairing stays attached to the rocket and opens like a flower, then closes again for the trip home.",
+            "Neutron is built largely from carbon composite rather than metal, to save weight.",
+            "Neutron is Rocket Lab's answer to the Falcon 9, sized for constellation launches.",
+            "Neutron's upper stage hangs inside the first stage rather than sitting on top of it.",
+        ]
+    elif "long march 2c" in r_name:
+        facts = [
+            "The Long March 2C first flew in 1982 and is still in service, making it one of the longest-serving rockets anywhere.",
+            "The Long March 2C burns hypergolic propellants, which ignite on contact and need no ignition system at all.",
+            "Those same propellants are highly toxic, which is why launch crews wear full protective suits.",
+            "The Long March 2C has flown from all four of China's launch sites.",
+        ]
+    elif "long march 8" in r_name:
+        facts = [
+            "The Long March 8 was designed from the start for China's satellite constellation programmes.",
+            "The Long March 8 burns kerosene and liquid oxygen, far cleaner than the older hypergolic Long March rockets.",
+            "A version of the Long March 8 flies with no strap-on boosters at all, for lighter payloads.",
+            "The Long March 8 flies from Wenchang, China's newest and most southerly launch site.",
+        ]
+    elif "long march 4" in r_name:
+        facts = [
+            "The Long March 4 family specialises in sun-synchronous orbits, where a satellite passes over the same spot at the same local time every day.",
+            "The Long March 4B and 4C are three-stage rockets built for Earth observation and weather satellites.",
+            "The Long March 4C's third stage can restart in flight, which the 4B's cannot.",
+            "The Long March 4 family flies mostly from Taiyuan, in the mountains of Shanxi province.",
+        ]
+    elif "long march 11" in r_name:
+        facts = [
+            "The Long March 11 is China's only solid-fuelled Long March, and can launch within hours of the order being given.",
+            "The Long March 11 has launched from a converted barge in the Yellow Sea.",
+            "At under 21 metres the Long March 11 is by far the smallest rocket in the Long March family.",
+        ]
+    elif "long march 3" in r_name:
+        facts = [
+            "The Long March 3 family carries most of China's satellites to geostationary orbit, 36,000 km up.",
+            "The Long March 3B is China's most-flown rocket to high orbit, with four strap-on boosters.",
+            "The Long March 3 family's third stage burns liquid hydrogen, which must be kept below minus 253 degrees.",
+            "Long March 3 rockets launch from Xichang, deep in the mountains of Sichuan.",
+        ]
+    elif "long march" in r_name:
+        facts = [
+            "The Long March family is named after the Chinese Red Army's 9,000 km retreat in 1934.",
+            "The Long March family has flown more than 600 times since 1970.",
+            "Long March rockets have launched from four sites: Jiuquan, Taiyuan, Xichang and Wenchang.",
+            "The older Long March rockets burn hypergolic propellants that ignite on contact, needing no ignition system.",
+            "China now launches more Long March rockets in a year than most countries launch rockets of any kind.",
+        ]
     elif "new shepard" in r_name:
         facts = [
             "New Shepard is named after Alan Shepard, the first American to go to space.",
