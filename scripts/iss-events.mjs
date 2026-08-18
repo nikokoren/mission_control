@@ -14,8 +14,11 @@
 //   1. LL2 may only publish a spacewalk record once it has been logged,
 //      which can be after the EVA ends. So we ALSO look for one that
 //      finished recently and report it as just-completed.
-//   2. Planned EVAs often appear in /event/ (type "Spacewalk") before
-//      they appear in /spacewalks/. That is the fallback below.
+//   2. Planned EVAs appear in /event/ before they appear in /spacewalks/.
+//      Confirmed live on 2026-08-18: US EVA-97 was in /event/previous/
+//      with type "EVA" while /spacewalks/ still ended at 6 August. The
+//      regex below matches both "EVA" and "Spacewalk" since the API has
+//      used both.
 //
 // Every LL2 call and every candidate record is logged, so if this still
 // reports no event the Action log says exactly which stage saw what.
@@ -44,6 +47,13 @@ const isISS = (loc) => {
 };
 
 const hoursFrom = (ms) => (now - ms) / 36e5;
+
+// "0h in" reads like a rounding error in the first hour, so report minutes
+// until there is a whole hour to report.
+const elapsedSince = (ms) => {
+  const mins = Math.max(0, Math.floor((now - ms) / 6e4));
+  return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h`;
+};
 
 // One call to LL2. Never throws: on any problem it logs what went
 // wrong and returns an empty result so the script can continue.
@@ -104,11 +114,10 @@ async function computeEvent() {
         .join(" & ");
 
       if (now >= start.getTime() && now <= end.getTime()) {
-        const hoursIn = Math.floor((now - start.getTime()) / 36e5);
         activeEvent = {
           has_event: true,
           type: "EVA",
-          short_info: `EVA Active (${hoursIn}h in): Astronauts ${crewNames || "crew"} are working outside.`
+          short_info: `EVA Active (${elapsedSince(start.getTime())} in): Astronauts ${crewNames || "crew"} are working outside.`
         };
         break;
       }
@@ -148,11 +157,10 @@ async function computeEvent() {
         console.log(`  event candidate: "${e.name}" type=${typeName} date=${e.date}`);
 
         if (now >= start.getTime() && now <= end.getTime()) {
-          const hoursIn = Math.floor((now - start.getTime()) / 36e5);
           activeEvent = {
             has_event: true,
             type: "EVA",
-            short_info: `EVA Active (${hoursIn}h in): Astronauts are working outside.`
+            short_info: `EVA Active (${elapsedSince(start.getTime())} in): Astronauts are working outside.`
           };
           break;
         }
