@@ -28,6 +28,39 @@ REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
 REUSABLE_ROCKETS = ["falcon", "starship", "new glenn", "electron", "new shepard"]
 
 # Image file key prefixes (no spaces). Used to decide if a _landed drawing exists.
+# Keys that get a _landed drawing after a successful landing. A key listed
+# here MUST have a <key>_landed.png in the repo, or the image 404s and the
+# onerror fallback shows a rocket standing on a pad after it has already
+# flown, which is worse than the empty pad. Add "zhuque3" and "neutron" here
+# once their landed art exists; until then they correctly show empty.png.
+# Variant art falls back to the family drawing before it falls back to
+# generic. This is what lets you add a variant PNG later and have it picked
+# up with no code change: draw atlasv_551_idle.png, commit it, done. Until
+# then an Atlas V 551 quietly shows the plain Atlas V.
+#
+# Keys not listed here have no family drawing and go straight to generic.
+BASE_KEY = {
+    "falcon9_crew": "falcon9",
+    "soyuz_crew":   "soyuz",
+    "atlasv_551":   "atlasv",
+    "atlasv_n22":   "atlasv",
+    "ariane_62":    "ariane6",
+    "ariane_64":    "ariane6",
+    "ceres_2":      "ceres",
+    "cz_5b":        "cz_5",
+    "cz_6a":        "cz_6",
+    "cz_6c":        "cz_6",
+    "cz_7a":        "cz_7",
+    # Any Long March without its own drawing falls back to the generic
+    # Long March silhouette, which is much closer than the question-mark
+    # rocket. cz_classic is itself undrawn, so today these still reach
+    # generic; drawing cz_classic once would improve every one of them.
+    "cz_2c": "cz_classic", "cz_2d": "cz_classic", "cz_2f": "cz_classic",
+    "cz_3a": "cz_classic", "cz_3b": "cz_classic", "cz_3c": "cz_classic",
+    "cz_4b": "cz_classic", "cz_4c": "cz_classic", "cz_7":  "cz_classic",
+    "cz_8":  "cz_classic", "cz_11": "cz_classic", "cz_12": "cz_classic",
+}
+
 LANDABLE_KEYS = ["falcon9", "falconheavy", "starship", "newglenn", "electron", "newshepard"]
 
 # Fields that change every run and should not force a commit on their own.
@@ -165,6 +198,19 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
         elif "long march 4c" in r: key = "cz_4c"
         elif "long march 11" in r: key = "cz_11"
         elif "long march" in r: key = "cz_classic"
+
+        # --- Chinese commercial vehicles ---
+        # Checked before the generic fallbacks. Zhuque-3 must come before the
+        # plain "zhuque" test or the reusable would be caught by the Zhuque-2
+        # branch. LL2 uses both the Chinese and the western name for some of
+        # these, so match either.
+        elif "zhuque-3" in r or "zq-3" in r: key = "zhuque3"
+        elif "zhuque" in r or "zq-2" in r: key = "zhuque2"
+        elif "kinetica" in r or "lijian" in r: key = "kinetica1"
+        elif "tianlong" in r: key = "tianlong3"
+        elif "gravity-1" in r or "yinli" in r: key = "gravity1"
+
+        elif "neutron" in r: key = "neutron"
         elif "electron" in r: key = "electron"
         elif "firefly" in r: key = "firefly"
         elif "minotaur" in r: key = "minotaur"
@@ -189,9 +235,14 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
         else:
             key, suffix = "empty", ""
 
-    if key == "empty":
-        return f"{repo_url}/rockets/empty.png"
-    return f"{repo_url}/rockets/{key}{suffix}.png"
+    url = f"{repo_url}/rockets/{key}{suffix}.png"
+
+    # The family drawing for this key, if there is one and it is not the key
+    # itself. Same suffix, so an ascent variant falls back to an ascent family
+    # drawing rather than an idle one.
+    base = BASE_KEY.get(key)
+    alt = f"{repo_url}/rockets/{base}{suffix}.png" if base and base != key else ""
+    return url, alt
 
 
 def is_resolved(launch):
@@ -327,8 +378,8 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         vis_status = "AWAITING CONFIRMATION"
     mission_type = dig(launch, "mission", "type", default="")
 
-    vis_url = get_rocket_image_url(rocket_name, vis_status, success, mission_type, launch_name, REPO_BASE)
-    generic_url = get_rocket_image_url("generic", vis_status, success, mission_type, launch_name, REPO_BASE)
+    vis_url, vis_alt = get_rocket_image_url(rocket_name, vis_status, success, mission_type, launch_name, REPO_BASE)
+    generic_url, _ = get_rocket_image_url("generic", vis_status, success, mission_type, launch_name, REPO_BASE)
 
     date_ts = int(target_dt.timestamp())
     w_start = parse_time(launch.get("window_start"))
@@ -373,6 +424,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "footer_recovery": footer_recovery,
 
         "rocket_visual": vis_url,
+        "rocket_visual_alt": vis_alt,
         "generic_visual": generic_url,
 
         # kept so the current template keeps working until you swap it
