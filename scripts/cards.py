@@ -534,11 +534,44 @@ def pad_card(launch):
 # slot selection
 # ============================================================
 
+# ============================================================
+# card rotation
+# ============================================================
+
+SETTLE_HOURS = 12   # inside this, always the canonical pair
+ROTATE_EVERY = 12   # hours per tier beyond that
+
+# Pairs of RANK indexes into the available card list, best first. Tier 0 is
+# what shows closest to launch and is always the canonical pair, so nothing
+# about the run up to a launch changes. Each later tier is further out and
+# reaches deeper into the list.
+ROTATION_SCHEDULE = [
+    (0, 1),   # inside SETTLE_HOURS: the two best
+    (0, 2),   # one tier out: best kept, second swapped
+    (1, 3),   # two tiers out
+    (2, 3),   # three or more: the deep cuts
+]
+
+
+def rotation_tier(hours_until):
+    """Which schedule tier applies. Monotonic: content only gets more
+    important as T-0 approaches, and never goes backwards."""
+    if hours_until is None or hours_until <= SETTLE_HOURS:
+        return 0
+    tier = int((hours_until - SETTLE_HOURS) // ROTATE_EVERY) + 1
+    return min(tier, len(ROTATION_SCHEDULE) - 1)
+
+
 def build_slots(launch, mode, description, program_description, rocket_fact,
-                history=None, fleet=None):
+                history=None, fleet=None, hours_until=None):
     """
     Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
     A card claimed by slot A is skipped by slot B, so nothing appears twice.
+
+    When a launch is more than SETTLE_HOURS away, the pairing rotates through
+    the deeper cards so a display watched over two days does not show the same
+    two cards the whole time. Everything shown is still about the launch in
+    the header; only which cards are chosen changes.
     """
     brief = None if is_boilerplate(launch, description) else description.strip()
 
@@ -568,6 +601,7 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         order_b = ["booster", "career", "cadence", "fact"]
 
     used = set()
+    picked = []
 
     def take(order):
         for key in order:
@@ -576,7 +610,9 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
             label, text = cards[key]
             if text:
                 used.add(key)
+                picked.append(key)
                 return {"label": label, "text": text}
+        picked.append(None)
         return None
 
     slot_a = take(order_a) or {
@@ -585,4 +621,35 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     }
     slot_b = take(order_b) or {"label": "", "text": ""}
 
-    return slot_a, slot_b
+    # ---- rotation ----
+    # Only pre-launch: post-launch, hours_until refers to the NEXT launch
+    # while the display is showing the previous one, so it means nothing here.
+    tier = rotation_tier(hours_until) if mode == "PRE_LAUNCH" else 0
+    if tier == 0:
+        return slot_a, slot_b
+
+    # Ranked list, canonical pair first. Building it this way guarantees that
+    # tier 0 reproduces the existing selection exactly for every launch, so
+    # rotation can only ever change what happens far from launch.
+    ranked = [k for k in picked if k]
+    for key in order_a + order_b:
+        if key in ranked:
+            continue
+        if cards[key][1]:
+            ranked.append(key)
+
+    if len(ranked) < 3:
+        return slot_a, slot_b
+
+    a_i, b_i = ROTATION_SCHEDULE[tier]
+    a_i = min(a_i, len(ranked) - 1)
+    b_i = min(b_i, len(ranked) - 1)
+    if a_i == b_i:
+        b_i = a_i - 1 if a_i > 0 else 1
+        b_i = min(b_i, len(ranked) - 1)
+
+    def as_slot(key):
+        label, text = cards[key]
+        return {"label": label, "text": text}
+
+    return as_slot(ranked[a_i]), as_slot(ranked[b_i])
