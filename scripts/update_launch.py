@@ -380,8 +380,18 @@ def process_launch_data(launch, mode_override=None, with_history=False):
                 fleet = get_fleet(dig(launch, "rocket", "configuration", "id"))
 
     # --- the two variable slots ---
+    # Hours to this launch, used only to decide the rotation tier. Derived
+    # here from the launch's own date rather than plumbed down from
+    # choose_target, which computes it for a different purpose.
+    hours_until = None
+    try:
+        hours_until = (target_dt - now).total_seconds() / 3600.0
+    except (TypeError, NameError):
+        pass
+
     slot_a, slot_b = build_slots(launch, mode, description, program_description,
-                                 rocket_fact, history=history, fleet=fleet)
+                                 rocket_fact, history=history, fleet=fleet,
+                                 hours_until=hours_until)
 
     vis_status = dig(launch, "status", "abbrev", default="TBD")
     if vis_status == "PENDING":
