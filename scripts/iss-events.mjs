@@ -27,7 +27,10 @@ const LL2_API_BASE = "https://ll.thespacedevs.com/2.2.0";
 const POST_EVENT_WINDOW_HOURS = 4;
 const ISS_STATION_ID = 4;
 const CALL_TIMEOUT_MS = 30000; // how long we wait for LL2 to answer
-const EVA_ASSUMED_HOURS = 8;   // used when a record has no end time
+const EVA_ASSUMED_HOURS = 6.5; // used when a record has no end time. US EVAs
+                               // run about 6 to 7 hours; Russian ones can go
+                               // longer, so this errs slightly short rather
+                               // than showing a finished EVA as active.
 
 const PUSH_TOKEN = process.env.PUSH_TOKEN;
 const WORKER_URL = process.env.WORKER_URL;
@@ -50,6 +53,21 @@ const hoursFrom = (ms) => (now - ms) / 36e5;
 
 // "0h in" reads like a rounding error in the first hour, so report minutes
 // until there is a whole hour to report.
+// Russian ISS spacewalks are VKD (внекорабельная деятельность), numbered
+// separately from the US EVA series, so "VKD-65" rather than "US EVA-97".
+// Checked against the name and the crew's agency, because either can be
+// missing depending on which endpoint the record came from.
+const isRussian = (name, agencyNames) => {
+  if (/\bvkd\b/i.test(String(name || ""))) return true;
+  return (agencyNames || []).some(a => /roscosmos|russian federal/i.test(String(a || "")));
+};
+
+// Alternate the wording each run. Derived from the clock rather than
+// Math.random() so it actually alternates: random would repeat itself half
+// the time, which on a 30 minute cron means stretches of two hours with no
+// change. This flips every 30 minutes, matching the cron.
+const phraseIndex = Math.floor(now / 18e5) % 2;
+
 const elapsedSince = (ms) => {
   const mins = Math.max(0, Math.floor((now - ms) / 6e4));
   return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h`;
@@ -114,10 +132,16 @@ async function computeEvent() {
         .join(" & ");
 
       if (now >= start.getTime() && now <= end.getTime()) {
+        const agencies = (eva.crew || []).map(c => c?.astronaut?.agency?.name);
+        const noun = isRussian(eva.name, agencies) ? "Cosmonauts" : "Astronauts";
+        const who = crewNames || "crew";
+        const line = phraseIndex === 0
+          ? `${noun} ${who} are working outside.`
+          : `${crewNames || "Crew"} are outside the station.`;
         activeEvent = {
           has_event: true,
           type: "EVA",
-          short_info: `EVA Active (${elapsedSince(start.getTime())} in): Astronauts ${crewNames || "crew"} are working outside.`
+          short_info: `EVA Active (${elapsedSince(start.getTime())} in): ${line}`
         };
         break;
       }
@@ -146,7 +170,7 @@ async function computeEvent() {
       const prevEv = await getJson("/event/previous/?limit=5");
       for (const e of [...(prevEv.results || []), ...(ev.results || [])]) {
         const typeName = e.type?.name || "";
-        if (!/spacewalk|eva/i.test(typeName + " " + (e.name || ""))) continue;
+        if (!/spacewalk|eva|vkd/i.test(typeName + " " + (e.name || ""))) continue;
         if (!isISS(e.location) && !isISS(e.name)) continue;
         // Press events about spacewalks are not spacewalks.
         if (/briefing|preview|press|conference/i.test(e.name || "")) continue;
@@ -154,13 +178,20 @@ async function computeEvent() {
         const start = new Date(e.date);
         if (isNaN(start)) continue;
         const end = new Date(start.getTime() + EVA_ASSUMED_HOURS * 36e5);
-        console.log(`  event candidate: "${e.name}" type=${typeName} date=${e.date}`);
+        console.log(`  event candidate: "${e.name}" type=${typeName} date=${e.date} ` +
+                    `loc="${e.location || ""}" dur=${e.duration || "(none)"} ` +
+                    `desc="${String(e.description || "").slice(0, 120)}"`);
 
         if (now >= start.getTime() && now <= end.getTime()) {
+          const agencies = (e.agencies || []).map(a => a?.name);
+          const noun = isRussian(e.name, agencies) ? "Cosmonauts" : "Astronauts";
+          const line = phraseIndex === 0
+            ? `${noun} are working outside.`
+            : "Crew are outside the station.";
           activeEvent = {
             has_event: true,
             type: "EVA",
-            short_info: `EVA Active (${elapsedSince(start.getTime())} in): Astronauts are working outside.`
+            short_info: `EVA Active (${elapsedSince(start.getTime())} in): ${line}`
           };
           break;
         }
