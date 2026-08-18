@@ -15,6 +15,7 @@ import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 API = "https://ll.thespacedevs.com/2.2.0"
@@ -50,7 +51,10 @@ def _name_of(value):
 
 
 def _cache_path(name):
-    return os.path.join(CACHE_DIR, f"{name}.json")
+    # Keep serials with spaces or slashes from turning into odd filenames
+    # or stray directories.
+    safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in str(name))
+    return os.path.join(CACHE_DIR, f"{safe}.json")
 
 
 def _read_cache(name):
@@ -103,7 +107,14 @@ def _get_booster_history(serial, flights_now):
         return cached
 
     print(f"Booster history for {serial}: fetching")
-    url = f"{API}/launch/?serial_number={serial}&mode=list&limit=40&format=json"
+    # Serials are not always a single token: Zhuque-3's is "ZQ-3 F2", and a
+    # raw space makes urllib refuse the request outright. Every serial seen
+    # before this was one word, so the bug sat unnoticed until a Chinese
+    # reusable turned up. quote() covers spaces and anything else unsafe.
+    url = (
+        f"{API}/launch/?serial_number={urllib.parse.quote(serial)}"
+        "&mode=list&limit=40&format=json"
+    )
     data = _get(url)
     if not data:
         return cached  # stale beats nothing
