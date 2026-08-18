@@ -15,6 +15,7 @@ Two ideas hold this together:
 """
 
 import re
+from datetime import datetime, timezone
 
 
 # ============================================================
@@ -123,7 +124,6 @@ def mission_family(name):
 
 def days_between(iso_a, iso_b):
     """Whole days between two ISO timestamps. None if either is unusable."""
-    from datetime import datetime
     try:
         a = datetime.fromisoformat(str(iso_a).replace("Z", "+00:00"))
         b = datetime.fromisoformat(str(iso_b).replace("Z", "+00:00"))
@@ -280,31 +280,71 @@ def is_schedule_change(comment):
     return low.startswith("net ") or any(h in low for h in SCHEDULE_HINTS)
 
 
+def _iso(value):
+    """Parse an LL2 timestamp, or None. Never raises."""
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _ago(dt, now=None):
+    """'4 days ago', 'yesterday', 'this morning'. None if undatable."""
+    if dt is None:
+        return None
+    now = now or datetime.now(timezone.utc)
+    try:
+        days = (now - dt).total_seconds() / 86400.0
+    except TypeError:
+        return None
+    if days < 0:
+        return None
+    if days < 0.5:
+        return "in the last few hours"
+    if days < 1.5:
+        return "yesterday"
+    if days < 14:
+        return f"{int(round(days))} days ago"
+    if days < 60:
+        return f"{int(round(days / 7))} weeks ago"
+    return f"{int(round(days / 30))} months ago"
+
+
 def outlook_card(launch, mode):
     """
     Pre-launch only. How much to trust the countdown.
     Returns None on a clean launch, which is the common case and correct:
     there is no value in printing "everything is fine".
+
+    The card only earns a slot when it has something real to say. A single
+    slip on its own is not news; two or more, a hold, an unconfirmed T-0 or
+    a weather call are.
     """
     if mode != "PRE_LAUNCH":
         return None
 
     parts = []
+    strong = False   # does this card deserve to outrank the fallbacks?
 
     status = dig(launch, "status", "abbrev", default="")
     if status == "TBC":
         parts.append("The T-0 is unconfirmed.")
+        strong = True
     elif status == "TBD":
         parts.append("No confirmed launch time yet.")
+        strong = True
 
     note = VAGUE_PRECISION.get((dig(launch, "net_precision", "abbrev", default="") or "").upper())
     if note:
         parts.append(note)
+        strong = True
 
-    # Slip history is the best predictor of another slip.
+    # Slip history is the best predictor of another slip. Two or more is a
+    # pattern; one is just a launch.
     updates = launch.get("updates") or []
     changes = [u for u in updates if is_schedule_change(u.get("comment"))]
     if len(changes) >= 2:
+        strong = True
         first = min((u.get("created_on") or "")[:4] for u in changes)
         n = len(changes)
         if first and first.isdigit() and int(first) < 2026:
@@ -312,8 +352,21 @@ def outlook_card(launch, mode):
         else:
             parts.append(f"This one has already moved {n} times.")
 
+        # When it last moved matters as much as how often. A launch that
+        # slipped four times but has held for a fortnight is in better shape
+        # than one that moved this morning.
+        latest = max((_iso(u.get("created_on")) for u in changes if _iso(u.get("created_on"))),
+                     default=None)
+        when = _ago(latest)
+        if when:
+            if status == "Go":
+                parts.append(f"The current time was set {when} and has held since.")
+            else:
+                parts.append(f"It last moved {when}.")
+
     prob = launch.get("probability")
     if isinstance(prob, int) and prob >= 0:
+        strong = True
         if prob >= 80:
             parts.append(f"Weather is {prob}% favourable.")
         elif prob >= 50:
@@ -323,13 +376,36 @@ def outlook_card(launch, mode):
 
     concerns = (launch.get("weather_concerns") or "").strip()
     if concerns:
+        strong = True
         parts.append(f"Forecasters are watching {concerns.rstrip('.').lower()}.")
 
     hold = (launch.get("holdreason") or "").strip()
     if hold:
+        strong = True
         parts.append(f"Currently holding: {hold.rstrip('.')}.")
 
-    return " ".join(parts) if parts else None
+    # The launch window is context rather than a warning, so it never makes
+    # the card strong on its own, but it adds substance when the card exists.
+    if parts:
+        ws = _iso(launch.get("window_start"))
+        we = _iso(launch.get("window_end"))
+        if ws and we:
+            mins = (we - ws).total_seconds() / 60.0
+            if mins <= 1:
+                parts.append("The window is instantaneous, so it goes on time or not at all.")
+            elif mins < 60:
+                # Sub-hour windows are common and were silently skipped by an
+                # earlier version of this rule, which only handled the two
+                # extremes. A 37 minute window is worth saying out loud.
+                parts.append(f"The window is only {int(round(mins))} minutes wide.")
+            else:
+                hours = mins / 60.0
+                shown = int(hours) if abs(hours - round(hours)) < 0.1 else round(hours, 1)
+                parts.append(f"There is a {shown} hour window to work with.")
+
+    if not parts or not strong:
+        return None
+    return " ".join(parts)
 
 
 def booster_card(launch, mode):
@@ -596,7 +672,10 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     # and the career stands down. That is deliberate: this flight matters more
     # than the back catalogue.
     if mode == "PRE_LAUNCH":
-        order_b = ["outlook", "booster", "career", "cadence", "fact"]
+        # Outlook sits AFTER the booster cards. A slip history is real
+        # information, but "this has moved twice" is thinner than a named
+        # booster on its 18th flight, and it used to outrank it.
+        order_b = ["booster", "career", "outlook", "cadence", "fact"]
     else:
         order_b = ["booster", "career", "cadence", "fact"]
 
