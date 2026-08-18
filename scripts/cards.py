@@ -672,10 +672,26 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     # and the career stands down. That is deliberate: this flight matters more
     # than the back catalogue.
     if mode == "PRE_LAUNCH":
-        # Outlook sits AFTER the booster cards. A slip history is real
-        # information, but "this has moved twice" is thinner than a named
-        # booster on its 18th flight, and it used to outrank it.
-        order_b = ["booster", "career", "outlook", "cadence", "fact"]
+        # Outlook normally sits AFTER the booster cards: "this has moved
+        # twice" is thinner than a named booster on its 18th flight.
+        #
+        # But a BRAND NEW core has no history to tell. "ZQ-3 F2 is a brand
+        # new core" is thinner than a slip record, so on a first flight the
+        # order flips and outlook goes first. This is the Zhuque-3 case.
+        first_flight = True
+        try:
+            stage = (dig(launch, "rocket", "launcher_stage", default=[]) or [{}])[0]
+            flights = dig(stage, "launcher", "flights", default=None)
+            n = dig(stage, "launcher_flight_number", default=None)
+            first_flight = not ((isinstance(flights, int) and flights > 1)
+                                or (isinstance(n, int) and n > 1))
+        except (IndexError, TypeError, AttributeError):
+            pass
+
+        if first_flight:
+            order_b = ["career", "outlook", "booster", "cadence", "fact"]
+        else:
+            order_b = ["booster", "career", "outlook", "cadence", "fact"]
     else:
         order_b = ["booster", "career", "cadence", "fact"]
 
