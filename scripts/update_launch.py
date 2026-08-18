@@ -257,12 +257,19 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         if not is_placeholder(p_desc):
             program_description = p_desc.replace("\n", " ")[:400]
 
+    # A real mission patch is square by convention and fills a square box
+    # nicely. The provider logo fallback is usually a wide wordmark, which
+    # either distorts or shrinks to illegibility in the same box, so the
+    # views need to know which one they were handed.
     image_url = ""
+    image_is_patch = False
     patches = launch.get("mission_patches") or []
     if patches:
         image_url = dig(patches[0], "image_url", default="")
+        image_is_patch = bool(image_url)
     if not image_url:
         image_url = dig(launch, "launch_service_provider", "logo_url", default="")
+        image_is_patch = False
 
     pad_name = short_pad(dig(launch, "pad", "name", default="Unknown Pad"))
     if pad_name.isdigit():
@@ -352,6 +359,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "countdown": get_countdown(target_dt),
         "status": dig(launch, "status", "abbrev", default="TBD"),
         "image": image_url,
+        "image_is_patch": image_is_patch,
         "rocket": rocket_name,
         "orbit": orbit_name,
 
