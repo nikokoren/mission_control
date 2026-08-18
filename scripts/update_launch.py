@@ -178,7 +178,17 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
             else: key = "atlasv"
         elif "ariane 62" in r: key = "ariane_62"
         elif "ariane" in r: key = "ariane6"
-        elif "soyuz" in r: key = "soyuz"
+        elif "soyuz" in r:
+            # Crewed Soyuz carries the launch escape tower with its flared
+            # stabiliser fins and stands roughly 5m taller than the Fregat
+            # satellite configuration, so it is a genuinely different
+            # silhouette rather than a detail. Same split as Falcon 9.
+            # "soyuz ms" catches the spacecraft name in launches like
+            # "Soyuz 2.1a | Soyuz MS-29" even when mission_type is unset.
+            if "human" in m_type or "crew" in m_name or "soyuz ms" in m_name:
+                key = "soyuz_crew"
+            else:
+                key = "soyuz"
         elif "h3" in r: key = "h3"
         elif "antares" in r: key = "antares"
         elif "delta" in r: key = "delta4"
