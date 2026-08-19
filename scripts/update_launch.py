@@ -11,6 +11,7 @@ Run locally with:
 
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -47,6 +48,14 @@ BASE_KEY = {
     "ariane_62":    "ariane6",
     "ariane_64":    "ariane6",
     "ceres_2":      "ceres",
+    "vulcan_vc0s": "vulcan",
+    "vulcan_vc0l": "vulcan",
+    "vulcan_vc2s": "vulcan",
+    "vulcan_vc2l": "vulcan",
+    "vulcan_vc4s": "vulcan",
+    "vulcan_vc4l": "vulcan",
+    "vulcan_vc6s": "vulcan",
+    "vulcan_vc6l": "vulcan",
     "cz_5b":        "cz_5",
     "cz_6a":        "cz_6",
     "cz_6c":        "cz_6",
@@ -171,7 +180,17 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
         elif "long march 12" in r: key = "cz_12"
         elif "lvm3" in r: key = "lvm3"
         elif "ariane 64" in r: key = "ariane_64"
-        elif "vulcan" in r: key = "vulcan"
+        elif "vulcan" in r:
+            # ULA names Vulcan by booster count and fairing length: VC2S,
+            # VC4L and so on. The digit is the number of solid boosters
+            # (0, 2, 4 or 6) and the letter is the fairing, S standard or
+            # L long. Both are visible and the long fairing is about 6m
+            # taller, which matters for a drawing meant to show scale.
+            m = re.search(r"vc\s*([0246])\s*([sl])?", r)
+            if m:
+                key = f"vulcan_vc{m.group(1)}{m.group(2) or 's'}"
+            else:
+                key = "vulcan"
         elif "atlas" in r:
             if "n22" in r: key = "atlasv_n22"
             elif "551" in r: key = "atlasv_551"
