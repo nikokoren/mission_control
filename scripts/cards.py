@@ -661,7 +661,12 @@ ORBIT_NOTES = {
 def _flight_gaps(history):
     """Days between consecutive flights of this core, derived the same way
     the career card does it. The cache stores flights, not gaps."""
-    flights = (history or {}).get("flights") or []
+    # The cache stores the flight list under "launches"; "flights" is an
+    # integer count, and reading that one instead is what produced
+    # "object of type 'int' has no len()".
+    flights = (history or {}).get("launches") or []
+    if not isinstance(flights, list):
+        return []
     gaps = []
     for i in range(1, len(flights)):
         g = days_between(flights[i - 1].get("net"), flights[i].get("net"))
