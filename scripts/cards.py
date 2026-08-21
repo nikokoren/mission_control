@@ -15,7 +15,7 @@ Two ideas hold this together:
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 # ============================================================
@@ -543,7 +543,7 @@ def booster_career_card(launch, history=None, fleet=None):
     # The API returns upcoming launches too, so drop anything that has not
     # happened yet. Otherwise a booster still on the pad gets credited with
     # a flight it has not made.
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
     now = datetime.now(timezone.utc)
     flights = []
     for f in all_flights:
@@ -799,8 +799,25 @@ def booster_next_card(launch, history):
     avg = sum(gaps) / len(gaps)
     best = min(gaps)
     parts = [f"{serial} has averaged {int(round(avg))} days between flights, "
-             f"its quickest turnaround being {int(round(best))}."]
-    parts.append(f"On past form it should be back on a pad within about {int(round(avg))} days.")
+             f"with a best of {int(round(best))}."]
+
+    # A date beats a duration: "around mid October" is something you can read,
+    # where "in about 43 days" is arithmetic. Counted from THIS launch, not
+    # from now, so the answer does not drift as the card sits on screen.
+    #
+    # An earlier version restated the average here ("within about 43 days"),
+    # which repeated the number in the first sentence and misused a mean as
+    # an upper bound: by definition half its flights take longer than that.
+    when = _iso(launch.get("net"))
+    if when is not None:
+        try:
+            nxt = when + timedelta(days=avg)
+            day = nxt.day
+            part = "early" if day <= 10 else ("mid" if day <= 20 else "late")
+            parts.append(f"On that form it should fly again around {part} "
+                         f"{nxt.strftime('%B')}.")
+        except (OverflowError, ValueError):
+            pass
     return " ".join(parts)
 
 
