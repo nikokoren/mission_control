@@ -190,6 +190,15 @@ def is_placeholder(text, name=""):
 # is the mission description worth showing?
 # ============================================================
 
+# Programmes that fly often enough that their blurb stops being news. Not a
+# judgement on the programme, just on how many times you have read the same
+# sentence: Starlink alone is roughly 40% of world launches.
+HIGH_CADENCE_PROGRAMS = (
+    "starlink", "kuiper", "oneweb", "guowang", "satnet", "qianfan",
+    "thousand sails", "transporter", "bandwagon",
+)
+
+
 def is_boilerplate(launch, description):
     """
     True when the description is really about the programme rather than this
@@ -203,8 +212,18 @@ def is_boilerplate(launch, description):
     if programs:
         pname = (dig(programs[0], "name", default="") or "").strip().lower()
         mname = (launch.get("name") or "").lower()
-        if pname and len(pname) > 3 and pname in mname:
-            return True
+        # Only for programmes that fly constantly. This used to fire on ANY
+        # name match, which quietly binned the mission brief for Artemis II,
+        # Shenzhou 22 and Gaofen 14: their names contain the programme name
+        # but they fly rarely and their descriptions are real. The signal
+        # that makes a blurb worthless is frequency, not naming.
+        # Match on significant words, not the whole string: the programme is
+        # "Project Kuiper" while the mission is "Kuiper Atlas 3", so a plain
+        # substring test misses it.
+        pwords = [w for w in pname.split() if len(w) > 3]
+        if pwords and any(w in mname for w in pwords):
+            if any(h in pname for h in HIGH_CADENCE_PROGRAMS):
+                return True
 
     # A description that is basically the programme blurb adds nothing.
     if programs:
@@ -604,7 +623,59 @@ def career_label(history):
 
 
 def program_card(launch, program_description):
-    return program_description.strip() if program_description and program_description.strip() else None
+    """
+    Context on the wider programme, for launches where that is not already
+    obvious from the mission name.
+
+    This used to be a bare passthrough, which meant the exact text
+    is_boilerplate had just rejected as a mission brief came straight back
+    under a different heading. A Starlink launch printed "Starlink is a
+    satellite internet constellation operated by SpaceX" as PROGRAM CONTEXT,
+    which is the least informative sentence the plugin can produce.
+
+    Three ways a programme blurb earns nothing:
+
+      1. The programme name is in the mission name. "Starlink Group 10-39"
+         already says Starlink. So does Kuiper, OneWeb and Transporter.
+      2. It repeats the mission description we are already showing.
+      3. The programme flies constantly. Frequency is the real signal here:
+         the blurb is worth reading the first time and worthless the
+         fortieth, and how often you have seen it tracks how often that
+         programme launches.
+    """
+    text = (program_description or "").strip()
+    if not text:
+        return None
+
+    programs = launch.get("program") or []
+    pname = (dig(programs[0], "name", default="") if programs else "") or ""
+    pname = pname.strip().lower()
+    mname = (launch.get("name") or "").lower()
+
+    # 1. The mission name already carries the programme name AND the
+    #    description was boilerplate, so there is nothing else being shown
+    #    and the blurb would be the only thing on screen saying the same
+    #    word twice.
+    #
+    #    Conditioning on the description matters: "Artemis II" contains
+    #    "Artemis", but Artemis flies once a year or two and its blurb is
+    #    real context alongside a real mission description. A blanket
+    #    name-match test suppressed it, which was wrong.
+    if pname and len(pname) > 3 and pname in mname:
+        if is_boilerplate(launch, dig(launch, "mission", "description", default="") or ""):
+            return None
+
+    # 2. the same text as the description already on screen
+    desc = (dig(launch, "mission", "description", default="") or "").lower()
+    if desc and text[:60].lower() in desc:
+        return None
+
+    # 3. high-cadence programmes. These fly often enough that the blurb is
+    #    familiar long before it is useful, and none of them are mysterious.
+    if pname and any(h in pname for h in HIGH_CADENCE_PROGRAMS):
+        return None
+
+    return text
 
 
 ORBIT_NOTES = {
