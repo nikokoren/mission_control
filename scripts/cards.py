@@ -504,6 +504,12 @@ def booster_label(launch):
     return f"BOOSTER {serial}" if serial else "BOOSTER"
 
 
+def booster_serial(launch):
+    """Just the serial, or empty. Used by the new card labels."""
+    stages = dig(launch, "rocket", "launcher_stage", default=[]) or []
+    return dig(stages[0] if stages else {}, "launcher", "serial_number", default="")
+
+
 def booster_career_card(launch, history=None, fleet=None):
     """
     The booster's career rather than this one flight. Needs the cached
@@ -601,9 +607,177 @@ def program_card(launch, program_description):
     return program_description.strip() if program_description and program_description.strip() else None
 
 
-def pad_card(launch):
-    """Placeholder. Needs the cached pad history endpoint, built later."""
+ORBIT_NOTES = {
+    "low earth orbit": (
+        "Low Earth orbit is anywhere from about 160 to 2,000 km up, where a "
+        "satellite laps the planet roughly every 90 minutes. Everything there "
+        "is falling; it just keeps missing the ground."
+    ),
+    "sun-synchronous orbit": (
+        "A sun-synchronous orbit is tilted so the satellite crosses the equator "
+        "at the same local time on every pass. Shadows fall the same way in "
+        "every image, which is why almost all Earth-observation satellites use it."
+    ),
+    "geostationary transfer orbit": (
+        "A transfer orbit is a long ellipse. Over the coming weeks the satellite "
+        "raises its own low point until the whole orbit sits 36,000 km up, where "
+        "one lap takes exactly a day and it appears to hover over one spot."
+    ),
+    "geosynchronous orbit": (
+        "At 36,000 km a satellite takes exactly one day to circle the Earth, so "
+        "it hangs over the same patch of ground and a dish on the roof can be "
+        "bolted in place and never moved again."
+    ),
+    "medium earth orbit": (
+        "Medium Earth orbit sits between the low satellites and the "
+        "geostationary belt. It is where navigation constellations live, high "
+        "enough that a handful of satellites cover the whole planet at once."
+    ),
+    "polar orbit": (
+        "A polar orbit passes near both poles, so as the planet turns beneath "
+        "it the satellite eventually flies over every point on the surface."
+    ),
+    "highly elliptical orbit": (
+        "A highly elliptical orbit loiters for hours near its high point and "
+        "whips through the low one in minutes, which gives long coverage of "
+        "high latitudes that a geostationary satellite cannot see well."
+    ),
+    "trans lunar injection": (
+        "A trans-lunar injection is the burn that stops the spacecraft orbiting "
+        "Earth and sends it out to meet the Moon, a trip of about three days."
+    ),
+    "heliocentric orbit": (
+        "This one leaves Earth behind entirely and goes into orbit around the "
+        "Sun, which is where every interplanetary mission starts."
+    ),
+    "suborbital": (
+        "A suborbital flight goes up and comes back down without ever going "
+        "fast enough sideways to stay up. Altitude is the easy part; speed is "
+        "what orbit actually costs."
+    ),
+}
+
+
+def _flight_gaps(history):
+    """Days between consecutive flights of this core, derived the same way
+    the career card does it. The cache stores flights, not gaps."""
+    flights = (history or {}).get("flights") or []
+    gaps = []
+    for i in range(1, len(flights)):
+        g = days_between(flights[i - 1].get("net"), flights[i].get("net"))
+        if g is not None and g > 0:
+            gaps.append(g)
+    return gaps
+
+
+def destination_card(launch):
+    """What the orbit actually means. No API call: a lookup on the orbit
+    name we already fetch. Works before and after launch."""
+    orbit = (dig(launch, "mission", "orbit", "name", default="") or "").strip().lower()
+    if not orbit or orbit in ("unknown", "n/a", "tbd"):
+        return None
+    if orbit in ORBIT_NOTES:
+        return ORBIT_NOTES[orbit]
+    for key, text in ORBIT_NOTES.items():
+        if key in orbit or orbit in key:
+            return text
     return None
+
+
+def pad_card(launch):
+    """What this pad has been doing. Both figures are already in the payload."""
+    pad = short_pad(dig(launch, "pad", "name", default="")) or "This pad"
+    year = dig(launch, "pad_launch_attempt_count_year", default=None)
+    total = dig(launch, "pad", "total_launch_count", default=None)
+    parsed = parse_iso_duration(launch.get("pad_turnaround"))
+    turn = parsed[0] + parsed[1] / 24.0 if parsed else None
+
+    parts = []
+    if isinstance(year, int) and year > 1:
+        parts.append(f"{year} launches from {pad} so far this year.")
+    elif isinstance(total, int) and total > 1:
+        parts.append(f"{pad} has supported {total} launches.")
+    else:
+        return None
+
+    if isinstance(total, int) and total > 1 and parts and "supported" not in parts[0]:
+        parts.append(f"{total} in total since it opened.")
+    if turn is not None and turn >= 0:
+        if turn < 1:
+            parts.append("It turned around in under a day.")
+        elif turn < 10:
+            parts.append(f"It turns around in about {int(round(turn))} days.")
+    return " ".join(parts) if parts else None
+
+
+def booster_next_card(launch, history):
+    """When this core is likely to fly again, from its own cached record."""
+    stage = (dig(launch, "rocket", "launcher_stage", default=[]) or [{}])[0]
+    serial = dig(stage, "launcher", "serial_number", default="")
+    if not serial or not history:
+        return None
+    gaps = _flight_gaps(history)
+    if len(gaps) < 2:
+        return None
+
+    avg = sum(gaps) / len(gaps)
+    best = min(gaps)
+    parts = [f"{serial} has averaged {int(round(avg))} days between flights, "
+             f"its quickest turnaround being {int(round(best))}."]
+    parts.append(f"On past form it should be back on a pad within about {int(round(avg))} days.")
+    return " ".join(parts)
+
+
+def record_card(launch, history):
+    """Did this flight set a personal best for the core? Fires rarely, which
+    is what makes it worth showing when it does."""
+    stage = (dig(launch, "rocket", "launcher_stage", default=[]) or [{}])[0]
+    serial = dig(stage, "launcher", "serial_number", default="")
+    turn = dig(stage, "turn_around_time_days", default=None)
+    if not serial or not history or not isinstance(turn, (int, float)):
+        return None
+    gaps = _flight_gaps(history)
+    if len(gaps) < 2:
+        return None
+
+    # The current flight's own gap is in the cached list, so comparing
+    # against min(gaps) compares the flight with itself and every flight
+    # looks like a record. Exclude gaps at or below this one first.
+    previous = [g for g in gaps if g > turn]
+    flights = dig(stage, "launcher", "flights", default=None)
+
+    if previous and len(previous) == len(gaps):
+        saved = min(previous) - turn
+        return (f"That was {serial}'s fastest turnaround yet: {int(round(turn))} days, "
+                f"{int(round(saved))} quicker than its previous best.")
+    if isinstance(flights, int) and flights >= 20:
+        return (f"{serial} has now flown {flights} times, putting it among the "
+                f"most-flown rockets ever built.")
+    return None
+
+
+def docking_card(launch, docking):
+    """For ISS-bound flights: when the spacecraft actually arrives. Needs the
+    one extra /docking_event/ lookup passed in from the caller."""
+    if not docking:
+        return None
+    when = docking.get("hours_until")
+    port = docking.get("port") or ""
+    craft = docking.get("spacecraft") or "The spacecraft"
+    if when is None:
+        return None
+    if when < 0:
+        return f"{craft} is already docked at {port}." if port else None
+    if when < 1:
+        timing = "within the hour"
+    elif when < 48:
+        timing = f"in about {int(round(when))} hours"
+    else:
+        timing = f"in about {int(round(when / 24))} days"
+    tail = f", docking at {port}" if port else ""
+    return (f"{craft} catches up with the station {timing}{tail}. Rendezvous is a "
+            f"slow chase: the station will not wait, so the spacecraft has to "
+            f"arrive in the same place at the same speed.")
 
 
 # ============================================================
@@ -614,32 +788,59 @@ def pad_card(launch):
 # card rotation
 # ============================================================
 
-SETTLE_HOURS = 12   # inside this, always the canonical pair
-ROTATE_EVERY = 12   # hours per tier beyond that
+SETTLE_HOURS = 8      # pre-launch: inside this, always the canonical pair
+ROTATE_EVERY = 6      # pre-launch: hours per tier beyond that
+POST_SETTLE_HOURS = 2 # post-launch: the result holds the screen this long
+POST_ROTATE_HOURS = 2 # post-launch: hours per pairing
 
-# Pairs of RANK indexes into the available card list, best first. Tier 0 is
-# what shows closest to launch and is always the canonical pair, so nothing
-# about the run up to a launch changes. Each later tier is further out and
-# reaches deeper into the list.
+# Pre-launch tiers. Tier 0 is closest to launch and always the canonical
+# pair, so the run up to a launch is untouched. Later tiers are further out
+# and reach deeper into the ranked list. Monotonic by design: content only
+# ever gets more important as T-0 approaches.
+# Slot B order behind a pinned mission brief. Explicit rather than derived:
+# the docking countdown is the most time-critical thing on a crewed flight,
+# a record is rare enough to lead with, and the evergreen explainers sit
+# behind the things that are specific to this launch.
+POST_ROTATION = ["docking", "record", "dest", "pad", "next", "fact"]
+
 ROTATION_SCHEDULE = [
-    (0, 1),   # inside SETTLE_HOURS: the two best
-    (0, 2),   # one tier out: best kept, second swapped
-    (1, 3),   # two tiers out
-    (2, 3),   # three or more: the deep cuts
+    (0, 1),   # inside SETTLE_HOURS
+    (0, 2),
+    (1, 3),
+    (2, 4),
+    (3, 5),
+    (4, 5),   # furthest out: the deep cuts
 ]
 
 
 def rotation_tier(hours_until):
-    """Which schedule tier applies. Monotonic: content only gets more
-    important as T-0 approaches, and never goes backwards."""
+    """Which pre-launch tier applies."""
     if hours_until is None or hours_until <= SETTLE_HOURS:
         return 0
     tier = int((hours_until - SETTLE_HOURS) // ROTATE_EVERY) + 1
     return min(tier, len(ROTATION_SCHEDULE) - 1)
 
 
+def post_pair(n, hours_since):
+    """
+    Post-launch indexes into the ranked list.
+
+    Nothing is approaching, so the monotonic logic that governs the run up
+    to a launch has nothing to say here. Instead the pairing simply cycles,
+    which at a two hour step works through every card several times during
+    the roughly 22 hours a result stays on screen at current launch cadence.
+    """
+    if n < 2:
+        return 0, 0
+    if hours_since is None or hours_since <= POST_SETTLE_HOURS:
+        return 0, 1
+    idx = int((hours_since - POST_SETTLE_HOURS) // POST_ROTATE_HOURS) + 1
+    return (2 * idx) % n, (2 * idx + 1) % n
+
+
 def build_slots(launch, mode, description, program_description, rocket_fact,
-                history=None, fleet=None, hours_until=None):
+                history=None, fleet=None, hours_until=None, hours_since=None,
+                docking=None):
     """
     Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
     A card claimed by slot A is skipped by slot B, so nothing appears twice.
@@ -656,6 +857,10 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         "booster": (booster_label(launch), booster_card(launch, mode)),
         "career":  (career_label(history), booster_career_card(launch, history, fleet)),
         "pad":     ("PAD HISTORY", pad_card(launch)),
+        "dest":    ("DESTINATION EXPLAINED", destination_card(launch)),
+        "next":    (f"{booster_serial(launch) or 'BOOSTER'} NEXT", booster_next_card(launch, history)),
+        "record":  ("A RECORD", record_card(launch, history)),
+        "docking": ("NEXT MILESTONE", docking_card(launch, docking)),
         "program": ("PROGRAM CONTEXT", program_card(launch, program_description)),
         "outlook": ("LAUNCH OUTLOOK", outlook_card(launch, mode)),
         "cadence": ("LAUNCH CADENCE", cadence_card(launch)),
@@ -667,6 +872,9 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     # "details unavailable" line, which is just a different stub. Better to
     # promote a card that always has something to say.
     order_a = ["brief", "booster", "pad", "program", "cadence", "fact"]
+    if mode == "POST_LAUNCH":
+        order_a = ["brief", "booster", "docking", "record", "dest",
+                   "pad", "program", "cadence", "fact"]
     # Slot A usually takes the booster, which leaves the career for slot B.
     # When slot A takes a real mission brief instead, the booster wins slot B
     # and the career stands down. That is deliberate: this flight matters more
@@ -693,7 +901,11 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         else:
             order_b = ["booster", "career", "outlook", "cadence", "fact"]
     else:
-        order_b = ["booster", "career", "cadence", "fact"]
+        # Post-launch the interesting question is what happens NEXT to the
+        # hardware and the payload, so the forward-looking cards rank above
+        # the fallbacks.
+        order_b = ["docking", "record", "career", "next", "dest",
+                   "pad", "cadence", "fact"]
 
     used = set()
     picked = []
@@ -716,16 +928,11 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     }
     slot_b = take(order_b) or {"label": "", "text": ""}
 
-    # ---- rotation ----
-    # Only pre-launch: post-launch, hours_until refers to the NEXT launch
-    # while the display is showing the previous one, so it means nothing here.
-    tier = rotation_tier(hours_until) if mode == "PRE_LAUNCH" else 0
-    if tier == 0:
-        return slot_a, slot_b
+    def as_slot(key):
+        label, text = cards[key]
+        return {"label": label, "text": text}
 
-    # Ranked list, canonical pair first. Building it this way guarantees that
-    # tier 0 reproduces the existing selection exactly for every launch, so
-    # rotation can only ever change what happens far from launch.
+    # ---- rotation ----
     ranked = [k for k in picked if k]
     for key in order_a + order_b:
         if key in ranked:
@@ -733,18 +940,41 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         if cards[key][1]:
             ranked.append(key)
 
+    # ---- what stays put, and what rotates under it ----
+    #
+    # POST-LAUNCH, a real mission description holds slot A outright, crewed
+    # or not. Pre-launch the monotonic tiers bring the brief back as T-0
+    # approaches, so rotating it out is temporary; after launch nothing is
+    # approaching, so a rotated-out brief would never return, and "what was
+    # this thing for" is the question that outlives the countdown.
+    #
+    # A boilerplate description never becomes the brief card in the first
+    # place, so a Starlink has nothing to pin and rotates both slots freely.
+    if mode == "POST_LAUNCH" and cards["brief"][1]:
+        rest = [k for k in POST_ROTATION if cards[k][1]]
+        if not rest:
+            return as_slot("brief"), {"label": "", "text": ""}
+        if hours_since is None or hours_since <= POST_SETTLE_HOURS:
+            step = 0
+        else:
+            step = int((hours_since - POST_SETTLE_HOURS) // POST_ROTATE_HOURS)
+        return as_slot("brief"), as_slot(rest[step % len(rest)])
+
     if len(ranked) < 3:
         return slot_a, slot_b
 
-    a_i, b_i = ROTATION_SCHEDULE[tier]
-    a_i = min(a_i, len(ranked) - 1)
-    b_i = min(b_i, len(ranked) - 1)
+    if mode == "PRE_LAUNCH":
+        tier = rotation_tier(hours_until)
+        if tier == 0:
+            return slot_a, slot_b
+        a_i, b_i = ROTATION_SCHEDULE[tier]
+        a_i = min(a_i, len(ranked) - 1)
+        b_i = min(b_i, len(ranked) - 1)
+    else:
+        a_i, b_i = post_pair(len(ranked), hours_since)
+
     if a_i == b_i:
         b_i = a_i - 1 if a_i > 0 else 1
         b_i = min(b_i, len(ranked) - 1)
-
-    def as_slot(key):
-        label, text = cards[key]
-        return {"label": label, "text": text}
 
     return as_slot(ranked[a_i]), as_slot(ranked[b_i])
