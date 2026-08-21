@@ -16,7 +16,7 @@ import sys
 from datetime import datetime, timezone
 
 from cards import build_slots, dig, short_pad, is_placeholder
-from history import get_booster_history, get_fleet
+from history import get_booster_history, get_fleet, get_docking
 from facts import get_rocket_fact
 
 # ============================================================
@@ -78,7 +78,7 @@ VOLATILE_FIELDS = ["countdown", "next_countdown"]
 # --- how long each launch holds the screen ---
 IMMINENT_HOURS = 1.5   # next launch this close always wins
 FRESH_HOURS = 4.0      # a result holds the screen at least this long
-QUIET_HOURS = 12.0      # if the next launch is further off than this, keep showing the result
+QUIET_HOURS = 6.0      # if the next launch is further off than this, keep showing the result
 STALE_HOURS = 24.0     # but never show a result older than this
 
 
@@ -408,9 +408,30 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     except (TypeError, NameError):
         pass
 
+    # Hours since this launch, for post-launch rotation.
+    hours_since = None
+    try:
+        hours_since = (now - target_dt).total_seconds() / 3600.0
+    except (TypeError, NameError):
+        pass
+
+    # ISS-bound flights only: when does it actually arrive? One extra call,
+    # skipped entirely for everything else.
+    docking = None
+    try:
+        spacecraft = dig(launch, "rocket", "spacecraft_stage", "spacecraft",
+                         "name", default="")
+        iss_bound = any("International Space Station" in (p.get("name") or "")
+                        for p in (launch.get("program") or []))
+        if spacecraft and iss_bound:
+            docking = get_docking(spacecraft)
+    except Exception as e:
+        print(f"Warning: docking check skipped: {e}")
+
     slot_a, slot_b = build_slots(launch, mode, description, program_description,
                                  rocket_fact, history=history, fleet=fleet,
-                                 hours_until=hours_until)
+                                 hours_until=hours_until, hours_since=hours_since,
+                                 docking=docking)
 
     vis_status = dig(launch, "status", "abbrev", default="TBD")
     if vis_status == "PENDING":
