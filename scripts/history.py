@@ -110,9 +110,10 @@ def _get_booster_history(serial, flights_now):
     # Serials are not always a single token: Zhuque-3's is "ZQ-3 F2", and a
     # raw space makes urllib refuse the request outright. Every serial seen
     # before this was one word, so the bug sat unnoticed until a Chinese
-    # reusable turned up. quote() covers spaces and anything else unsafe.
+    # reusable turned up. quote with an empty safe list covers spaces, slashes
+    # and anything else that would corrupt the query.
     url = (
-        f"{API}/launch/?serial_number={urllib.parse.quote(serial)}"
+        f"{API}/launch/?serial_number={urllib.parse.quote(str(serial), safe='')}"
         "&mode=list&limit=40&format=json"
     )
     data = _get(url)
@@ -154,6 +155,54 @@ def _get_booster_history(serial, flights_now):
 # ============================================================
 # fleet ranking
 # ============================================================
+
+def get_docking(spacecraft_name, station_id=4):
+    """
+    For an ISS-bound launch: when does the spacecraft actually arrive?
+    One extra call, cached like the others, and it never raises.
+    Returns {"hours_until", "port", "spacecraft"} or None.
+    """
+    if not spacecraft_name:
+        return None
+    try:
+        return _get_docking(spacecraft_name, station_id)
+    except Exception as e:
+        print(f"Warning: docking lookup failed for {spacecraft_name}: {e}")
+        return None
+
+
+def _get_docking(spacecraft_name, station_id):
+    from datetime import datetime, timezone
+    url = (f"{API}/docking_event/?limit=10&ordering=-docking"
+           f"&space_station__id={station_id}")
+    data = _get(url)
+    if not data:
+        return None
+    now = datetime.now(timezone.utc)
+    want = str(spacecraft_name).lower()
+
+    for ev in (data.get("results") or []):
+        craft = ((ev.get("flight_vehicle") or {}).get("spacecraft") or {}).get("name") or ""
+        if want not in craft.lower() and craft.lower() not in want:
+            continue
+        raw = ev.get("docking")
+        if not raw:
+            continue
+        try:
+            when = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        hours = (when - now).total_seconds() / 3600.0
+        # Only interesting within a few days either side of the event.
+        if hours < -24 or hours > 120:
+            continue
+        return {
+            "hours_until": hours,
+            "port": ((ev.get("docking_location") or {}).get("name") or ""),
+            "spacecraft": craft or "The spacecraft",
+        }
+    return None
+
 
 def get_fleet(config_id):
     """
