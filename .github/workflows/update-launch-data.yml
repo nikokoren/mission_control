@@ -1,14 +1,9 @@
 name: Update Rocket Launch Data
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '*/15 * * * *'
-  workflow_dispatch:
-
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
