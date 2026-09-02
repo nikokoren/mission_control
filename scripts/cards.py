@@ -429,14 +429,25 @@ def outlook_card(launch, mode):
 
 def booster_card(launch, mode):
     """
-    This specific core's story. None when there is no reusable stage,
-    which is most non-SpaceX launches.
+    This launch's hardware story. Dispatches on how many first-stage
+    cores LL2 lists: one core (almost every launch) keeps the original
+    single-booster logic verbatim; more than one (Falcon Heavy) uses a
+    separate, compact multi-booster path so the card does not triple in
+    length. Returns None when there is no reusable stage at all, which is
+    most non-SpaceX launches.
     """
-    stages = dig(launch, "rocket", "launcher_stage", default=[]) or []
+    stages = all_boosters(launch)
     if not stages:
         return None
-    stage = stages[0] or {}
+    if len(stages) > 1:
+        return _multi_booster_card(launch, stages, mode)
+    return _single_booster_card(launch, stages[0] or {}, mode)
 
+
+def _single_booster_card(launch, stage, mode):
+    """The original one-core card, unchanged. Kept as its own function so
+    the ordinary Falcon 9 path carries zero risk from the Falcon Heavy
+    work below it."""
     launcher = dig(stage, "launcher", default={}) or {}
     serial = dig(launcher, "serial_number", default="")
     if not serial:
@@ -454,6 +465,16 @@ def booster_card(launch, mode):
     attempt = landing.get("attempt")
     success = landing.get("success")
     provider = dig(launch, "launch_service_provider", "name", default="")
+
+    # "In Flight" flips mode to POST_LAUNCH (choose_target treats liftoff as
+    # the point of no return for display purposes), but the landing outcome
+    # is not actually known until the mission reaches a truly final status.
+    # Without this, a booster still descending got described as already
+    # "Down on OCISLY" the moment the rocket left the pad -- mode alone was
+    # being read as "outcome confirmed," which it is not during ascent or
+    # the post-T-0 confirmation window.
+    status = dig(launch, "status", "abbrev", default="")
+    resolved = status in ("Success", "Failure", "Partial Failure")
 
     # Mission names arrive as "Falcon 9 Block 5 | Starlink Group 17-40"
     if prev and " | " in prev:
@@ -490,14 +511,14 @@ def booster_card(launch, mode):
     if attempt is False:
         parts.append("Expended on this flight, with no recovery planned.")
     elif l_loc:
-        if mode == "POST_LAUNCH" and success:
+        if resolved and success:
             if is_rtls:
                 parts.append(f"Flew itself back to {l_loc}.")
             elif dist:
                 parts.append(f"Down on {l_loc}, {int(dist)} km downrange.")
             else:
                 parts.append(f"Down on {l_loc}.")
-        elif mode == "POST_LAUNCH" and success is False:
+        elif resolved and success is False:
             parts.append(f"Lost on the way back to {l_loc}.")
         elif is_rtls:
             parts.append(f"Flying back to {l_loc} rather than a drone ship.")
@@ -516,16 +537,198 @@ def booster_card(launch, mode):
     return " ".join(parts) if parts else None
 
 
+def _stage_identity(stage):
+    """(serial, flight_n) for one stage, or (serial, None) if unknown."""
+    launcher = dig(stage, "launcher", default={}) or {}
+    serial = dig(launcher, "serial_number", default="")
+    flight_n = stage.get("launcher_flight_number")
+    if flight_n is None and stage.get("reused") is False:
+        flight_n = 1
+    return serial, flight_n
+
+
+def _stage_landing_phrase(stage, resolved):
+    """
+    One clause describing where a single core lands or landed. Deliberately
+    shorter than the single-booster card's version of the same idea: with
+    three of these to potentially fit in one sentence there is no room for
+    downrange distances or drone ship names, only the outcome that matters
+    at a glance.
+
+    Takes `resolved` (mission status is Success/Failure/Partial Failure)
+    rather than `mode`, matching the same fix applied to
+    _single_booster_card: mode flips to POST_LAUNCH the instant a launch
+    happens, including "In Flight", which is not the same as the landing
+    outcome actually being known yet.
+    """
+    landing = dig(stage, "landing", default={}) or {}
+    l_loc = dig(landing, "location", "abbrev", default="")
+    l_type = dig(landing, "type", "abbrev", default="")
+    attempt = landing.get("attempt")
+    success = landing.get("success")
+    is_rtls = l_type == "RTLS"
+
+    if attempt is False:
+        return "expended"
+    if resolved and success is True:
+        return f"landed at {l_loc}" if l_loc else "landed"
+    if resolved and success is False:
+        return "lost on the way back"
+    if is_rtls and l_loc:
+        return f"returning to {l_loc}"
+    if l_loc:
+        return f"targeting {l_loc}"
+    return "recovery planned" if attempt else "expended"
+
+
+def _stage_outcome_class(stage):
+    """
+    Coarse bucket for grouping stages when LL2's "type" field is missing:
+    'expended', 'recovering', or 'unknown'. Deliberately ignores WHICH pad
+    or droneship, unlike _stage_landing_phrase, because two side boosters
+    landing at different zones (LZ-1 vs LZ-2) are still behaving the same
+    way and should still be grouped as a pair.
+    """
+    landing = dig(stage, "landing", default={}) or {}
+    attempt = landing.get("attempt")
+    if attempt is False:
+        return "expended"
+    if attempt:
+        return "recovering"
+    return "unknown"
+
+
+def _multi_booster_card(launch, stages, mode):
+    """
+    Falcon Heavy's three cores, kept to roughly the same length as the
+    single-booster card by leaning on the airframe's own symmetry: the two
+    side boosters are usually a matched pair (same flight-count pattern,
+    same landing type), so they read as one clause, with the core -- often
+    the odd one out, frequently expended on heavy-lift missions -- getting
+    its own.
+
+    If LL2's "type" field is present (_stage_role), core and side boosters
+    are told apart properly. If it is not, the two entries with the most
+    similar landing phrase are still grouped as a pair on their own merits,
+    so the card degrades to "two of these did the same thing, one did not"
+    rather than guessing at roles it cannot confirm.
+    """
+    status = dig(launch, "status", "abbrev", default="")
+    resolved = status in ("Success", "Failure", "Partial Failure")
+    identified = [(_stage_role(s), _stage_identity(s), _stage_landing_phrase(s, resolved), s)
+                  for s in stages]
+    identified = [x for x in identified if x[1][0]]
+    if not identified:
+        return None
+
+    core = [x[:3] for x in identified if x[0] == "core"]
+    sides = [x[:3] for x in identified if x[0] == "side"]
+
+    # Roles unknown from LL2's own data (no "type" field): find the two
+    # stages that behave most alike -- same rough outcome, same flight
+    # count -- and call THEM the pair, rather than defaulting to array
+    # order, which has no connection to which core is actually which.
+    if not core and not sides:
+        import itertools
+        classes = [_stage_outcome_class(x[3]) for x in identified]
+        flight_ns = [x[1][1] for x in identified]
+
+        best_pair, best_score = None, -1
+        for i, j in itertools.combinations(range(len(identified)), 2):
+            score = 0
+            if classes[i] == classes[j] and classes[i] != "unknown":
+                score += 2
+            if flight_ns[i] is not None and flight_ns[i] == flight_ns[j]:
+                score += 1
+            if score > best_score:
+                best_score, best_pair = score, (i, j)
+
+        if best_pair:
+            i, j = best_pair
+            sides = [identified[i][:3], identified[j][:3]]
+            core = [x[:3] for k, x in enumerate(identified) if k not in best_pair][:1]
+        else:
+            # Cannot happen with >=2 stages, but never crash on it.
+            core, sides = identified[:1], identified[1:]
+            core = [x[:3] for x in core]
+            sides = [x[:3] for x in sides]
+
+    parts = []
+
+    if sides:
+        serials = " and ".join(s for _, (s, _), _ in sides)
+        flights = [fn for _, (_, fn), _ in sides if fn]
+        if len(flights) == len(sides) and len(set(flights)) == 1:
+            parts.append(f"Side boosters {serials} both fly their {ordinal(flights[0])} mission.")
+        elif all(fn == 1 for fn in flights) and len(flights) == len(sides):
+            parts.append(f"Side boosters {serials} are both brand new.")
+        else:
+            parts.append(f"Side boosters {serials}.")
+
+        side_landings = {p for *_, p in sides}
+        if len(side_landings) == 1:
+            parts.append(f"Both are {side_landings.pop()}.")
+        else:
+            parts.append(" and ".join(f"{s} {p}" for _, (s, _), p in sides) + ".")
+
+    if core:
+        _, (serial, flight_n), phrase = core[0]
+        if flight_n == 1:
+            parts.append(f"The core, {serial}, is new and {phrase}.")
+        elif flight_n:
+            parts.append(f"The core, {serial}, on its {ordinal(flight_n)} flight, is {phrase}.")
+        else:
+            parts.append(f"The core, {serial}, is {phrase}.")
+
+    return " ".join(parts) if parts else None
+
+
+
 def booster_label(launch):
-    """Dynamic slot label, e.g. 'BOOSTER B1103'."""
-    stages = dig(launch, "rocket", "launcher_stage", default=[]) or []
+    """
+    Dynamic slot label. 'BOOSTER B1103' for one core, 'BOOSTERS' for more
+    than one -- three serials do not fit in a label the width of a
+    dotted rule, so the card body carries the identities instead.
+    """
+    stages = all_boosters(launch)
+    if len(stages) > 1:
+        return "BOOSTERS"
     serial = dig(stages[0] if stages else {}, "launcher", "serial_number", default="")
     return f"BOOSTER {serial}" if serial else "BOOSTER"
 
 
+def all_boosters(launch):
+    """
+    Every first-stage core on this launch, not just the first one LL2
+    lists. A Falcon 9 has one entry here; a Falcon Heavy has three (one
+    core, two side boosters). Each entry keeps its own "launcher",
+    "landing", "turn_around_time_days" etc, exactly as LL2 returns it.
+    """
+    return dig(launch, "rocket", "launcher_stage", default=[]) or []
+
+
+def _stage_role(stage):
+    """
+    'core', 'side', or '' if LL2 did not say. Confirmed present as a plain
+    "type" string on single-core Falcon 9 launches ("Core"); assumed to
+    follow the same convention on Falcon Heavy but not yet seen on a live
+    3-stage payload, so callers must not depend on this being right --
+    only use it to improve phrasing when it is available, never to decide
+    whether a booster counts.
+    """
+    t = str(stage.get("type") or "").strip().lower()
+    if t == "core":
+        return "core"
+    if t:
+        return "side"
+    return ""
+
+
 def booster_serial(launch):
-    """Just the serial, or empty. Used by the new card labels."""
-    stages = dig(launch, "rocket", "launcher_stage", default=[]) or []
+    """Just the serial of the first listed core, or empty. Used by the
+    single-booster label path; multi-booster launches use booster_label
+    directly instead."""
+    stages = all_boosters(launch)
     return dig(stages[0] if stages else {}, "launcher", "serial_number", default="")
 
 
