@@ -15,7 +15,7 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from cards import build_slots, dig, short_pad, is_placeholder
+from cards import build_slots, dig, short_pad, is_placeholder, all_boosters
 from history import get_booster_history, get_fleet, get_docking
 from facts import get_rocket_fact
 
@@ -387,14 +387,29 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         rocket_fact = "Rockets are cool."
 
     # --- booster career, cached so it costs nothing in the steady state ---
+    #
+    # A Falcon Heavy has three cores, not one. Fetch history for every one
+    # of them -- each has its own independent flight record, cached
+    # separately in history.py by serial -- and hand the CAREER/NEXT/RECORD
+    # cards whichever core has flown the most. A brand new core paired with
+    # a fifteen-flight side booster should tell the veteran's story, not
+    # the new core's blank one. footer_recovery above intentionally still
+    # reflects only the first-listed stage; giving it the same multi-core
+    # treatment is a separate piece of work, not done here.
     history = None
     fleet = None
     if with_history:
-        launcher = dig(stage, "launcher", default={}) or {}
-        serial = launcher.get("serial_number")
-        flights = launcher.get("flights")
-        if serial:
-            history = get_booster_history(serial, flights)
+        best_serial, best_flights = None, -1
+        for s in all_boosters(launch):
+            launcher = dig(s, "launcher", default={}) or {}
+            serial = launcher.get("serial_number")
+            if not serial:
+                continue
+            flights = launcher.get("flights") or 0
+            if flights > best_flights:
+                best_serial, best_flights = serial, flights
+        if best_serial:
+            history = get_booster_history(best_serial, best_flights if best_flights >= 0 else None)
             if history:
                 fleet = get_fleet(dig(launch, "rocket", "configuration", "id"))
 
@@ -437,6 +452,12 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     if vis_status == "PENDING":
         vis_status = "AWAITING CONFIRMATION"
     mission_type = dig(launch, "mission", "type", default="")
+
+    # Same condition that picks the "_ascent" art below, exposed to the
+    # templates so a view can anchor the drawing differently while the
+    # rocket is genuinely in the air -- one source, so the two can't drift
+    # out of sync the way the booster card's landing language just did.
+    rocket_ascending = vis_status in ("In Flight", "AWAITING CONFIRMATION")
 
     vis_url, vis_alt = get_rocket_image_url(rocket_name, vis_status, success, mission_type, launch_name, REPO_BASE)
     generic_url, _ = get_rocket_image_url("generic", vis_status, success, mission_type, launch_name, REPO_BASE)
@@ -486,6 +507,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "rocket_visual": vis_url,
         "rocket_visual_alt": vis_alt,
         "generic_visual": generic_url,
+        "rocket_ascending": rocket_ascending,
 
         # kept so the current template keeps working until you swap it
         "description": description,
