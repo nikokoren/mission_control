@@ -98,6 +98,7 @@ def normalize_org_name(name):
         "Japan Aerospace Exploration Agency": "JAXA",
         "Roscosmos State Corporation": "Roscosmos",
         "Isar Aerospace": "Isar Aerospace",
+        "Indian Space Research Organization": "ISRO",
     }
     for old, new in replacements.items():
         if old in name:
