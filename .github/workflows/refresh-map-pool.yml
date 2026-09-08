@@ -32,13 +32,13 @@ jobs:
           fetch-depth: 20
 
       - name: Harvest map pool from the Library of Congress
-        run: python3 scripts/maps_harvest.py --pages "${{ github.event.inputs.pages || 25 }}"
+        run: python3 map_of_the_day/harvest.py --pages "${{ github.event.inputs.pages || 25 }}"
 
       - name: Commit and push
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add maps/pool.json
+          git add map_of_the_day/pool.json
 
           if git diff --staged --quiet; then
             echo "Pool unchanged, nothing to commit"

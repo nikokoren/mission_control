@@ -3,7 +3,7 @@ name: Map of the Day
 on:
   schedule:
     # 00:05 UTC. The map changes at this moment for every device; the
-    # picks themselves are computed offline from maps/pool.json, so this
+    # picks themselves are computed offline from the committed pool, so this
     # job does not depend on loc.gov being up.
     - cron: "5 0 * * *"
   workflow_dispatch:
@@ -28,13 +28,13 @@ jobs:
           fetch-depth: 20
 
       - name: Pick today's map
-        run: python3 scripts/maps_daily.py
+        run: python3 map_of_the_day/daily.py
 
       - name: Commit and push
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add map.json maps/today
+          git add map_of_the_day/map.json map_of_the_day/today
 
           if git diff --staged --quiet; then
             echo "Same map as the last run, nothing to commit"

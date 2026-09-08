@@ -10,14 +10,28 @@ Railroad map of New Hampshire
 [the map, filling the screen]
 ```
 
+Everything the plugin needs lives in this folder; the two GitHub Actions
+workflows that drive it are the only files outside it.
+
+```
+map_of_the_day/
+  harvest.py    builds the candidate pool from the Library of Congress
+  daily.py      picks the day's map and writes what TRMNL polls
+  pool.json     the vetted candidates (rewritten monthly)
+  map.json      today's map, all categories -- the default polling URL
+  today/*.json  today's map within one category
+  README.md     this file
+  sources.md    what was checked about the other image-of-the-day sources
+```
+
 ## How it works
 
 Three moving parts, and only one of them touches the internet on a normal day:
 
 | When | What runs | What it writes |
 |---|---|---|
-| Monthly | `scripts/maps_harvest.py` (Refresh Map Pool workflow) | `maps/pool.json` -- a few thousand vetted maps |
-| Daily, 00:05 UTC | `scripts/maps_daily.py` (Map of the Day workflow) | `map.json` and `maps/today/*.json` |
+| Monthly | `map_of_the_day/harvest.py` (Refresh Map Pool workflow) | `pool.json` -- a few thousand vetted maps |
+| Daily, 00:05 UTC | `map_of_the_day/daily.py` (Map of the Day workflow) | `map.json` and `today/*.json` |
 | Every device refresh | TRMNL polls the raw file | the screen |
 
 The daily pick is a pure function of the pool and the date, so it needs no
@@ -43,7 +57,7 @@ loc.gov serves normally. TRMNL only ever fetches a static JSON file from
 1. **New Private Plugin**, strategy **Polling**.
 2. **Polling URL**:
    ```
-   https://raw.githubusercontent.com/nikokoren/mission_control/main/map.json
+   https://raw.githubusercontent.com/nikokoren/mission_control/main/map_of_the_day/map.json
    ```
    No headers, no auth, no body.
 3. Write the markup against the fields below.
@@ -60,18 +74,18 @@ different URL rather than a different code path:
 
 | Setting value | Polling URL suffix |
 |---|---|
-| All maps | `map.json` |
-| Cities & towns | `maps/today/cities.json` |
-| Panoramic views | `maps/today/panoramas.json` |
-| Railroads | `maps/today/railways.json` |
-| Battles & campaigns | `maps/today/military.json` |
-| Discovery & exploration | `maps/today/exploration.json` |
-| National parks | `maps/today/nature.json` |
+| All maps | `map_of_the_day/map.json` |
+| Cities & towns | `map_of_the_day/today/cities.json` |
+| Panoramic views | `map_of_the_day/today/panoramas.json` |
+| Railroads | `map_of_the_day/today/railways.json` |
+| Battles & campaigns | `map_of_the_day/today/military.json` |
+| Discovery & exploration | `map_of_the_day/today/exploration.json` |
+| National parks | `map_of_the_day/today/nature.json` |
 
 Every file has identical fields, so one template covers all of them. In a
 private plugin you can add a `select` custom field keyed `category` and
 interpolate it into the polling URL
-(`.../main/maps/today/{{ category }}.json`); check the interpolation renders
+(`.../main/map_of_the_day/today/{{ category }}.json`); check the interpolation renders
 before publishing, and if it does not, ship the all-maps URL first and add
 the setting later. Nothing else about the recipe changes either way.
 
@@ -109,13 +123,13 @@ right shape and colour space. No map is ever upscaled past its own scan.
 ## Running it by hand
 
 ```bash
-python3 scripts/maps_daily.py                    # write today's files
-python3 scripts/maps_daily.py --dry-run          # print the picks only
-python3 scripts/maps_daily.py --preview 14       # the next fortnight
-python3 scripts/maps_daily.py --date 2026-12-25  # any particular day
-python3 scripts/maps_daily.py --selftest         # check the schedule holds
-python3 scripts/maps_harvest.py --pages 2 --dry-run   # smoke-test the harvest
-python3 scripts/maps_harvest.py                  # full harvest, ~10 minutes
+python3 map_of_the_day/daily.py                    # write today's files
+python3 map_of_the_day/daily.py --dry-run          # print the picks only
+python3 map_of_the_day/daily.py --preview 14       # the next fortnight
+python3 map_of_the_day/daily.py --date 2026-12-25  # any particular day
+python3 map_of_the_day/daily.py --selftest         # check the schedule holds
+python3 map_of_the_day/harvest.py --pages 2 --dry-run   # smoke-test the harvest
+python3 map_of_the_day/harvest.py                  # full harvest, ~10 minutes
 ```
 
 `--selftest` checks the properties the schedule is supposed to have against
@@ -149,14 +163,14 @@ not bias which map comes up on which day.
 
 ### Tuning it
 
-Everything above is a constant at the top of `scripts/maps_harvest.py`:
+Everything above is a constant at the top of `map_of_the_day/harvest.py`:
 `SOURCES`, `MAX_YEAR`, `MIN_SHORT_SIDE`, `MIN_ASPECT`/`MAX_ASPECT`,
 `TITLE_REJECT`, `PER_CATEGORY_CAP`. Adding a collection is one line in
-`SOURCES` plus a label in `CATEGORY_LABELS` in `scripts/maps_daily.py`; the
+`SOURCES` plus a label in `CATEGORY_LABELS` in `map_of_the_day/daily.py`; the
 daily job discovers the new category from the pool on its own and starts
 writing a file for it.
 
-Changing `SALT` in `scripts/maps_daily.py` reshuffles the entire schedule.
+Changing `SALT` in `map_of_the_day/daily.py` reshuffles the entire schedule.
 Changing the pool changes future picks but not today's, because the pick is
 recomputed from whatever the pool holds at the time.
 

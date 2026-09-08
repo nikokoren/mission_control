@@ -2,16 +2,16 @@
 """
 Picks the map of the day and writes the JSON files TRMNL polls.
 
-Reads maps/pool.json (built by maps_harvest.py) and writes map.json plus
-one file per category under maps/today/. The pick is a pure function of
+Reads pool.json (built by harvest.py) and writes map.json plus one file
+per category under today/. The pick is a pure function of
 the pool and the date: the same day always yields the same map, so a
 device that polls at 07:00 and again at 19:00 sees the same thing, and
 re-running this script never reshuffles the screen.
 
 Run locally with:
-    python3 scripts/maps_daily.py
-    python3 scripts/maps_daily.py --date 2026-12-25 --dry-run
-    python3 scripts/maps_daily.py --preview 7     # the next week's picks
+    python3 map_of_the_day/daily.py
+    python3 map_of_the_day/daily.py --date 2026-12-25 --dry-run
+    python3 map_of_the_day/daily.py --preview 7     # the next week's picks
 """
 
 import argparse
@@ -29,10 +29,10 @@ from datetime import date, datetime, timedelta, timezone
 # config
 # ============================================================
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POOL_PATH = os.path.join(ROOT, "maps", "pool.json")
-TODAY_DIR = os.path.join(ROOT, "maps", "today")
-DEFAULT_PATH = os.path.join(ROOT, "map.json")   # the "all categories" feed
+HERE = os.path.dirname(os.path.abspath(__file__))
+POOL_PATH = os.path.join(HERE, "pool.json")
+TODAY_DIR = os.path.join(HERE, "today")
+DEFAULT_PATH = os.path.join(HERE, "map.json")   # the "all categories" feed
 
 UA = "mission-control-trmnl/1.0 (github.com/nikokoren/mission_control)"
 
@@ -401,7 +401,7 @@ def main():
             category, payload["title_short"], payload["year"], checked))
         if not args.dry_run:
             write_json(path, payload)
-            written.append(os.path.relpath(path, ROOT))
+            written.append(os.path.relpath(path, os.getcwd()))
 
     if written:
         print("wrote " + ", ".join(written))

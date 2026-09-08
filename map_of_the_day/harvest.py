@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Builds maps/pool.json, the candidate pool for the map of the day plugin.
+Builds map_of_the_day/pool.json, the candidate pool for the plugin.
 
 Walks a handful of Library of Congress map collections, throws out
 everything that would look bad (or be legally awkward) on a 1-bit e-ink
 screen, and writes what survives as a compact pool. Nothing here runs on
-the day the map is shown: maps_daily.py picks from this file offline, so a
-bad day at loc.gov can never blank the screen.
+the day the map is shown: daily.py picks from this file offline, so a bad
+day at loc.gov can never blank the screen.
 
 Run it monthly, or by hand:
-    python3 scripts/maps_harvest.py            # full harvest, writes pool
-    python3 scripts/maps_harvest.py --pages 2  # quick smoke test
-    python3 scripts/maps_harvest.py --dry-run  # print stats, write nothing
+    python3 map_of_the_day/harvest.py            # full harvest, writes pool
+    python3 map_of_the_day/harvest.py --pages 2  # quick smoke test
+    python3 map_of_the_day/harvest.py --dry-run  # print stats, write nothing
 
 The LOC search API hands us everything we need in the results array --
 title, date, rights flag, and the IIIF image URLs with their pixel
@@ -34,8 +34,8 @@ from collections import Counter
 # config
 # ============================================================
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POOL_PATH = os.path.join(ROOT, "maps", "pool.json")
+HERE = os.path.dirname(os.path.abspath(__file__))
+POOL_PATH = os.path.join(HERE, "pool.json")
 
 UA = "mission-control-trmnl/1.0 (github.com/nikokoren/mission_control)"
 
@@ -458,7 +458,7 @@ def main():
     with open(POOL_PATH, "w") as fh:
         json.dump(pool, fh, separators=(",", ":"), sort_keys=True)
         fh.write("\n")
-    print("wrote {}".format(os.path.relpath(POOL_PATH, ROOT)))
+    print("wrote {}".format(os.path.relpath(POOL_PATH, os.getcwd())))
     return 0
 
 
