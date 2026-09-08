@@ -96,7 +96,7 @@ def normalize_org_name(name):
         "European Space Agency": "ESA",
         "Indian Space Research Organisation": "ISRO",
         "Japan Aerospace Exploration Agency": "JAXA",
-        "Russian Federal Space Agency (Roscosmos)": "Roscosmos",
+        "Russian Federal Space Agency (ROSCOSMOS)": "Roscosmos",
         "Isar Aerospace": "Isar Aerospace",
         "Indian Space Research Organization": "ISRO",
     }
