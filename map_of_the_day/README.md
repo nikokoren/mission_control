@@ -113,7 +113,8 @@ the setting later. Nothing else about the recipe changes either way.
 | `source`, `credit`, `rights` | `Library of Congress, Geography and Map Division` | attribution line |
 | `item_url` | `https://www.loc.gov/item/98688514/` | the record, for a QR code or footer |
 | `date`, `category`, `category_label` | `2026-09-08`, `railways`, `Railroads` | what this file is |
-| `pool_size`, `pool_generated`, `generated`, `image_checked` | | diagnostics |
+| `pool_size`, `pool_generated`, `generated` | | diagnostics |
+| `image_checked`, `image_bytes` | `ok`, `61550` | what the daily check found, and how heavy the fitted JPEG is |
 
 Images come from the Library's IIIF service. `!800,480` means "fit inside
 this box without distorting", and `gray.jpg` asks the Library's server for
@@ -138,7 +139,9 @@ nothing, the next pass comes out in a different order, every category is deep
 enough to offer as a setting, and every map in the pool produces a payload
 with no empty fields.
 
-`--preview` is the useful one before publishing: it shows the next weeks of
+`--preview` skips the image check, so it shows the day's first candidate
+rather than what the blank-paper check will settle on. It is the useful one
+before publishing: it shows the next weeks of
 maps without touching a file, which is the quickest way to judge whether the
 filters are letting anything ugly through.
 
@@ -157,9 +160,25 @@ look bad or be legally awkward:
   fire-insurance sheets, which are a fragment on screen with no context
 
 What survives is scored (size, how close the shape is to the panel, whether
-it has a description and a named maker) and the best 1200 per category are
-kept. The score only decides what to keep when a category overflows; it does
-not bias which map comes up on which day.
+it has a description and a named maker, minus a penalty for hand-drawn
+sketches on tracing linen) and the best 1200 per category are kept. The score
+only decides what to keep when a category overflows; it does not bias which
+map comes up on which day.
+
+Today's pool is **4,452 maps**: cities 1169, military 1200, panoramas 1200,
+railways 594, exploration 199, nature 90. Nature is the shallow one -- 90
+maps is a three-month cycle before it repeats -- so it is the first category
+to widen if the setting ships.
+
+### The blank-paper check
+
+Metadata cannot tell you whether a map is a dense engraved city view or four
+streets sketched on a big sheet of paper, and the sparse ones look terrible
+on a screen. The daily job settles it by measuring: it HEADs the fitted
+greyscale JPEG and reads its size. At a fixed 800x480 that number is a direct
+measure of how much ink is on the map -- hand-drawn plats come back at
+16-29KB, engraved city views and railroad maps at 50-80KB. Anything under
+`MIN_IMAGE_BYTES` (32KB) is passed over for the next map in the day's order.
 
 ### Tuning it
 
@@ -182,7 +201,8 @@ recomputed from whatever the pool holds at the time.
 | Harvest returns far fewer maps than the current pool | it refuses to write and exits non-zero, rather than shrinking the pool |
 | The daily workflow fails or is skipped | yesterday's `map.json` stays committed and keeps rendering |
 | A map's image 404s | the daily job HEAD-checks it and deterministically moves to the next candidate |
-| tile.loc.gov is slow or 500s | the pick is *not* changed -- only a definitive 404/403/410 skips a map |
+| A map turns out to be mostly blank paper | same skip, on the measured size of the fitted JPEG |
+| tile.loc.gov is slow or 500s | the pick is *not* changed -- only a definitive 404/403/410 or a measured size skips a map |
 | The pool file is missing or empty | the job exits non-zero without writing, leaving the last good files |
 
 ## Rights
@@ -214,5 +234,6 @@ hold a stale `map.json` past midnight.
 The harvest runs once a month, sleeps two seconds between requests, backs off
 on 429 and 5xx, identifies itself with a real user agent naming this repo,
 and asks for 100 records per request instead of one record per request. A full
-run is roughly 120 requests. The daily job makes at most a handful of HEAD
-requests to the image service and none at all to the search API.
+run is roughly 120 requests and takes about ten minutes. The daily job makes
+at most a handful of HEAD requests to the image service -- and none at all to
+the search API -- with a total time budget of four minutes.

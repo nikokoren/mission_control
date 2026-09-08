@@ -44,18 +44,27 @@ SALT = "mission-control/map-of-the-day/v1"
 # so the device dithers a picture that is already the right shape.
 SCREEN_W, SCREEN_H = 800, 480
 
-# A candidate whose image is definitively gone is skipped and the next
-# one in the day's order takes its place. Anything less certain than a
-# 404 is not allowed to change the pick.
-MAX_SKIPS = 3
+# A candidate whose image is definitively gone -- or too sparse to be
+# worth a day of screen time -- is skipped and the next one in the day's
+# order takes its place. Anything less certain than that is not allowed
+# to change the pick.
+MAX_SKIPS = 4
 DEAD_CODES = (403, 404, 410, 451)
 CHECK_TIMEOUT = 12
 
-# Total seconds all the availability checks together may spend. Past it,
-# the remaining categories are written unchecked -- a withdrawn map is a
-# once-a-year event and a job that hangs on a slow image service is not
-# worth trading for it.
-CHECK_BUDGET = 120
+# How many bytes the fitted greyscale JPEG has to weigh. At a fixed
+# 800x480 the file size is a direct measure of how much ink is on the
+# map: hand-drawn plats of four blocks come back at 16-29KB, engraved
+# city views and railroad maps at 50-80KB. Cheaper and more honest than
+# any metadata field, because it measures the picture itself.
+MIN_IMAGE_BYTES = 32_000
+
+# Total seconds all the image checks together may spend. The image
+# service usually answers a HEAD in under a second but can take six or
+# more when it has to render the derivative first, so the budget is
+# generous; past it the remaining categories are written unchecked
+# rather than letting the job hang.
+CHECK_BUDGET = 240
 
 CREDIT = "Library of Congress, Geography and Map Division"
 RIGHTS = "No known restrictions on publication"
@@ -144,20 +153,27 @@ def budget_left():
 
 def image_state(url):
     """
-    'ok', 'dead', or 'unknown'. Only 'dead' is allowed to move the pick;
-    a timeout or a 500 leaves the day's map exactly where it was, which
-    is the difference between a bad minute at LOC and a different map.
+    ('ok' | 'thin' | 'dead' | 'unknown', bytes). Only 'dead' and 'thin'
+    move the pick; a timeout or a 500 leaves the day's map exactly where
+    it was, which is the difference between a bad minute at LOC and a
+    different map. A HEAD is enough -- the image service reports the
+    rendered size without sending the picture.
     """
     req = urllib.request.Request(url, method="HEAD",
                                  headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=CHECK_TIMEOUT) as resp:
-            return "ok" if resp.status < 400 else "unknown"
+            if resp.status >= 400:
+                return "unknown", 0
+            size = int(resp.headers.get("Content-Length") or 0)
+            if not size:
+                return "unknown", 0
+            return ("ok" if size >= MIN_IMAGE_BYTES else "thin"), size
     except urllib.error.HTTPError as e:
-        return "dead" if e.code in DEAD_CODES else "unknown"
+        return ("dead" if e.code in DEAD_CODES else "unknown"), 0
     except (urllib.error.URLError, http.client.HTTPException, TimeoutError,
-            ConnectionError, OSError):
-        return "unknown"
+            ConnectionError, OSError, ValueError):
+        return "unknown", 0
 
 
 # ============================================================
@@ -177,7 +193,7 @@ def title_line(entry):
     return title[:61].rsplit(" ", 1)[0].rstrip(" ,;:.-") + "..."
 
 
-def build_payload(entry, category, day, pool, checked):
+def build_payload(entry, category, day, pool, checked, image_bytes=0):
     aspect = round(entry["w"] / float(entry["h"]), 3)
     urls = image_urls(entry)
     creator = entry.get("c") or ""
@@ -221,27 +237,30 @@ def build_payload(entry, category, day, pool, checked):
         "pool_size": pool["count"],
         "pool_generated": pool.get("generated", ""),
         "image_checked": checked,
+        "image_bytes": image_bytes,
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     return payload
 
 
 def pick(entries, category, day, check):
-    """The day's map, with dead images skipped over."""
+    """The day's map, skipping images that are gone or nearly blank."""
     candidates = candidates_for(entries, category, day)
     if not check or budget_left() <= 0:
-        return candidates[0], "skipped"
+        return candidates[0], "skipped", 0
     for entry in candidates:
         if budget_left() <= 0:
-            return entry, "skipped"
-        state = image_state(image_urls(entry)["image"])
-        if state != "dead":
-            return entry, state
-        sys.stderr.write("  {} image is gone, trying the next one\n"
-                         .format(entry["id"]))
-    # Every stand-in was dead too, which means something is wrong at the
-    # far end rather than with this particular map. Show the day's map.
-    return candidates[0], "dead"
+            return entry, "skipped", 0
+        state, size = image_state(image_urls(entry)["image"])
+        if state in ("ok", "unknown"):
+            return entry, state, size
+        sys.stderr.write("  {} is {}, trying the next one\n"
+                         .format(entry["id"],
+                                 "gone" if state == "dead" else
+                                 "mostly blank paper ({}KB)".format(size // 1024)))
+    # Every stand-in failed too, which says something is wrong at the far
+    # end rather than with this particular map. Show the day's map.
+    return candidates[0], state, size
 
 
 # ============================================================
@@ -381,7 +400,7 @@ def main():
     if args.preview:
         for offset in range(args.preview):
             d = day + timedelta(days=offset)
-            entry, _ = pick(entries, "all", d, check=False)
+            entry = pick(entries, "all", d, check=False)[0]
             print("{}  {:<58} {}".format(d.isoformat(),
                                          title_line(entry), entry["y"]))
         return 0
@@ -393,8 +412,9 @@ def main():
                                                     if e["k"] == category]
         if not subset:
             continue
-        entry, checked = pick(subset, category, day, check=not args.no_check)
-        payload = build_payload(entry, category, day, pool, checked)
+        entry, checked, size = pick(subset, category, day,
+                                    check=not args.no_check)
+        payload = build_payload(entry, category, day, pool, checked, size)
         path = (DEFAULT_PATH if category == "all"
                 else os.path.join(TODAY_DIR, category + ".json"))
         print("{:<12} {} ({}) [{}]".format(
