@@ -448,6 +448,11 @@ def evaluate(record, category, label):
     return entry, None
 
 
+# Media that tend to mean "hand-drawn, and mostly blank paper".
+SPARSE_MEDIUM = re.compile(
+    r"\bms\.|manuscript|sketch|tracing (?:linen|cloth|paper)|pencil", re.I)
+
+
 def score(entry):
     """
     Rough "will this look good on e-ink" score, used only to decide what
@@ -469,6 +474,12 @@ def score(entry):
     # A century of engraved line work reads better than a 1920s halftone.
     if entry["y"] <= 1900:
         points += 3
+    # One-off pen sketches on tracing linen are often three streets and a
+    # lot of paper. Printed maps were engraved, so they carry more ink.
+    # A penalty rather than a filter, because the best manuscript maps
+    # (Sneden's Civil War drawings) are among the finest things here.
+    if SPARSE_MEDIUM.search(entry["m"] + " " + entry["d"]):
+        points -= 12
     return points
 
 
