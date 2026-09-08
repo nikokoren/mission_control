@@ -221,12 +221,142 @@ def parse_image(record):
 def clean_text(text, limit):
     """One tidy line, trimmed on a word boundary."""
     text = re.sub(r"\s+", " ", str(text or "")).strip()
-    text = re.sub(r"\s*\[?(from the collection|description derived).*$", "",
-                  text, flags=re.I)
     if len(text) <= limit:
         return text
     cut = text[:limit].rsplit(" ", 1)[0]
     return cut.rstrip(" ,;:.-") + "..."
+
+
+# LOC descriptions are the catalogue note field: a run-on of everything the
+# cataloguer recorded, useful notes and shelf bookkeeping alike. These are
+# the notes that say nothing to somebody looking at the map on a wall.
+NOTE_NOISE = re.compile(r"""^(?:
+      aacr2
+    | available\ also
+    | description\ derived
+    | digitized
+    | imperfect
+    | lc\ (?:copy|panoramic|civil\ war|railroad|maps)
+    | library\ of\ congress
+    | this\ item\ is\ in\ the
+    | title\ (?:from|devised)
+    | cover\ title
+    | (?:cataloged|catalogued)\ from
+    | perspective\ map\ not\ drawn\ to\ scale
+    | indexed\ for\ points\ of\ interest
+    | includes\ (?:ill\.|illus|index|advertisement|text|table\ of)
+    | scale\ (?:ca\.|[\d~])
+    | oriented\ with
+    | (?:gift|purchase|transfer|deposit|acquired|copyright)\b
+    | (?:copy|no|vol|sheet|plate)\.?\ *\d
+    | in\ (?:upper|lower)\ (?:left|right)
+    | stamped
+    | signed
+    | accompanied\ by
+    | for\ sale\ by
+    | vault
+    | copy\ imperfect
+    | printed\ area
+    | separately\ published
+    | duplicate\ sheet
+    | erratum
+    | issued\ (?:also|as|under)
+    | acquisitions?\ control
+    | statement\ of\ responsibility
+    | at\ head\ of\ title
+    | includes\ notes\.?$
+    | ms\.\ \(
+    | \d+\ *(?:x|by)\ *\d+
+    )""", re.I | re.X)
+
+NOTE_NOISE_ANY = re.compile(r"""
+      please\ contact
+    | web\ site\ as\ a\ raster
+    | \(\dnd\ ed\.\)
+    | aacr2
+    | \d+/\d+          # MARC field bookkeeping, e.g. "100; 651/1; 710/1"
+    | serial\ no\.
+    | cong\.,
+    """, re.I | re.X)
+
+
+# Split the note field into notes. A full stop only ends a note when the
+# word in front of it is long enough not to be an abbreviation, which is
+# what keeps "Looking from the n. e." and "Vogt, Lith, Milwaukee, Wis."
+# in one piece instead of leaving a stray fragment on screen.
+# A closing quote after the full stop ends a note whatever came before it,
+# which is what separates a printer's imprint from the note that follows.
+# Zero-width, so the full stop and any closing quote stay on the note they
+# belong to instead of being eaten by the split.
+NOTE_SPLIT = re.compile(
+    r"(?:(?<=[a-z]{4}[.!?])|(?<=[.!?][\"\u201d\u2019')]))\s+(?=[\"'\[(A-Z])")
+
+
+def split_notes(text):
+    """
+    Notes, each ending in a full stop. Splitting eats the punctuation, so
+    it goes back on -- otherwise two kept notes run into each other and
+    read as one broken sentence.
+    """
+    notes = []
+    for note in NOTE_SPLIT.split(text):
+        note = note.strip()
+        if not note:
+            continue
+        if note[-1] not in ".!?\"')]\u201d":
+            note += "."
+        # A quote the split left unbalanced looks like a typo on screen;
+        # the note reads fine without any quoting at all.
+        if note.count('"') % 2:
+            note = note.replace('"', "").strip()
+        notes.append(note)
+    return notes
+
+
+def clean_description(text, limit):
+    """
+    Keep the notes that describe the map, drop the ones that describe the
+    catalogue record. Notes are separated by full stops, so split there,
+    filter, and refill up to the limit -- which means throwing out
+    boilerplate makes room for a real sentence rather than losing one.
+    """
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not text:
+        return ""
+    notes = split_notes(text)
+
+    kept = []
+    for note in notes:
+        note = note.strip(" ;")
+        if len(note) < 8:
+            continue
+        if NOTE_NOISE.match(note) or NOTE_NOISE_ANY.search(note):
+            continue
+        kept.append(note)
+        if sum(len(k) + 1 for k in kept) >= limit:
+            break
+
+    joined = " ".join(kept)
+    if len(joined) <= limit:
+        return joined
+    # Prefer dropping a whole trailing note to cutting one mid-sentence.
+    while len(kept) > 1 and len(" ".join(kept)) > limit:
+        kept.pop()
+    joined = " ".join(kept)
+    return joined if len(joined) <= limit else clean_text(joined, limit)
+
+
+def tidy_place(text):
+    """
+    Subject headings run broad to narrow with double dashes -- "New
+    Hampshire--Manchester". On screen that reads better the way an address
+    does, narrowest first.
+    """
+    text = clean_text(text, 70)
+    if "--" not in text:
+        return text[:60]
+    parts = [p.strip() for p in text.split("--") if p.strip()]
+    return ", ".join(reversed(parts))[:60]
 
 
 def item_id(record):
@@ -286,8 +416,8 @@ def evaluate(record, category, label):
         return None, "awkward aspect ratio"
 
     item = record.get("item") or {}
-    description = clean_text(first(item.get("summary"))
-                             or first(record.get("description")), 220)
+    description = clean_description(first(item.get("summary"))
+                                    or first(record.get("description")), 220)
     if any(bad in description.lower() for bad in DESC_REJECT):
         return None, "not a flat map"
 
@@ -298,8 +428,8 @@ def evaluate(record, category, label):
         creator = head if isinstance(head, str) else first(list(head))
     creator = nice_case(clean_text(creator, 70))
 
-    place = nice_case(clean_text(first(item.get("location"))
-                                 or first(record.get("location")), 60))
+    place = nice_case(tidy_place(first(item.get("location"))
+                                 or first(record.get("location"))))
 
     entry = {
         "id": ident,
