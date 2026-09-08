@@ -132,6 +132,43 @@ def load_json(filename):
         return None
 
 
+ROCKETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rockets")
+
+# Drawings are mostly PNG, but a handful were exported as JPEG. The filename
+# on disk is the only source of truth for the extension, so resolve it here
+# rather than hardcoding ".png" and emitting a URL that 404s into the
+# generic fallback. PNG wins if a key somehow has both.
+IMAGE_EXTS = (".png", ".jpg", ".jpeg")
+
+
+def _rocket_files():
+    """stem -> filename for everything in rockets/, PNG preferred."""
+    index = {}
+    try:
+        names = sorted(os.listdir(ROCKETS_DIR))
+    except OSError as e:
+        print(f"Warning: could not read {ROCKETS_DIR}: {e}")
+        return index
+    for name in names:
+        stem, ext = os.path.splitext(name)
+        if ext.lower() not in IMAGE_EXTS:
+            continue
+        if stem in index and not index[stem].lower().endswith(".png"):
+            index[stem] = name
+        elif stem not in index:
+            index[stem] = name
+    return index
+
+
+ROCKET_FILES = _rocket_files()
+
+
+def rocket_image_path(stem):
+    """rockets/<stem>.<ext> for a drawing that exists, else ""."""
+    name = ROCKET_FILES.get(stem)
+    return f"rockets/{name}" if name else ""
+
+
 def parse_time(t_str):
     """Parse an API timestamp. Returns None instead of raising on bad input."""
     if not t_str:
@@ -265,13 +302,22 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
         else:
             key, suffix = "empty", ""
 
-    url = f"{repo_url}/rockets/{key}{suffix}.png"
+    # Resolve against the files actually in rockets/ so a JPEG drawing gets a
+    # .jpg URL. A key with no drawing at all still emits a .png URL, which
+    # 404s and lets the plugin's onerror walk to alt and then generic.
+    path = rocket_image_path(f"{key}{suffix}") or f"rockets/{key}{suffix}.png"
+    url = f"{repo_url}/{path}"
 
     # The family drawing for this key, if there is one and it is not the key
     # itself. Same suffix, so an ascent variant falls back to an ascent family
-    # drawing rather than an idle one.
+    # drawing rather than an idle one. Only emitted when the file exists;
+    # an alt that 404s just wastes a hop before generic.
     base = BASE_KEY.get(key)
-    alt = f"{repo_url}/rockets/{base}{suffix}.png" if base and base != key else ""
+    alt = ""
+    if base and base != key:
+        base_path = rocket_image_path(f"{base}{suffix}")
+        if base_path:
+            alt = f"{repo_url}/{base_path}"
     return url, alt
 
 
