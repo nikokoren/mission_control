@@ -16,6 +16,14 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          # Track the branch tip rather than the SHA pinned into the event.
+          # For workflow_dispatch, github.sha is main as it stood when the
+          # dispatch was created, so a run that waits on the concurrency
+          # group starts from whatever the previous run had already
+          # superseded. Checking out "main" narrows that to the seconds
+          # between this step and the push; the retry below closes the rest.
+          ref: main
 
       - name: Fetch launch data
         run: |
@@ -32,12 +40,31 @@ jobs:
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add launch.json boosters/ 2>/dev/null || git add launch.json
 
-          if git diff --staged --quiet; then
-            echo "No changes to launch.json, skipping commit"
-          else
+          # launch.json is derived state: it is rebuilt from the API every run,
+          # so when main moves under us the right answer is to rebuild on top
+          # of the new tip, not to merge or rebase. launch.json is a single
+          # line, so a rebase would conflict on every race anyway.
+          for attempt in 1 2 3; do
+            git add launch.json boosters/ 2>/dev/null || git add launch.json
+
+            if git diff --staged --quiet; then
+              echo "No changes to launch.json, skipping commit"
+              exit 0
+            fi
+
             git commit -m "Update launch data [$(date -u +'%Y-%m-%d %H:%M UTC')]"
-            git push
-            echo "Pushed."
-          fi
+
+            if git push; then
+              echo "Pushed."
+              exit 0
+            fi
+
+            echo "Push rejected (attempt $attempt/3): main moved. Rebuilding on the new tip."
+            git fetch origin main
+            git reset --hard origin/main
+            python3 scripts/update_launch.py
+          done
+
+          echo "Still could not push after 3 attempts."
+          exit 1
