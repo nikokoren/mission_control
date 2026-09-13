@@ -272,7 +272,7 @@ def cadence_card(launch):
         parts.append(f"The {ordinal(world_year)} orbital launch attempt worldwide this year.")
 
     if streak and streak > 20 and rocket:
-        parts.append(f"{rocket} is on a {streak} flight success streak.")
+        parts.append(f"{rocket} is on a {streak}-flight success streak.")
 
     return " ".join(parts) if parts else None
 
@@ -387,11 +387,11 @@ def outlook_card(launch, mode):
     if isinstance(prob, int) and prob >= 0:
         strong = True
         if prob >= 80:
-            parts.append(f"Weather is {prob}% favourable.")
+            parts.append(f"Weather is {prob}% favorable.")
         elif prob >= 50:
-            parts.append(f"Weather sits at {prob}% favourable.")
+            parts.append(f"Weather sits at {prob}% favorable.")
         else:
-            parts.append(f"Weather is only {prob}% favourable.")
+            parts.append(f"Weather is only {prob}% favorable.")
 
     concerns = (launch.get("weather_concerns") or "").strip()
     if concerns:
@@ -420,7 +420,7 @@ def outlook_card(launch, mode):
             else:
                 hours = mins / 60.0
                 shown = int(hours) if abs(hours - round(hours)) < 0.1 else round(hours, 1)
-                parts.append(f"There is a {shown} hour window to work with.")
+                parts.append(f"There is a {shown}-hour window to work with.")
 
     if not parts or not strong:
         return None
@@ -459,7 +459,7 @@ def _single_booster_card(launch, stage, mode):
     turn = stage.get("turn_around_time_days")
     prev = dig(stage, "previous_flight", "name", default="")
     landing = dig(stage, "landing", default={}) or {}
-    l_loc = dig(landing, "location", "abbrev", default="") or dig(landing, "location", "name", default="")
+    l_loc = landing_place(landing)
     l_type = dig(landing, "type", "abbrev", default="")
     dist = landing.get("downrange_distance")
     attempt = landing.get("attempt")
@@ -547,6 +547,35 @@ def _stage_identity(stage):
     return serial, flight_n
 
 
+def landing_place(landing, short=False):
+    """
+    How to name the place a booster lands.
+
+    LL2 gives both a full name and an abbreviation. The abbreviation is
+    meaningless to a casual reader: "OCISLY" says nothing, while "Of Course
+    I Still Love You" at least reads as the name of a ship. landing.type
+    says which kind of place it is (ASDS for a drone ship, RTLS for a pad),
+    so a drone ship can be called one rather than left as a riddle.
+
+    short=True is for the multi-booster card, where three of these share a
+    sentence: the vessel is identified as a drone ship but not named.
+    """
+    name = dig(landing, "location", "name", default="") or ""
+    abbrev = dig(landing, "location", "abbrev", default="") or ""
+    is_asds = dig(landing, "type", "abbrev", default="") == "ASDS"
+
+    if is_asds:
+        if short or not name:
+            return "a drone ship"
+        return f"the drone ship {name}"
+    return name or abbrev
+
+
+def landing_preposition(place):
+    """You land ON a ship and AT a pad."""
+    return "on" if "drone ship" in place else "at"
+
+
 def _stage_landing_phrase(stage, resolved):
     """
     One clause describing where a single core lands or landed. Deliberately
@@ -562,22 +591,30 @@ def _stage_landing_phrase(stage, resolved):
     outcome actually being known yet.
     """
     landing = dig(stage, "landing", default={}) or {}
-    l_loc = dig(landing, "location", "abbrev", default="")
     l_type = dig(landing, "type", "abbrev", default="")
     attempt = landing.get("attempt")
     success = landing.get("success")
     is_rtls = l_type == "RTLS"
 
+    # Named drone ships are too long to repeat three times in one sentence,
+    # so here they stay generic. The pad keeps its abbreviation for the same
+    # reason: "LZ-2" next to two siblings reads better than three spelled
+    # out Landing Zones.
+    place = landing_place(landing, short=True)
+    if "drone ship" not in place:
+        place = dig(landing, "location", "abbrev", default="") or place
+    prep = landing_preposition(place)
+
     if attempt is False:
         return "expended"
     if resolved and success is True:
-        return f"landed at {l_loc}" if l_loc else "landed"
+        return f"landed {prep} {place}" if place else "landed"
     if resolved and success is False:
         return "lost on the way back"
-    if is_rtls and l_loc:
-        return f"returning to {l_loc}"
-    if l_loc:
-        return f"targeting {l_loc}"
+    if is_rtls and place:
+        return f"returning to {place}"
+    if place:
+        return f"targeting {place}"
     return "recovery planned" if attempt else "expended"
 
 
@@ -814,6 +851,8 @@ def booster_career_card(launch, history=None, fleet=None):
         ahead = sum(1 for c in fleet if c.get("flights", 0) > n)
         if ahead == 0:
             parts.append("No core in the fleet has flown more.")
+        elif ahead == 1:
+            parts.append("Only one core in the fleet has flown more.")
         elif ahead <= 4:
             parts.append(f"Only {num_word(ahead)} cores in the fleet have flown more.")
 
