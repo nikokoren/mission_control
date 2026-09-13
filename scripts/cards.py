@@ -106,6 +106,71 @@ def join_list(items):
     return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 
+# ============================================================
+# tense
+# ============================================================
+
+def is_resolved(launch):
+    """
+    True once we know how the launch went.
+
+    Deliberately NOT the same as POST_LAUNCH mode, which flips at liftoff:
+    a launch that is In Flight has happened but has no result yet, so it
+    takes the present tense rather than the past. This is the same
+    distinction _stage_landing_phrase already makes for landings, applied
+    to the cards that talk about the flight itself.
+    """
+    return dig(launch, "status", "abbrev", default="") in (
+        "Success", "Failure", "Partial Failure")
+
+
+# ============================================================
+# agency names
+# ============================================================
+
+# Header chips are space constrained and use the short forms from
+# normalize_org_name in update_launch.py. Cards have more room and a
+# different problem: "CASC" tells a casual reader nothing, while the full
+# "China Aerospace Science and Technology Corporation" eats 50 characters
+# before the sentence reaches its verb. The country plus the acronym says
+# who it is in a fraction of the space. Names that are already famous or
+# already self-describing are left alone.
+CARD_ORG_NAMES = {
+    "China Aerospace Science and Technology Corporation": "China's CASC",
+    "China Aerospace Science and Industry Corporation": "China's CASIC",
+    "Russian Federal Space Agency (ROSCOSMOS)": "Russia's Roscosmos",
+    "Indian Space Research Organisation": "India's ISRO",
+    "Indian Space Research Organization": "India's ISRO",
+    "Japan Aerospace Exploration Agency": "Japan's JAXA",
+    "Korea Aerospace Research Institute": "South Korea's KARI",
+    "European Space Agency": "Europe's ESA",
+    "National Aeronautics and Space Administration": "NASA",
+    "Space Exploration Technologies": "SpaceX",
+    "Rocket Lab Ltd": "Rocket Lab",
+}
+
+
+def org_possessive(provider):
+    """
+    "SpaceX" -> "SpaceX's". Returns None for a card-length name that already
+    carries an apostrophe, since "China's CASC's 47th launch" reads badly;
+    the caller rewords with "for" instead.
+    """
+    if not provider:
+        return None
+    return None if "'s " in provider else f"{provider}'s"
+
+
+def card_org_name(name):
+    """Provider name at card length. Falls back to whatever the API sent."""
+    if not name:
+        return ""
+    for full, short in CARD_ORG_NAMES.items():
+        if full in name:
+            return short
+    return name
+
+
 # Mission families worth naming. Anything unmatched is counted as "other".
 MISSION_FAMILIES = [
     "Starlink", "Transporter", "Bandwagon", "NROL", "Crew", "Cargo Dragon",
@@ -240,7 +305,7 @@ def is_boilerplate(launch, description):
 
 def cadence_card(launch):
     """Where this launch sits in the year. The reliable floor: almost never None."""
-    provider = dig(launch, "launch_service_provider", "name", default="")
+    provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
     year_n = launch.get("agency_launch_attempt_count_year")
     all_n = launch.get("agency_launch_attempt_count")
     pad_year = launch.get("pad_launch_attempt_count_year")
@@ -253,10 +318,17 @@ def cadence_card(launch):
     parts = []
 
     if provider and year_n:
-        if all_n:
-            parts.append(f"{provider}'s {ordinal(year_n)} launch of the year, {ordinal(all_n)} all time.")
+        # Past tense only once the outcome is known. In Flight is not enough:
+        # the launch has happened but is not yet a result.
+        lead = "That was " if is_resolved(launch) else ""
+        poss = org_possessive(provider)
+        if poss:
+            base = f"{lead}{poss} {ordinal(year_n)} launch of the year"
         else:
-            parts.append(f"{provider}'s {ordinal(year_n)} launch of the year.")
+            base = f"{lead}the {ordinal(year_n)} launch of the year for {provider}"
+            if not lead:
+                base = base[0].upper() + base[1:]
+        parts.append(f"{base}, {ordinal(all_n)} all time." if all_n else f"{base}.")
 
     # A busy pad and a quiet pad tell opposite stories, so the wording switches.
     if pad_year and pad:
@@ -464,7 +536,7 @@ def _single_booster_card(launch, stage, mode):
     dist = landing.get("downrange_distance")
     attempt = landing.get("attempt")
     success = landing.get("success")
-    provider = dig(launch, "launch_service_provider", "name", default="")
+    provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
 
     # "In Flight" flips mode to POST_LAUNCH (choose_target treats liftoff as
     # the point of no return for display purposes), but the landing outcome
@@ -803,9 +875,15 @@ def booster_career_card(launch, history=None, fleet=None):
 
     # 1. Span. How long it has been flying, and how often.
     span = days_between(flights[0]["net"], flights[-1]["net"])
+    resolved = is_resolved(launch)
     if span and span > 60:
         months = round(span / 30.0)
-        parts.append(f"{serial} has flown {num_word(n)} times over {plural(months, 'month')}.")
+        if resolved:
+            parts.append(f"That was {serial}'s {ordinal(n)} flight in {plural(months, 'month')}.")
+        else:
+            parts.append(f"{serial} has flown {num_word(n)} times over {plural(months, 'month')}.")
+    elif resolved:
+        parts.append(f"That was {serial}'s {ordinal(n)} flight.")
     else:
         parts.append(f"{serial} has flown {num_word(n)} times.")
 
@@ -1012,7 +1090,10 @@ def pad_card(launch):
 
     parts = []
     if isinstance(year, int) and year > 1:
-        parts.append(f"{year} launches from {pad} so far this year.")
+        if is_resolved(launch):
+            parts.append(f"That makes {year} launches from {pad} this year.")
+        else:
+            parts.append(f"{year} launches from {pad} so far this year.")
     elif isinstance(total, int) and total > 1:
         parts.append(f"{pad} has supported {total} launches.")
     else:
@@ -1187,8 +1268,13 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     """
     brief = None if is_boilerplate(launch, description) else description.strip()
 
+    # The label is free tense signal: it is always on screen and costs the
+    # body no characters. Post-launch the brief is pinned to slot A for the
+    # whole result window, so this header is the one a reader sees longest.
+    resolved = is_resolved(launch)
+
     cards = {
-        "brief":   ("MISSION BRIEF", brief),
+        "brief":   ("MISSION RECAP" if resolved else "MISSION BRIEF", brief),
         "booster": (booster_label(launch), booster_card(launch, mode)),
         "career":  (career_label(history), booster_career_card(launch, history, fleet)),
         "pad":     ("PAD HISTORY", pad_card(launch)),

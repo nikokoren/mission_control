@@ -15,7 +15,8 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from cards import build_slots, dig, short_pad, is_placeholder, all_boosters
+from cards import (build_slots, dig, short_pad, is_placeholder, all_boosters,
+                   is_resolved)
 from history import get_booster_history, get_fleet, get_docking
 from facts import get_rocket_fact
 
@@ -319,11 +320,6 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
         if base_path:
             alt = f"{repo_url}/{base_path}"
     return url, alt
-
-
-def is_resolved(launch):
-    """True once we know how the launch went."""
-    return dig(launch, "status", "abbrev", default="") in ("Success", "Failure", "Partial Failure")
 
 
 # ============================================================
