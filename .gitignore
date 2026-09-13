@@ -1,0 +1,8 @@
+# Python bytecode from running the scripts locally or in CI
+__pycache__/
+*.pyc
+
+# API payloads the workflow fetches before building launch.json.
+# launch.json is the committed output; these are the raw inputs.
+upcoming.json
+previous.json
