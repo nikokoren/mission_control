@@ -1172,12 +1172,30 @@ def record_card(launch, history):
     return None
 
 
-def _clip(text, limit):
-    """Trim to a word boundary with an ellipsis. LL2 fail reasons run long."""
+def clip(text, limit):
+    """
+    Shorten to `limit` without cutting a word in half.
+
+    Prefers the last sentence end inside the limit, so the text stops on a
+    complete thought and keeps its full stop. That is only worth it if a
+    reasonable amount survives, so a sentence boundary in the first 60% of
+    the budget is ignored in favour of fitting more in.
+
+    Otherwise it falls back to the last word boundary and marks the cut
+    with an ellipsis, which is the honest signal that a thought was
+    interrupted.
+    """
     text = (text or "").strip()
     if len(text) <= limit:
         return text
-    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:.")
+
+    window = text[:limit]
+    end = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+    if end >= int(limit * 0.6):
+        return window[:end + 1]
+
+    # Leave room for the ellipsis so the result never exceeds the limit.
+    cut = text[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:.")
     return cut + "\u2026"
 
 
@@ -1210,7 +1228,7 @@ def outcome_card(launch):
     if status not in ("Failure", "Partial Failure"):
         return None
 
-    reason = _clip(launch.get("failreason") or "", 220)
+    reason = clip(launch.get("failreason") or "", 220)
 
     # The label already says LAUNCH FAILURE, so the body gives the cause
     # rather than restating the verdict. Restating it also read as a

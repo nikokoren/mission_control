@@ -16,7 +16,7 @@ import sys
 from datetime import datetime, timezone
 
 from cards import (build_slots, dig, short_pad, is_placeholder, all_boosters,
-                   is_resolved)
+                   is_resolved, clip)
 from history import get_booster_history, get_fleet, get_docking
 from facts import get_rocket_fact
 
@@ -359,13 +359,13 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     description = ""
     desc = dig(launch, "mission", "description", default="")
     if not is_placeholder(desc, launch.get("name", "")):
-        description = desc.replace("\n", " ")[:600]
+        description = clip(desc.replace("\n", " "), 600)
 
     program_description = ""
     if programs:
         p_desc = dig(programs[0], "description", default="")
         if not is_placeholder(p_desc):
-            program_description = p_desc.replace("\n", " ")[:400]
+            program_description = clip(p_desc.replace("\n", " "), 400)
 
     # A real mission patch is square by convention and fills a square box
     # nicely. The provider logo fallback is usually a wide wordmark, which
