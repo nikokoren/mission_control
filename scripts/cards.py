@@ -1172,6 +1172,61 @@ def record_card(launch, history):
     return None
 
 
+def _clip(text, limit):
+    """Trim to a word boundary with an ellipsis. LL2 fail reasons run long."""
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:.")
+    return cut + "\u2026"
+
+
+def outcome_label(launch):
+    """Slot label carrying the outcome, so the header alone says what happened."""
+    status = dig(launch, "status", "abbrev", default="")
+    if status == "Failure":
+        return "LAUNCH FAILURE"
+    if status == "Partial Failure":
+        return "PARTIAL FAILURE"
+    return "MISSION RECAP"
+
+
+def outcome_card(launch):
+    """
+    What happened, when it did not go to plan.
+
+    Returns None for a success: the past tense and the MISSION RECAP label
+    already carry a nominal flight, and a card that says "it worked" on
+    every good launch is noise. A failure is the opposite -- it is the most
+    important thing on the screen, and without this card a lost vehicle and
+    a perfect one render identically.
+
+    LL2's status.description is boilerplate shared by every failure, so it
+    is not worth printing. failreason is specific and usually populated on
+    modern launches ("1st stage failure, failed to reach orbit"), so it
+    carries the detail when it exists.
+    """
+    status = dig(launch, "status", "abbrev", default="")
+    if status not in ("Failure", "Partial Failure"):
+        return None
+
+    reason = _clip(launch.get("failreason") or "", 220)
+
+    # The label already says LAUNCH FAILURE, so the body gives the cause
+    # rather than restating the verdict. Restating it also read as a
+    # contradiction whenever LL2's reason is a narrative: "The launch
+    # failed. ... successfully launched on Blue Origin's New Glenn rocket,
+    # but was placed into an unusable orbit."
+    if not reason:
+        if status == "Failure":
+            return "The launch failed. No cause has been announced yet."
+        return "The launch was a partial failure. No cause has been announced yet."
+
+    if not reason.endswith((".", "!", "?", "\u2026")):
+        reason += "."
+    return reason
+
+
 def docking_card(launch, docking):
     """For ISS-bound flights: when the spacecraft actually arrives. Needs the
     one extra /docking_event/ lookup passed in from the caller."""
@@ -1274,6 +1329,7 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     resolved = is_resolved(launch)
 
     cards = {
+        "outcome": (outcome_label(launch), outcome_card(launch)),
         "brief":   ("MISSION RECAP" if resolved else "MISSION BRIEF", brief),
         "booster": (booster_label(launch), booster_card(launch, mode)),
         "career":  (career_label(history), booster_career_card(launch, history, fleet)),
@@ -1294,7 +1350,9 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     # promote a card that always has something to say.
     order_a = ["brief", "booster", "pad", "program", "cadence", "fact"]
     if mode == "POST_LAUNCH":
-        order_a = ["brief", "booster", "docking", "record", "dest",
+        # outcome first: when a launch has failed, that outranks everything,
+        # including a good mission description.
+        order_a = ["outcome", "brief", "booster", "docking", "record", "dest",
                    "pad", "program", "cadence", "fact"]
     # Slot A usually takes the booster, which leaves the career for slot B.
     # When slot A takes a real mission brief instead, the booster wins slot B
@@ -1371,15 +1429,25 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     #
     # A boilerplate description never becomes the brief card in the first
     # place, so a Starlink has nothing to pin and rotates both slots freely.
-    if mode == "POST_LAUNCH" and cards["brief"][1]:
-        rest = [k for k in POST_ROTATION if cards[k][1]]
+    # A failure pins slot A outright, ahead of the brief: it is the one thing
+    # a reader must not miss, and it has to stay put for the whole result
+    # window rather than rotating away. The brief joins the rotation beneath
+    # it so the mission itself still gets told.
+    pinned = None
+    if mode == "POST_LAUNCH" and cards["outcome"][1]:
+        pinned, under = "outcome", ["brief"] + POST_ROTATION
+    elif mode == "POST_LAUNCH" and cards["brief"][1]:
+        pinned, under = "brief", POST_ROTATION
+
+    if pinned:
+        rest = [k for k in under if k != pinned and cards[k][1]]
         if not rest:
-            return as_slot("brief"), {"label": "", "text": ""}
+            return as_slot(pinned), {"label": "", "text": ""}
         if hours_since is None or hours_since <= POST_SETTLE_HOURS:
             step = 0
         else:
             step = int((hours_since - POST_SETTLE_HOURS) // POST_ROTATE_HOURS)
-        return as_slot("brief"), as_slot(rest[step % len(rest)])
+        return as_slot(pinned), as_slot(rest[step % len(rest)])
 
     if len(ranked) < 3:
         return slot_a, slot_b
