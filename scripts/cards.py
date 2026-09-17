@@ -106,6 +106,71 @@ def join_list(items):
     return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 
+# ============================================================
+# tense
+# ============================================================
+
+def is_resolved(launch):
+    """
+    True once we know how the launch went.
+
+    Deliberately NOT the same as POST_LAUNCH mode, which flips at liftoff:
+    a launch that is In Flight has happened but has no result yet, so it
+    takes the present tense rather than the past. This is the same
+    distinction _stage_landing_phrase already makes for landings, applied
+    to the cards that talk about the flight itself.
+    """
+    return dig(launch, "status", "abbrev", default="") in (
+        "Success", "Failure", "Partial Failure")
+
+
+# ============================================================
+# agency names
+# ============================================================
+
+# Header chips are space constrained and use the short forms from
+# normalize_org_name in update_launch.py. Cards have more room and a
+# different problem: "CASC" tells a casual reader nothing, while the full
+# "China Aerospace Science and Technology Corporation" eats 50 characters
+# before the sentence reaches its verb. The country plus the acronym says
+# who it is in a fraction of the space. Names that are already famous or
+# already self-describing are left alone.
+CARD_ORG_NAMES = {
+    "China Aerospace Science and Technology Corporation": "China's CASC",
+    "China Aerospace Science and Industry Corporation": "China's CASIC",
+    "Russian Federal Space Agency (ROSCOSMOS)": "Russia's Roscosmos",
+    "Indian Space Research Organisation": "India's ISRO",
+    "Indian Space Research Organization": "India's ISRO",
+    "Japan Aerospace Exploration Agency": "Japan's JAXA",
+    "Korea Aerospace Research Institute": "South Korea's KARI",
+    "European Space Agency": "Europe's ESA",
+    "National Aeronautics and Space Administration": "NASA",
+    "Space Exploration Technologies": "SpaceX",
+    "Rocket Lab Ltd": "Rocket Lab",
+}
+
+
+def org_possessive(provider):
+    """
+    "SpaceX" -> "SpaceX's". Returns None for a card-length name that already
+    carries an apostrophe, since "China's CASC's 47th launch" reads badly;
+    the caller rewords with "for" instead.
+    """
+    if not provider:
+        return None
+    return None if "'s " in provider else f"{provider}'s"
+
+
+def card_org_name(name):
+    """Provider name at card length. Falls back to whatever the API sent."""
+    if not name:
+        return ""
+    for full, short in CARD_ORG_NAMES.items():
+        if full in name:
+            return short
+    return name
+
+
 # Mission families worth naming. Anything unmatched is counted as "other".
 MISSION_FAMILIES = [
     "Starlink", "Transporter", "Bandwagon", "NROL", "Crew", "Cargo Dragon",
@@ -240,7 +305,7 @@ def is_boilerplate(launch, description):
 
 def cadence_card(launch):
     """Where this launch sits in the year. The reliable floor: almost never None."""
-    provider = dig(launch, "launch_service_provider", "name", default="")
+    provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
     year_n = launch.get("agency_launch_attempt_count_year")
     all_n = launch.get("agency_launch_attempt_count")
     pad_year = launch.get("pad_launch_attempt_count_year")
@@ -253,10 +318,17 @@ def cadence_card(launch):
     parts = []
 
     if provider and year_n:
-        if all_n:
-            parts.append(f"{provider}'s {ordinal(year_n)} launch of the year, {ordinal(all_n)} all time.")
+        # Past tense only once the outcome is known. In Flight is not enough:
+        # the launch has happened but is not yet a result.
+        lead = "That was " if is_resolved(launch) else ""
+        poss = org_possessive(provider)
+        if poss:
+            base = f"{lead}{poss} {ordinal(year_n)} launch of the year"
         else:
-            parts.append(f"{provider}'s {ordinal(year_n)} launch of the year.")
+            base = f"{lead}the {ordinal(year_n)} launch of the year for {provider}"
+            if not lead:
+                base = base[0].upper() + base[1:]
+        parts.append(f"{base}, {ordinal(all_n)} all time." if all_n else f"{base}.")
 
     # A busy pad and a quiet pad tell opposite stories, so the wording switches.
     if pad_year and pad:
@@ -272,7 +344,7 @@ def cadence_card(launch):
         parts.append(f"The {ordinal(world_year)} orbital launch attempt worldwide this year.")
 
     if streak and streak > 20 and rocket:
-        parts.append(f"{rocket} is on a {streak} flight success streak.")
+        parts.append(f"{rocket} is on a {streak}-flight success streak.")
 
     return " ".join(parts) if parts else None
 
@@ -387,11 +459,11 @@ def outlook_card(launch, mode):
     if isinstance(prob, int) and prob >= 0:
         strong = True
         if prob >= 80:
-            parts.append(f"Weather is {prob}% favourable.")
+            parts.append(f"Weather is {prob}% favorable.")
         elif prob >= 50:
-            parts.append(f"Weather sits at {prob}% favourable.")
+            parts.append(f"Weather sits at {prob}% favorable.")
         else:
-            parts.append(f"Weather is only {prob}% favourable.")
+            parts.append(f"Weather is only {prob}% favorable.")
 
     concerns = (launch.get("weather_concerns") or "").strip()
     if concerns:
@@ -420,7 +492,7 @@ def outlook_card(launch, mode):
             else:
                 hours = mins / 60.0
                 shown = int(hours) if abs(hours - round(hours)) < 0.1 else round(hours, 1)
-                parts.append(f"There is a {shown} hour window to work with.")
+                parts.append(f"There is a {shown}-hour window to work with.")
 
     if not parts or not strong:
         return None
@@ -459,12 +531,12 @@ def _single_booster_card(launch, stage, mode):
     turn = stage.get("turn_around_time_days")
     prev = dig(stage, "previous_flight", "name", default="")
     landing = dig(stage, "landing", default={}) or {}
-    l_loc = dig(landing, "location", "abbrev", default="") or dig(landing, "location", "name", default="")
+    l_loc = landing_place(landing)
     l_type = dig(landing, "type", "abbrev", default="")
     dist = landing.get("downrange_distance")
     attempt = landing.get("attempt")
     success = landing.get("success")
-    provider = dig(launch, "launch_service_provider", "name", default="")
+    provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
 
     # "In Flight" flips mode to POST_LAUNCH (choose_target treats liftoff as
     # the point of no return for display purposes), but the landing outcome
@@ -547,6 +619,35 @@ def _stage_identity(stage):
     return serial, flight_n
 
 
+def landing_place(landing, short=False):
+    """
+    How to name the place a booster lands.
+
+    LL2 gives both a full name and an abbreviation. The abbreviation is
+    meaningless to a casual reader: "OCISLY" says nothing, while "Of Course
+    I Still Love You" at least reads as the name of a ship. landing.type
+    says which kind of place it is (ASDS for a drone ship, RTLS for a pad),
+    so a drone ship can be called one rather than left as a riddle.
+
+    short=True is for the multi-booster card, where three of these share a
+    sentence: the vessel is identified as a drone ship but not named.
+    """
+    name = dig(landing, "location", "name", default="") or ""
+    abbrev = dig(landing, "location", "abbrev", default="") or ""
+    is_asds = dig(landing, "type", "abbrev", default="") == "ASDS"
+
+    if is_asds:
+        if short or not name:
+            return "a drone ship"
+        return f"the drone ship {name}"
+    return name or abbrev
+
+
+def landing_preposition(place):
+    """You land ON a ship and AT a pad."""
+    return "on" if "drone ship" in place else "at"
+
+
 def _stage_landing_phrase(stage, resolved):
     """
     One clause describing where a single core lands or landed. Deliberately
@@ -562,22 +663,30 @@ def _stage_landing_phrase(stage, resolved):
     outcome actually being known yet.
     """
     landing = dig(stage, "landing", default={}) or {}
-    l_loc = dig(landing, "location", "abbrev", default="")
     l_type = dig(landing, "type", "abbrev", default="")
     attempt = landing.get("attempt")
     success = landing.get("success")
     is_rtls = l_type == "RTLS"
 
+    # Named drone ships are too long to repeat three times in one sentence,
+    # so here they stay generic. The pad keeps its abbreviation for the same
+    # reason: "LZ-2" next to two siblings reads better than three spelled
+    # out Landing Zones.
+    place = landing_place(landing, short=True)
+    if "drone ship" not in place:
+        place = dig(landing, "location", "abbrev", default="") or place
+    prep = landing_preposition(place)
+
     if attempt is False:
         return "expended"
     if resolved and success is True:
-        return f"landed at {l_loc}" if l_loc else "landed"
+        return f"landed {prep} {place}" if place else "landed"
     if resolved and success is False:
         return "lost on the way back"
-    if is_rtls and l_loc:
-        return f"returning to {l_loc}"
-    if l_loc:
-        return f"targeting {l_loc}"
+    if is_rtls and place:
+        return f"returning to {place}"
+    if place:
+        return f"targeting {place}"
     return "recovery planned" if attempt else "expended"
 
 
@@ -766,9 +875,15 @@ def booster_career_card(launch, history=None, fleet=None):
 
     # 1. Span. How long it has been flying, and how often.
     span = days_between(flights[0]["net"], flights[-1]["net"])
+    resolved = is_resolved(launch)
     if span and span > 60:
         months = round(span / 30.0)
-        parts.append(f"{serial} has flown {num_word(n)} times over {plural(months, 'month')}.")
+        if resolved:
+            parts.append(f"That was {serial}'s {ordinal(n)} flight in {plural(months, 'month')}.")
+        else:
+            parts.append(f"{serial} has flown {num_word(n)} times over {plural(months, 'month')}.")
+    elif resolved:
+        parts.append(f"That was {serial}'s {ordinal(n)} flight.")
     else:
         parts.append(f"{serial} has flown {num_word(n)} times.")
 
@@ -814,6 +929,8 @@ def booster_career_card(launch, history=None, fleet=None):
         ahead = sum(1 for c in fleet if c.get("flights", 0) > n)
         if ahead == 0:
             parts.append("No core in the fleet has flown more.")
+        elif ahead == 1:
+            parts.append("Only one core in the fleet has flown more.")
         elif ahead <= 4:
             parts.append(f"Only {num_word(ahead)} cores in the fleet have flown more.")
 
@@ -973,7 +1090,10 @@ def pad_card(launch):
 
     parts = []
     if isinstance(year, int) and year > 1:
-        parts.append(f"{year} launches from {pad} so far this year.")
+        if is_resolved(launch):
+            parts.append(f"That makes {year} launches from {pad} this year.")
+        else:
+            parts.append(f"{year} launches from {pad} so far this year.")
     elif isinstance(total, int) and total > 1:
         parts.append(f"{pad} has supported {total} launches.")
     else:
@@ -1050,6 +1170,79 @@ def record_card(launch, history):
         return (f"{serial} has now flown {flights} times, putting it among the "
                 f"most-flown rockets ever built.")
     return None
+
+
+def clip(text, limit):
+    """
+    Shorten to `limit` without cutting a word in half.
+
+    Prefers the last sentence end inside the limit, so the text stops on a
+    complete thought and keeps its full stop. That is only worth it if a
+    reasonable amount survives, so a sentence boundary in the first 60% of
+    the budget is ignored in favour of fitting more in.
+
+    Otherwise it falls back to the last word boundary and marks the cut
+    with an ellipsis, which is the honest signal that a thought was
+    interrupted.
+    """
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+
+    window = text[:limit]
+    end = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+    if end >= int(limit * 0.6):
+        return window[:end + 1]
+
+    # Leave room for the ellipsis so the result never exceeds the limit.
+    cut = text[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:.")
+    return cut + "\u2026"
+
+
+def outcome_label(launch):
+    """Slot label carrying the outcome, so the header alone says what happened."""
+    status = dig(launch, "status", "abbrev", default="")
+    if status == "Failure":
+        return "LAUNCH FAILURE"
+    if status == "Partial Failure":
+        return "PARTIAL FAILURE"
+    return "MISSION RECAP"
+
+
+def outcome_card(launch):
+    """
+    What happened, when it did not go to plan.
+
+    Returns None for a success: the past tense and the MISSION RECAP label
+    already carry a nominal flight, and a card that says "it worked" on
+    every good launch is noise. A failure is the opposite -- it is the most
+    important thing on the screen, and without this card a lost vehicle and
+    a perfect one render identically.
+
+    LL2's status.description is boilerplate shared by every failure, so it
+    is not worth printing. failreason is specific and usually populated on
+    modern launches ("1st stage failure, failed to reach orbit"), so it
+    carries the detail when it exists.
+    """
+    status = dig(launch, "status", "abbrev", default="")
+    if status not in ("Failure", "Partial Failure"):
+        return None
+
+    reason = clip(launch.get("failreason") or "", 220)
+
+    # The label already says LAUNCH FAILURE, so the body gives the cause
+    # rather than restating the verdict. Restating it also read as a
+    # contradiction whenever LL2's reason is a narrative: "The launch
+    # failed. ... successfully launched on Blue Origin's New Glenn rocket,
+    # but was placed into an unusable orbit."
+    if not reason:
+        if status == "Failure":
+            return "The launch failed. No cause has been announced yet."
+        return "The launch was a partial failure. No cause has been announced yet."
+
+    if not reason.endswith((".", "!", "?", "\u2026")):
+        reason += "."
+    return reason
 
 
 def docking_card(launch, docking):
@@ -1148,8 +1341,14 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     """
     brief = None if is_boilerplate(launch, description) else description.strip()
 
+    # The label is free tense signal: it is always on screen and costs the
+    # body no characters. Post-launch the brief is pinned to slot A for the
+    # whole result window, so this header is the one a reader sees longest.
+    resolved = is_resolved(launch)
+
     cards = {
-        "brief":   ("MISSION BRIEF", brief),
+        "outcome": (outcome_label(launch), outcome_card(launch)),
+        "brief":   ("MISSION RECAP" if resolved else "MISSION BRIEF", brief),
         "booster": (booster_label(launch), booster_card(launch, mode)),
         "career":  (career_label(history), booster_career_card(launch, history, fleet)),
         "pad":     ("PAD HISTORY", pad_card(launch)),
@@ -1169,7 +1368,9 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     # promote a card that always has something to say.
     order_a = ["brief", "booster", "pad", "program", "cadence", "fact"]
     if mode == "POST_LAUNCH":
-        order_a = ["brief", "booster", "docking", "record", "dest",
+        # outcome first: when a launch has failed, that outranks everything,
+        # including a good mission description.
+        order_a = ["outcome", "brief", "booster", "docking", "record", "dest",
                    "pad", "program", "cadence", "fact"]
     # Slot A usually takes the booster, which leaves the career for slot B.
     # When slot A takes a real mission brief instead, the booster wins slot B
@@ -1246,15 +1447,25 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     #
     # A boilerplate description never becomes the brief card in the first
     # place, so a Starlink has nothing to pin and rotates both slots freely.
-    if mode == "POST_LAUNCH" and cards["brief"][1]:
-        rest = [k for k in POST_ROTATION if cards[k][1]]
+    # A failure pins slot A outright, ahead of the brief: it is the one thing
+    # a reader must not miss, and it has to stay put for the whole result
+    # window rather than rotating away. The brief joins the rotation beneath
+    # it so the mission itself still gets told.
+    pinned = None
+    if mode == "POST_LAUNCH" and cards["outcome"][1]:
+        pinned, under = "outcome", ["brief"] + POST_ROTATION
+    elif mode == "POST_LAUNCH" and cards["brief"][1]:
+        pinned, under = "brief", POST_ROTATION
+
+    if pinned:
+        rest = [k for k in under if k != pinned and cards[k][1]]
         if not rest:
-            return as_slot("brief"), {"label": "", "text": ""}
+            return as_slot(pinned), {"label": "", "text": ""}
         if hours_since is None or hours_since <= POST_SETTLE_HOURS:
             step = 0
         else:
             step = int((hours_since - POST_SETTLE_HOURS) // POST_ROTATE_HOURS)
-        return as_slot("brief"), as_slot(rest[step % len(rest)])
+        return as_slot(pinned), as_slot(rest[step % len(rest)])
 
     if len(ranked) < 3:
         return slot_a, slot_b

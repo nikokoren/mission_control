@@ -117,7 +117,7 @@ def get_rocket_fact(rocket_name, seed=""):
             facts = [
                 "Atlas V 551 launched the New Horizons probe, the fastest object ever launched from Earth at that time.",
                 "The '551' code means: 5-meter fairing, 5 solid boosters, and 1 Centaur engine.",
-                "Because it has 5 boosters, the Atlas V 551 is asymmetrical and requires significant engine gimballing.",
+                "Because it has 5 boosters, the Atlas V 551 is asymmetrical and requires significant engine gimbaling.",
                 "Atlas V 551 was the ride for the Curiosity and Perseverance rovers to Mars.",
                 "This configuration launched the Juno spacecraft to Jupiter.",
                 "The 5 solid boosters provide nearly 2 million pounds of thrust at liftoff.",
@@ -434,21 +434,21 @@ def get_rocket_fact(rocket_name, seed=""):
         facts = [
             "Zhuque-3 is China's first stainless steel rocket, built the same way SpaceX builds Starship.",
             "Zhuque-3's first stage is designed to fly again, landing on a pad downrange in the Gansu desert.",
-            "At 76.6 metres, Zhuque-3 is taller than any other Chinese commercial rocket flying today.",
+            "At 76.6 meters, Zhuque-3 is taller than any other Chinese commercial rocket flying today.",
             "Zhuque-3 is built by LandSpace, a private company founded in 2015, not by the Chinese state.",
             "Zhuque-3 burns methane and liquid oxygen, which leaves engines far cleaner than kerosene does.",
             "Zhuque means 'Vermilion Bird', one of the four guardian creatures of Chinese constellations.",
         ]
     elif "zhuque" in r_name or "zq-2" in r_name:
         facts = [
-            "Zhuque-2 was the first methane-fuelled rocket in the world to reach orbit, beating both SpaceX and Blue Origin to it.",
+            "Zhuque-2 was the first methane-fueled rocket in the world to reach orbit, beating both SpaceX and Blue Origin to it.",
             "Zhuque-2 is built by LandSpace, one of the first Chinese private companies licensed to build orbital rockets.",
             "Methane engines can be reused far more often than kerosene ones, because kerosene leaves soot behind.",
             "Zhuque-2's upgraded 2E variant lifts about 50% more payload than the original.",
         ]
     elif "kinetica" in r_name or "lijian" in r_name:
         facts = [
-            "Kinetica-1 is a solid-fuelled rocket, so it can sit fuelled and ready for long periods before launch.",
+            "Kinetica-1 is a solid-fueled rocket, so it can sit fueled and ready for long periods before launch.",
             "Kinetica-1 is built by CAS Space, a spinoff of the Chinese Academy of Sciences.",
             "Kinetica-1 set a Chinese record on its first flight by carrying 26 satellites at once.",
             "Its Chinese name Lijian means 'strong arrow'.",
@@ -463,7 +463,7 @@ def get_rocket_fact(rocket_name, seed=""):
     elif "gravity-1" in r_name or "yinli" in r_name:
         facts = [
             "Gravity-1 launches from a ship at sea rather than from a pad, so it can move to suit the orbit it needs.",
-            "Gravity-1 is the most powerful solid-fuelled rocket flying anywhere in the world.",
+            "Gravity-1 is the most powerful solid-fueled rocket flying anywhere in the world.",
             "Gravity-1 is built by Orienspace, a Chinese company founded in 2020.",
             "Its Chinese name Yinli means 'gravity', the thing every rocket is built to escape.",
         ]
@@ -483,7 +483,7 @@ def get_rocket_fact(rocket_name, seed=""):
         ]
     elif "long march 8" in r_name:
         facts = [
-            "The Long March 8 was designed from the start for China's satellite constellation programmes.",
+            "The Long March 8 was designed from the start for China's satellite constellation programs.",
             "The Long March 8 burns kerosene and liquid oxygen, far cleaner than the older hypergolic Long March rockets.",
             "A version of the Long March 8 flies with no strap-on boosters at all, for lighter payloads.",
             "The Long March 8 flies from Wenchang, China's newest and most southerly launch site.",
@@ -497,9 +497,9 @@ def get_rocket_fact(rocket_name, seed=""):
         ]
     elif "long march 11" in r_name:
         facts = [
-            "The Long March 11 is China's only solid-fuelled Long March, and can launch within hours of the order being given.",
+            "The Long March 11 is China's only solid-fueled Long March, and can launch within hours of the order being given.",
             "The Long March 11 has launched from a converted barge in the Yellow Sea.",
-            "At under 21 metres the Long March 11 is by far the smallest rocket in the Long March family.",
+            "At under 21 meters the Long March 11 is by far the smallest rocket in the Long March family.",
         ]
     elif "long march 3" in r_name:
         facts = [

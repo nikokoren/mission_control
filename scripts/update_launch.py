@@ -15,7 +15,8 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from cards import build_slots, dig, short_pad, is_placeholder, all_boosters
+from cards import (build_slots, dig, short_pad, is_placeholder, all_boosters,
+                   is_resolved, clip)
 from history import get_booster_history, get_fleet, get_docking
 from facts import get_rocket_fact
 
@@ -24,9 +25,6 @@ from facts import get_rocket_fact
 # ============================================================
 
 REPO_BASE = "https://raw.githubusercontent.com/nikokoren/mission_control/main"
-
-# Rocket names as the API writes them. Used for the recovery footer text.
-REUSABLE_ROCKETS = ["falcon", "starship", "new glenn", "electron", "new shepard"]
 
 # Image file key prefixes (no spaces). Used to decide if a _landed drawing exists.
 # Keys that get a _landed drawing after a successful landing. A key listed
@@ -103,16 +101,6 @@ def normalize_org_name(name):
     for old, new in replacements.items():
         if old in name:
             return new
-    return name
-
-
-def normalize_location_name(name):
-    for old, new in {
-        "Of Course I Still Love You": "OCISLY",
-        "Just Read The Instructions": "JRTI",
-        "A Shortfall of Gravitas": "ASOG",
-    }.items():
-        name = name.replace(old, new)
     return name
 
 
@@ -321,11 +309,6 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
     return url, alt
 
 
-def is_resolved(launch):
-    """True once we know how the launch went."""
-    return dig(launch, "status", "abbrev", default="") in ("Success", "Failure", "Partial Failure")
-
-
 # ============================================================
 # per-launch processing
 # ============================================================
@@ -376,13 +359,13 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     description = ""
     desc = dig(launch, "mission", "description", default="")
     if not is_placeholder(desc, launch.get("name", "")):
-        description = desc.replace("\n", " ")[:600]
+        description = clip(desc.replace("\n", " "), 600)
 
     program_description = ""
     if programs:
         p_desc = dig(programs[0], "description", default="")
         if not is_placeholder(p_desc):
-            program_description = p_desc.replace("\n", " ")[:400]
+            program_description = clip(p_desc.replace("\n", " "), 400)
 
     # A real mission patch is square by convention and fills a square box
     # nicely. The provider logo fallback is usually a wide wordmark, which
@@ -410,21 +393,10 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     if s_list:
         stage = s_list[0] or {}
     landing = dig(stage, "landing", default={}) or {}
-    attempt = landing.get("attempt")
     success = landing.get("success")
-    l_loc = normalize_location_name(dig(landing, "location", "name", default="Unknown"))
 
     rocket_name = dig(launch, "rocket", "configuration", "name", default="Unknown Rocket")
     launch_name = launch.get("name") or rocket_name
-
-    # --- footer: the recovery plan only, since the booster card carries the rest ---
-    is_reusable = any(r in rocket_name.lower() for r in REUSABLE_ROCKETS)
-    if not is_reusable or attempt is False:
-        footer_recovery = "Single-use configuration. No recovery planned."
-    elif l_loc == "Unknown":
-        footer_recovery = "Recovery planned. Location to be confirmed."
-    else:
-        footer_recovery = f"Planned recovery at {l_loc}."
 
     fact_seed = str(launch.get("id") or launch_name)
     try:
@@ -440,9 +412,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     # separately in history.py by serial -- and hand the CAREER/NEXT/RECORD
     # cards whichever core has flown the most. A brand new core paired with
     # a fifteen-flight side booster should tell the veteran's story, not
-    # the new core's blank one. footer_recovery above intentionally still
-    # reflects only the first-listed stage; giving it the same multi-core
-    # treatment is a separate piece of work, not done here.
+    # the new core's blank one.
     history = None
     fleet = None
     if with_history:
@@ -548,9 +518,6 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "slot_b_label": slot_b["label"],
         "slot_b_text": slot_b["text"],
 
-        # new: footer is now just the recovery plan
-        "footer_recovery": footer_recovery,
-
         "rocket_visual": vis_url,
         "rocket_visual_alt": vis_alt,
         "generic_visual": generic_url,
@@ -560,8 +527,6 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "description": description,
         "program_description": program_description,
         "rocket_fact": rocket_fact,
-        "footer_left": "",
-        "footer_right": footer_recovery,
     }
 
 
@@ -636,7 +601,7 @@ def main():
         print("Error: failed to process launch data")
         return 0
 
-    # Post-launch the footer becomes NEXT UP, so we need the following launch.
+    # Post-launch the display turns to NEXT UP, so we need the following launch.
     if mode == "POST_LAUNCH":
         follow = next_upcoming if (target is upcoming and next_upcoming) else upcoming
         next_data = process_launch_data(follow, "PRE_LAUNCH")
