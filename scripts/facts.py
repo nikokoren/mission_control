@@ -26,6 +26,12 @@ def get_rocket_fact(rocket_name, seed=""):
         "Astronauts on the International Space Station witness 16 sunrises and sunsets every single day.",
         "Liquid Hydrogen fuel is so cold (-423°F) that it would instantly freeze air into a solid block of nitrogen ice.",
         "Ion thrusters can produce only about as much thrust as the weight of a sheet of paper, but can run continuously for months or years.",
+        "Orbit is not about being high above Earth. It is about falling toward Earth fast enough that the ground keeps curving away.",
+        "A rocket heading straight up would quickly fall back down. Orbital rockets spend most of their energy building sideways speed.",
+        "Some rocket engines can restart in space, allowing one launch to send satellites into several different orbits.",
+
+
+
     ]
 
     facts = []
@@ -42,10 +48,13 @@ def get_rocket_fact(rocket_name, seed=""):
             "Falcon 9 uses sub-cooled propellants, meaning the fuel is chilled near its freezing point to increase density.",
             "SpaceX's Falcon 9 is the first orbital class rocket capable of reflight.",
             "The Falcon 9 telemetry signal often cuts out right at landing due to the vibration of the landing burn shaking the antenna.",
+            "Falcon 9's first stage has nine Merlin engines, but the rocket can keep flying even after losing an engine during ascent.",
+            "Falcon 9's first stage flips around after separation and fires its engines again to fly back toward Earth.",
+            "Falcon 9 can land on a drone ship hundreds of kilometres downrange when returning to the launch site would take too much fuel.",
         ]
     elif "falcon heavy" in r_name:
         facts = [
-            "At liftoff, SpaceX's Falcon Heavy fires 27 engines simultaneously, a feat rarely attempted in history.",
+            "Falcon Heavy is essentially three Falcon 9 first stages strapped together, giving it 27 engines at liftoff.",
             "The Falcon Heavy's center booster is heavily reinforced with thicker tank walls to withstand the force of the side boosters.",
             "Falcon Heavy's first payload, a Tesla Roadster, was thrown into an orbit that crosses the path of Mars.",
             "The Falcon Heavy's 27 engines do not ignite instantly but are staggered by milliseconds to reduce acoustic shock.",
@@ -72,6 +81,8 @@ def get_rocket_fact(rocket_name, seed=""):
             "The Raptor engine uses a Full-Flow Staged Combustion cycle, a complex design only previously attempted by Soviet engineers.",
             "Starship is pressurized with autogenous gas (gaseous methane/oxygen) instead of heavy helium bottles.",
             "Starship is constructed from stainless steel rather than carbon fiber to better withstand reentry heat.",
+            "Starship is designed to be refuelled in orbit, making much longer journeys to the Moon or Mars possible.",
+            "Starship is 9 metres wide, more than twice the diameter of a Falcon 9.",
         ]
     elif "electron" in r_name:
         facts = [
@@ -249,7 +260,7 @@ def get_rocket_fact(rocket_name, seed=""):
     elif "h3" in r_name:
         facts = [
             "H3 uses a complex 'expander bleed cycle' scaled up for main engines.",
-            "H3 uses automotive-grade electronics to cut costs.",
+            "H3 uses commercial technology from industries such as automotive manufacturing to reduce cost.",
             "The H3 rocket is bolted to the platform and rolls 500m to the pad.",
             "The H3 flight computer can trigger self-destruct if ignition fails.",
             "H3 insulation is sprayed-on silicone instead of hand-glued cork.",
@@ -262,10 +273,10 @@ def get_rocket_fact(rocket_name, seed=""):
             "ISRO's LVM3 is affectionately nicknamed 'Bahubali' or 'Fat Boy' due to its stubby appearance.",
             "The S200 solid boosters on ISRO's LVM3 use a flex-nozzle control system where the entire nozzle pivots.",
             "ISRO paints the LVM3 white to reflect tropical sunlight and keep the fuel tanks cool on the launch pad.",
-            "The LVM3's solid boosters are among the largest in the world, each containing 250 tons of propellant.",
+            "The LVM3's solid boosters are among the largest in the world, each containing 205 tons of propellant.",
             "ISRO's LVM3 cryogenic upper stage engine was developed entirely indigenously in India.",
             "The LVM3 launch pad uses a water suppression system that keeps the acoustic energy below 142 decibels.",
-            "ISRO's LVM3 liquid core engines do not ignite until the rocket is already 110 seconds into the flight.",
+            "ISRO's LVM3 liquid core engines do not ignite until the rocket is about 113 seconds into the flight.",
         ]
     elif "gslv" in r_name:
         facts = [
@@ -317,10 +328,6 @@ def get_rocket_fact(rocket_name, seed=""):
             "The core stage uses friction stir welding for its barrel sections, creating stronger bonds.",
             "SLS is capable of sending the Orion spacecraft and four astronauts directly to the Moon.",
             "The propellant for the SLS solid boosters has the consistency of a rubber eraser.",
-            "The Artemis program aims to land the first woman and first person of color on the Moon.",
-            "Artemis missions will establish a sustainable lunar presence, paving the way for Mars exploration.",
-            "The Artemis Base Camp will be humanity's first long-term outpost on another celestial body.",
-            "Artemis III will land astronauts near the lunar South Pole, where water ice exists in permanently shadowed craters.",
         ]
     elif "long march 2f" in r_name:
         facts = [
@@ -351,9 +358,7 @@ def get_rocket_fact(rocket_name, seed=""):
     elif "nuri" in r_name:
         facts = [
             "Nuri is the first orbital launch vehicle developed entirely with indigenous South Korean technology.",
-            "Nuri's first stage uses four clustered KRE-075 engines, generating 300 tons of thrust.",
             "Unlike its predecessor Naro-1, every component of Nuri was built in South Korea.",
-            "Nuri's third stage had a failure on its maiden flight but succeeded on the second attempt.",
             "Nuri is designed to launch 1.5-ton payloads into Sun-Synchronous Orbit.",
             "The KRE-075 engines on Nuri run on Jet A-1 kerosene and Liquid Oxygen.",
             "South Korea plans to use Nuri technology to launch a lunar lander by 2031.",
@@ -378,7 +383,6 @@ def get_rocket_fact(rocket_name, seed=""):
             "Ceres-1 is named after the first asteroid discovered, the Roman goddess of agriculture.",
             "Ceres-1 is a four-stage rocket with three solid stages and one liquid upper stage.",
             "Ceres-1 can be launched from a mobile transporter or a sea-launch barge.",
-            "Galactic Energy achieved 9 consecutive successful launches with Ceres-1 before a failure.",
             "The Ceres-1S is a sea-launched variant that debuted from a barge in the Yellow Sea.",
             "Ceres-1 is surprisingly small, standing only 19 meters tall.",
             "The fourth stage uses a hydrazine propulsion system for accurate injection.",
@@ -399,14 +403,14 @@ def get_rocket_fact(rocket_name, seed=""):
         facts = [
             "Zhuque-3 is China's first stainless steel rocket, built the same way SpaceX builds Starship.",
             "Zhuque-3's first stage is designed to fly again, landing on a pad downrange in the Gansu desert.",
-            "At 76.6 meters, Zhuque-3 is taller than any other Chinese commercial rocket flying today.",
+            "Zhuque-3 is taller than any other Chinese commercial rocket flying today.",
             "Zhuque-3 is built by LandSpace, a private company founded in 2015, not by the Chinese state.",
             "Zhuque-3 burns methane and liquid oxygen, which leaves engines far cleaner than kerosene does.",
             "Zhuque means 'Vermilion Bird', one of the four guardian creatures of Chinese constellations.",
         ]
     elif "zhuque" in r_name or "zq-2" in r_name:
         facts = [
-            "Zhuque-2 was the first methane-fueled rocket in the world to reach orbit, beating both SpaceX and Blue Origin to it.",
+            "Zhuque-2 was the first liquid-methane-fueled rocket in the world to reach orbit, beating both SpaceX and Blue Origin to it.",
             "Zhuque-2 is built by LandSpace, one of the first Chinese private companies licensed to build orbital rockets.",
             "Methane engines can be reused far more often than kerosene ones, because kerosene leaves soot behind.",
             "Zhuque-2's upgraded 2E variant lifts about 50% more payload than the original.",
@@ -415,7 +419,6 @@ def get_rocket_fact(rocket_name, seed=""):
         facts = [
             "Kinetica-1 is a solid-fueled rocket, so it can sit fueled and ready for long periods before launch.",
             "Kinetica-1 is built by CAS Space, a spinoff of the Chinese Academy of Sciences.",
-            "Kinetica-1 set a Chinese record on its first flight by carrying 26 satellites at once.",
             "Its Chinese name Lijian means 'strong arrow'.",
         ]
     elif "tianlong" in r_name:
@@ -428,9 +431,9 @@ def get_rocket_fact(rocket_name, seed=""):
     elif "gravity-1" in r_name or "yinli" in r_name:
         facts = [
             "Gravity-1 launches from a ship at sea rather than from a pad, so it can move to suit the orbit it needs.",
-            "Gravity-1 is the most powerful solid-fueled rocket flying anywhere in the world.",
+            "Gravity-1's first launch in 2024 made it the world's most powerful solid-fuel launch vehicle at the time.",
             "Gravity-1 is built by Orienspace, a Chinese company founded in 2020.",
-            "Its Chinese name Yinli means 'gravity', the thing every rocket is built to escape.",
+            "Gravity-1's Chinese name Yinli means 'gravity', the thing every rocket is built to escape.",
         ]
     elif "neutron" in r_name:
         facts = [
@@ -462,7 +465,7 @@ def get_rocket_fact(rocket_name, seed=""):
         ]
     elif "long march 11" in r_name:
         facts = [
-            "The Long March 11 is China's only solid-fueled Long March, and can launch within hours of the order being given.",
+            "Long March 11 is a solid-fueled member of the Long March family designed for rapid-response launches.",
             "The Long March 11 has launched from a converted barge in the Yellow Sea.",
             "At under 21 meters the Long March 11 is by far the smallest rocket in the Long March family.",
         ]
@@ -479,7 +482,6 @@ def get_rocket_fact(rocket_name, seed=""):
             "The Long March family has flown more than 600 times since 1970.",
             "Long March rockets have launched from four sites: Jiuquan, Taiyuan, Xichang and Wenchang.",
             "The older Long March rockets burn hypergolic propellants that ignite on contact, needing no ignition system.",
-            "China now launches more Long March rockets in a year than most countries launch rockets of any kind.",
         ]
     elif "new shepard" in r_name:
         facts = [
@@ -489,7 +491,6 @@ def get_rocket_fact(rocket_name, seed=""):
             "New Shepard is designed for suborbital tourism, taking passengers just above the 100km Kármán line.",
             "New Shepard's entire flight lasts only about 11 minutes from liftoff to touchdown.",
             "New Shepard's booster uses a single BE-3 engine that runs on liquid hydrogen and oxygen, emitting only steam.",
-            "New Shepard's engine throttles down to just 5 mph for a gentle landing on the concrete pad.",
             "New Shepard's capsule has a solid-rocket escape motor in the center that can blast the crew to safety in milliseconds.",
         ]
 
