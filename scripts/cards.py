@@ -308,17 +308,19 @@ def named_pad(launch):
 
 # Landing sites LL2 names without an article. "Targeting Gulf of Mexico"
 # is the kind of small wrongness that makes generated text sound generated.
+# Matched on word boundaries: "sea" as a substring also lives inside
+# Seattle, and a pad is not a body of water because of how it is spelled.
 ARTICLE_PLACES = ("gulf of", "ocean", "sea", "atlantic", "pacific", "steppe")
+ARTICLE_PLACE_RE = re.compile(r"\b(?:%s)\b" % "|".join(ARTICLE_PLACES), re.I)
 
 
 def place_with_article(place):
     """'Gulf of Mexico' -> 'the Gulf of Mexico'. Pads keep their bare names."""
     if not place:
         return place
-    low = place.lower()
-    if low.startswith(("the ", "a ", "an ")):
+    if place.lower().startswith(("the ", "a ", "an ")):
         return place
-    return f"the {place}" if any(k in low for k in ARTICLE_PLACES) else place
+    return f"the {place}" if ARTICLE_PLACE_RE.search(place) else place
 
 
 def day_of_year(launch):
