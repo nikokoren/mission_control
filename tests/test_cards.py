@@ -498,6 +498,56 @@ def check_contradictions(fixtures):
     return f.report("never states two things that cannot both be true")
 
 
+def check_fact_bank(fixtures):
+    """
+    The trivia bank is card text too.
+
+    DID YOU KNOW? is the one card whose prose is neither generated here nor
+    sent by the API: it is hand-written in facts.py, and it is the fallback the
+    slot filler reaches for when a launch has nothing else to say, so it is on
+    screen more than most. Everything in it is edited by hand, which is exactly
+    the kind of text that picks up a missing full stop or a stray double space,
+    and it is pass-through -- assemble() never sees it, so nothing else keeps it
+    inside the card budget.
+
+    Read out of the source rather than by calling get_rocket_fact, because the
+    point is to check every fact in the bank, not the one a seed happens to
+    land on.
+    """
+    f = Failures()
+    with open(os.path.join(ROOT, "scripts", "facts.py")) as fh:
+        source = fh.read()
+    facts = re.findall(r'^\s+"((?:[^"\\]|\\.)*)",\s*$', source, re.M)
+
+    f.check(len(facts) > 200, f"only found {len(facts)} facts -- has the bank's "
+                              "formatting changed enough to defeat this regex?")
+    for fact in facts:
+        f.check(fact.endswith((".", "!", "?")), "fact: no terminal punctuation", fact)
+        f.check("  " not in fact, "fact: double space", fact)
+        f.check(fact == fact.strip(), "fact: stray whitespace", repr(fact))
+        f.check(fact[:1].isupper() or fact[:1].isdigit(), "fact: lowercase opener", fact)
+        f.check(len(fact) <= C.CARD_BUDGET,
+                f"fact: {len(fact)} chars, over the {C.CARD_BUDGET} budget", fact)
+
+    seen = {}
+    for fact in facts:
+        if fact in seen:
+            f.check(False, "fact: appears twice in the bank", fact)
+        seen[fact] = True
+
+    # Every pool has to be able to answer, or a rocket with a pool of its own
+    # would fall through to the generic apology line.
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import facts as F
+    for rocket in ("Falcon 9", "Falcon Heavy", "Starship", "Electron", "Long March 8A",
+                   "Soyuz 2.1b", "Ariane 64", "H3", "LVM3", "Nuri", "Zhuque-3",
+                   "Something Nobody Has Drawn Yet"):
+        text = F.get_rocket_fact(rocket, seed="test")
+        f.check(text and text != "Rockets are cool.",
+                f"fact bank has nothing for {rocket!r}", repr(text))
+    return f.report(f"keeps the trivia bank clean ({len(facts)} facts)")
+
+
 def check_fixture_shape(fixtures):
     """
     The fixtures still carry every field the cards read.
@@ -587,7 +637,8 @@ def main(argv):
 
     checks = [check_renders, check_deterministic, check_no_repeats,
               check_rotates, check_lengths, check_prose, check_articles,
-              check_tense, check_contradictions, check_fixture_shape]
+              check_tense, check_contradictions, check_fact_bank,
+              check_fixture_shape]
     passed = [check(fixtures) for check in checks]
     failed = passed.count(False)
     print(f"\n{len(passed) - failed}/{len(passed)} checks passed")

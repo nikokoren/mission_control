@@ -10,11 +10,13 @@ on:
     paths:
       - "scripts/**"
       - "tests/**"
+      - "rockets/**"
       - ".github/workflows/test-cards.yml"
   pull_request:
     paths:
       - "scripts/**"
       - "tests/**"
+      - "rockets/**"
       - ".github/workflows/test-cards.yml"
   workflow_dispatch:
 
@@ -40,6 +42,11 @@ jobs:
       # toolchain is one nobody runs locally either.
       - name: Run the card checks
         run: python3 tests/test_cards.py
+
+      # Separate file, same step: one red job either way, and nobody has to
+      # remember a second command.
+      - name: Run the art checks
+        run: python3 tests/test_assets.py
 
       # The checks can say the prose is well formed; they cannot say it reads
       # well. Putting the whole corpus in the job summary means a reviewer can

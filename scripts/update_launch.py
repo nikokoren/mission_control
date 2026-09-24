@@ -65,7 +65,15 @@ BASE_KEY = {
     "cz_2c": "cz_classic", "cz_2d": "cz_classic", "cz_2f": "cz_classic",
     "cz_3a": "cz_classic", "cz_3b": "cz_classic", "cz_3c": "cz_classic",
     "cz_4b": "cz_classic", "cz_4c": "cz_classic", "cz_7":  "cz_classic",
-    "cz_8":  "cz_classic", "cz_11": "cz_classic", "cz_12": "cz_classic",
+    "cz_11": "cz_classic", "cz_12": "cz_classic",
+    # The 8A is the only drawn member of the Long March 8 family, and a
+    # stretched second stage is a far smaller lie than the question-mark
+    # rocket, so the plain 8 borrows its sibling's drawing. This is the one
+    # entry pointing at a variant rather than at a family silhouette; it
+    # should go back to cz_classic if that ever gets drawn. Deliberately not
+    # paired with a "cz_8a": "cz_8" entry, which would make the two point at
+    # each other: the 8A has its own drawing and so never needs a fallback.
+    "cz_8":  "cz_8a",
 }
 
 LANDABLE_KEYS = ["falcon9", "falconheavy", "starship", "newglenn", "electron", "newshepard"]
@@ -234,11 +242,19 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
                 key = "soyuz_crew"
             else:
                 key = "soyuz"
+        # Proton-M and Proton Medium share one silhouette, so one key covers
+        # the family. The drawing has been in rockets/ since the first commit
+        # with nothing to reach it: facts.py has always had a Proton pool, so
+        # a Proton launch drew Proton trivia beside the generic question-mark
+        # rocket. The type is on its way out in favour of Angara and may never
+        # fly again, but the line costs nothing if it does not.
+        elif "proton" in r: key = "proton"
         elif "h3" in r: key = "h3"
         elif "antares" in r: key = "antares"
         elif "delta" in r: key = "delta4"
         elif "long march 7a" in r: key = "cz_7a"
         elif "long march 7" in r: key = "cz_7"
+        elif "long march 8a" in r: key = "cz_8a"
         elif "long march 8" in r: key = "cz_8"
         elif "long march 6a" in r: key = "cz_6a"
         elif "long march 6c" in r: key = "cz_6c"
