@@ -12,8 +12,24 @@ Two ideas hold this together:
 2. Each card can return None, meaning "I have nothing useful". The slot
    filler walks a priority list and takes the first card that returns text,
    so a launch with sparse data degrades instead of printing blanks.
+
+Two rules keep the prose from reading like a stat dump:
+
+3. Fragments are assembled through `assemble`, which drops the least
+   important ones once the card reaches its length budget. Cards used to
+   print everything they knew, so the interesting first sentence arrived
+   with three duller ones stapled behind it. A budget makes the cards say
+   less and therefore say it better.
+
+4. Wording that repeats across launches goes through `pick`, which chooses
+   between equivalent phrasings from a per-launch seed. The same launch
+   always renders identically -- the display refreshes every 15 minutes and
+   flickering text would also churn a git commit every run -- while two
+   launches in a row do not open with the same five words. This is the same
+   trick, and the same seed, that facts.py already uses to choose trivia.
 """
 
+import random
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -69,19 +85,6 @@ def parse_iso_duration(s):
     return (d, h)
 
 
-def gap_phrase(days, hours):
-    """A pad turnaround, written naturally."""
-    if days == 0 and hours == 0:
-        return "hours after the last one"
-    if days == 0:
-        return f"just {plural(hours, 'hour')} after the last one"
-    if days == 1:
-        return "a day after the last one"
-    if days < 7:
-        return f"{plural(days, 'day')} after the last one"
-    return f"{plural(days, 'day')} since the last one"
-
-
 NUM_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
              7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven",
              12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen",
@@ -92,6 +95,91 @@ NUM_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
 def num_word(n):
     """Small numbers read better as words in prose."""
     return NUM_WORDS.get(int(n), str(int(n)))
+
+
+def spell_pair(*numbers):
+    """
+    True when every number in one sentence is small enough to spell out.
+
+    Prose wants words and a stat wants digits, but the one thing that always
+    reads badly is both in the same clause: "flown nineteen times over 22
+    months" looks like two writers took turns. So the numbers sharing a
+    sentence decide together, and the largest one wins.
+    """
+    return all(int(n) in NUM_WORDS for n in numbers)
+
+
+def plural_word(n, word, spell=True):
+    """plural(), with the count spelled out when it is small enough."""
+    n = int(n)
+    head = num_word(n) if (spell and n in NUM_WORDS) else str(n)
+    return f"{head} {word}" if n == 1 else f"{head} {word}s"
+
+
+TIMES_WORDS = {1: "once", 2: "twice"}
+
+
+def times(n):
+    """'once', 'twice', then '3 times'. Used for slip counts."""
+    n = int(n)
+    return TIMES_WORDS.get(n, f"{num_word(n)} times")
+
+
+# ============================================================
+# phrasing
+# ============================================================
+
+def card_seed(launch):
+    """
+    The per-launch seed for `pick`. Deliberately the same expression
+    update_launch.py feeds get_rocket_fact, so a launch's wording and its
+    trivia are stable for exactly as long as each other: fixed for one
+    launch, different for the next.
+    """
+    return str(launch.get("id") or launch.get("name") or "")
+
+
+def pick(seed, key, options):
+    """
+    One of several equivalent phrasings, chosen stably.
+
+    `key` names the sentence rather than the card, so adding a variant to
+    one line does not reshuffle every other line on the same launch.
+    """
+    options = [o for o in options if o]
+    if not options:
+        return None
+    if len(options) == 1:
+        return options[0]
+    return random.Random(f"{seed}|{key}").choice(options)
+
+
+# Cards used to run to whatever their data allowed: 238 characters of
+# ordinals on a busy SpaceX launch, 30 on a quiet one. The box they render
+# in lives in the TRMNL plugin rather than in this repo, so this is not a
+# measured width -- it is set below the longest card that has already
+# shipped, which is known to fit. Lower it if the real box is tighter.
+CARD_BUDGET = 195
+
+
+def assemble(parts, budget=CARD_BUDGET):
+    """
+    Join sentences in priority order, stopping before the card overflows.
+
+    The first sentence always survives, even if it is over budget on its
+    own: a card that returned None here would be replaced by a duller one,
+    and a long true sentence beats no sentence. Later ones are ordered by
+    how much they add, so what gets dropped is what mattered least.
+    """
+    out, used = [], 0
+    for part in parts:
+        if not part:
+            continue
+        if out and used + len(part) + 1 > budget:
+            continue
+        used += len(part) + (1 if out else 0)
+        out.append(part)
+    return " ".join(out) if out else None
 
 
 def join_list(items):
@@ -155,10 +243,16 @@ def org_possessive(provider):
     "SpaceX" -> "SpaceX's". Returns None for a card-length name that already
     carries an apostrophe, since "China's CASC's 47th launch" reads badly;
     the caller rewords with "for" instead.
+
+    A name that already ends in s takes the bare apostrophe: LL2 lists
+    "Russian Space Forces", which the old version rendered as "Russian Space
+    Forces's 6th launch".
     """
     if not provider:
         return None
-    return None if "'s " in provider else f"{provider}'s"
+    if "'s " in provider:
+        return None
+    return f"{provider}'" if provider.endswith("s") else f"{provider}'s"
 
 
 def card_org_name(name):
@@ -199,6 +293,67 @@ def days_between(iso_a, iso_b):
 
 def short_pad(name):
     return (name or "").replace("Space Launch Complex ", "SLC-").replace("Launch Complex ", "LC-")
+
+
+def named_pad(launch):
+    """
+    The pad's short name, or "" when LL2 does not actually know it. The
+    placeholder is the literal string "Unknown Pad", which produced the
+    line "First flight from Unknown Pad this year" -- a sentence that
+    manages to say nothing twice.
+    """
+    name = short_pad(dig(launch, "pad", "name", default=""))
+    return "" if "unknown" in name.lower() else name
+
+
+# Landing sites LL2 names without an article. "Targeting Gulf of Mexico"
+# is the kind of small wrongness that makes generated text sound generated.
+ARTICLE_PLACES = ("gulf of", "ocean", "sea", "atlantic", "pacific", "steppe")
+
+
+def place_with_article(place):
+    """'Gulf of Mexico' -> 'the Gulf of Mexico'. Pads keep their bare names."""
+    if not place:
+        return place
+    low = place.lower()
+    if low.startswith(("the ", "a ", "an ")):
+        return place
+    return f"the {place}" if any(k in low for k in ARTICLE_PLACES) else place
+
+
+def day_of_year(launch):
+    """Which day of the year this launch falls on. None if undatable."""
+    when = _iso(launch.get("net"))
+    return when.timetuple().tm_yday if when else None
+
+
+def rate_phrase(count, day):
+    """
+    A launch count turned into a tempo: "a launch every four days".
+
+    This is the one line on the cadence cards that is not just a number
+    read out loud, so it does the most work per character. Two guards keep
+    it honest:
+
+      - enough launches and enough of the year gone by, so the average is
+        not extrapolated from two data points in January;
+      - an upper bound of roughly a fortnight, because past that an average
+        stops being a rhythm anyone can feel. "A launch every 56 days" is
+        long division presented as insight, and it was also liable to sit
+        next to a turnaround figure that flatly contradicted it.
+    """
+    if not count or not day or count < 5 or day < 60:
+        return None
+    interval = day / float(count)
+    if interval < 1.4:
+        return "a launch most days"
+    if interval < 2.6:
+        return "a launch every other day"
+    if interval < 9.5:
+        return f"a launch every {num_word(int(round(interval)))} days"
+    if interval < 17:
+        return "a launch every couple of weeks"
+    return None
 
 
 # ============================================================
@@ -304,23 +459,32 @@ def is_boilerplate(launch, description):
 # ============================================================
 
 def cadence_card(launch):
-    """Where this launch sits in the year. The reliable floor: almost never None."""
+    """
+    Where this launch sits in the year. The reliable floor: almost never None.
+
+    The pad's own tally used to sit in here as well, which meant a screen
+    showing LAUNCH CADENCE beside PAD HISTORY printed the same number twice:
+    "9th from LC-9A this year" under one heading, "9 launches from LC-9A so
+    far this year" under the other. The pad now belongs to pad_card alone,
+    and this card keeps the operator and the world. Losing that clause is
+    also what buys room for the tempo line, which says more than any of the
+    ordinals it sits next to.
+    """
+    seed = card_seed(launch)
     provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
     year_n = launch.get("agency_launch_attempt_count_year")
     all_n = launch.get("agency_launch_attempt_count")
-    pad_year = launch.get("pad_launch_attempt_count_year")
     world_year = launch.get("orbital_launch_attempt_count_year")
-    pad = short_pad(dig(launch, "pad", "name", default=""))
     rocket = dig(launch, "rocket", "configuration", "name", default="")
     streak = dig(launch, "rocket", "configuration", "consecutive_successful_launches")
-    turnaround = parse_iso_duration(launch.get("pad_turnaround"))
+    resolved = is_resolved(launch)
 
     parts = []
 
     if provider and year_n:
         # Past tense only once the outcome is known. In Flight is not enough:
         # the launch has happened but is not yet a result.
-        lead = "That was " if is_resolved(launch) else ""
+        lead = "That was " if resolved else ""
         poss = org_possessive(provider)
         if poss:
             base = f"{lead}{poss} {ordinal(year_n)} launch of the year"
@@ -330,23 +494,46 @@ def cadence_card(launch):
                 base = base[0].upper() + base[1:]
         parts.append(f"{base}, {ordinal(all_n)} all time." if all_n else f"{base}.")
 
-    # A busy pad and a quiet pad tell opposite stories, so the wording switches.
-    if pad_year and pad:
-        if pad_year == 1:
-            parts.append(f"First flight from {pad} this year.")
-        elif turnaround:
-            d, h = turnaround
-            parts.append(f"{ordinal(pad_year)} from {pad} this year, {gap_phrase(d, h)}.")
-        else:
-            parts.append(f"{ordinal(pad_year)} from {pad} this year.")
+    # The tempo behind the ordinal. "116th launch of the year" is a number to
+    # be read; "a launch every other day" is something a reader can picture,
+    # and it costs the same characters.
+    rate = rate_phrase(year_n, day_of_year(launch))
+    if rate:
+        parts.append(pick(seed, "cadence-rate", [
+            f"That is {rate}.",
+            f"It works out to {rate}.",
+            f"Their year has run at {rate}.",
+        ]))
 
+    # Never on a flight we know was lost: the streak LL2 sends was counted
+    # before this launch, so printing it under LAUNCH FAILURE would credit a
+    # record the launch has just ended.
+    failed = dig(launch, "status", "abbrev", default="") in ("Failure", "Partial Failure")
+    if streak and streak > 20 and rocket and not failed:
+        parts.append(pick(seed, "cadence-streak", [
+            f"{rocket} is on a {streak}-flight success streak.",
+            f"{rocket} has not lost a mission in {streak} flights.",
+            f"No {rocket} has failed in {streak} flights.",
+        ]))
+
+    # The world tally is the least interesting thing here, so it goes last
+    # and is the first casualty of the budget on a busy launch.
     if world_year:
-        parts.append(f"The {ordinal(world_year)} orbital launch attempt worldwide this year.")
+        if resolved:
+            # No "That was ..." variant here: the lead sentence already opens
+            # with it once a launch has happened, and two of them in one card
+            # is the giveaway that nobody read it back.
+            parts.append(pick(seed, "cadence-world", [
+                f"It was the {ordinal(world_year)} orbital launch attempt worldwide this year.",
+                f"Worldwide, it was attempt number {world_year} of the year.",
+            ]))
+        else:
+            parts.append(pick(seed, "cadence-world", [
+                f"It is the {ordinal(world_year)} orbital launch attempt worldwide this year.",
+                f"Worldwide, it is attempt number {world_year} of the year.",
+            ]))
 
-    if streak and streak > 20 and rocket:
-        parts.append(f"{rocket} is on a {streak}-flight success streak.")
-
-    return " ".join(parts) if parts else None
+    return assemble(parts)
 
 
 # LL2 net_precision abbrevs that mean the T-0 is softer than it looks.
@@ -414,6 +601,7 @@ def outlook_card(launch, mode):
     if mode != "PRE_LAUNCH":
         return None
 
+    seed = card_seed(launch)
     parts = []
     strong = False   # does this card deserve to outrank the fallbacks?
 
@@ -438,10 +626,18 @@ def outlook_card(launch, mode):
         strong = True
         first = min((u.get("created_on") or "")[:4] for u in changes)
         n = len(changes)
-        if first and first.isdigit() and int(first) < 2026:
-            parts.append(f"This one has moved {n} times since it was first scheduled in {first}.")
+        # "moved 2 times" is the sort of phrase only a program writes.
+        # Slipping is what launches do, and English has words for twice.
+        if first and first.isdigit() and int(first) < datetime.now(timezone.utc).year:
+            parts.append(pick(seed, "outlook-slips", [
+                f"It has slipped {times(n)} since it was first scheduled in {first}.",
+                f"First scheduled in {first}, it has moved {times(n)} since.",
+            ]))
         else:
-            parts.append(f"This one has already moved {n} times.")
+            parts.append(pick(seed, "outlook-slips", [
+                f"It has already slipped {times(n)}.",
+                f"This one has moved {times(n)} already.",
+            ]))
 
         # When it last moved matters as much as how often. A launch that
         # slipped four times but has held for a fortnight is in better shape
@@ -459,11 +655,17 @@ def outlook_card(launch, mode):
     if isinstance(prob, int) and prob >= 0:
         strong = True
         if prob >= 80:
-            parts.append(f"Weather is {prob}% favorable.")
+            parts.append(pick(seed, "outlook-wx", [
+                f"Weather is {prob}% favorable.",
+                f"Forecasters call the weather {prob}% favorable.",
+            ]))
         elif prob >= 50:
             parts.append(f"Weather sits at {prob}% favorable.")
         else:
-            parts.append(f"Weather is only {prob}% favorable.")
+            parts.append(pick(seed, "outlook-wx", [
+                f"Weather is only {prob}% favorable.",
+                f"The forecast is against it at {prob}% favorable.",
+            ]))
 
     concerns = (launch.get("weather_concerns") or "").strip()
     if concerns:
@@ -496,7 +698,7 @@ def outlook_card(launch, mode):
 
     if not parts or not strong:
         return None
-    return " ".join(parts)
+    return assemble(parts)
 
 
 def booster_card(launch, mode):
@@ -517,12 +719,41 @@ def booster_card(launch, mode):
 
 
 def _single_booster_card(launch, stage, mode):
-    """The original one-core card, unchanged. Kept as its own function so
-    the ordinary Falcon 9 path carries zero risk from the Falcon Heavy
-    work below it."""
+    """
+    The one-core card: the most-shown card on the plugin, since most
+    launches that have a booster worth naming are Falcon 9s.
+
+    Every sentence here is still independently guarded -- that is the rule
+    the whole file is built on -- but they are now sentences rather than
+    telegram fragments. "B1100 on its 10th flight. Perfect 9 for 9 on
+    landings. Last flew Starlink Group 15-20 35 days ago." is three verbless
+    stubs of near-identical length, and reading a screenful of them is
+    what made the cards sound machine-written. Giving them subjects and
+    varying their shape costs a handful of characters, which the length
+    budget then takes back off the least interesting clause.
+
+    Kept as its own function so the ordinary Falcon 9 path carries zero risk
+    from the Falcon Heavy work below it.
+    """
+    seed = card_seed(launch)
     launcher = dig(stage, "launcher", default={}) or {}
-    serial = dig(launcher, "serial_number", default="")
+    serial = real_serial(stage)
+    provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
     if not serial:
+        # LL2 says "Unknown F9" when SpaceX has not announced the core. The
+        # old code took that at face value and printed "Unknown F9 is a brand
+        # new core", which is both unreadable and wrong: an unidentified core
+        # is not a new one. The fleet's record is the honest thing to say.
+        a_succ = dig(launch, "launch_service_provider", "successful_landings")
+        a_att = dig(launch, "launch_service_provider", "attempted_landings")
+        if provider and a_succ and a_att:
+            return pick(seed, "b-anon", [
+                f"The core has not been named yet. {provider} has landed "
+                f"{a_succ} of {a_att} boosters so far.",
+                f"{provider} has not said which core is flying. Its record "
+                f"stands at {plural(a_succ, 'landing')} from "
+                f"{plural(a_att, 'attempt')}.",
+            ])
         return None
 
     flight_n = stage.get("launcher_flight_number")
@@ -536,7 +767,6 @@ def _single_booster_card(launch, stage, mode):
     dist = landing.get("downrange_distance")
     attempt = landing.get("attempt")
     success = landing.get("success")
-    provider = card_org_name(dig(launch, "launch_service_provider", "name", default=""))
 
     # "In Flight" flips mode to POST_LAUNCH (choose_target treats liftoff as
     # the point of no return for display purposes), but the landing outcome
@@ -552,52 +782,92 @@ def _single_booster_card(launch, stage, mode):
     if prev and " | " in prev:
         prev = prev.split(" | ")[-1]
 
+    l_loc = place_with_article(l_loc)
+
     parts = []
 
     # 1. Identity
     if flight_n == 1 or (flight_n is None and not stage.get("reused")):
-        parts.append(f"{serial} is a brand new core.")
+        parts.append(pick(seed, "b-new", [
+            f"{serial} is a brand new core.",
+            f"{serial} has never flown before.",
+            f"This is the first flight for {serial}.",
+        ]))
     elif flight_n:
-        parts.append(f"{serial} on its {ordinal(flight_n)} flight.")
+        parts.append(pick(seed, "b-nth", [
+            f"{serial} is flying for the {ordinal(flight_n)} time.",
+            f"This is the {ordinal(flight_n)} flight for {serial}.",
+            f"{serial} is out on its {ordinal(flight_n)} flight.",
+        ]))
     else:
-        parts.append(f"Flying booster {serial}.")
+        parts.append(f"The core is {serial}.")
 
     # 2. Landing record. Never claim perfection on a flight we know was lost.
-    if att and att > 0 and succ is not None:
+    #
+    # Two guards on the numbers themselves. LL2's launcher record is a live
+    # career total while launcher_flight_number is this flight's index, so on
+    # a past launch the two disagree: B1097's 12th flight was rendered with
+    # "all thirteen of its landings", which a reader can see cannot be true.
+    # And a single landing is not a record worth a sentence -- "Perfect 1 for
+    # 1 on landings" under "This is the first flight for ZQ-3 F2" says the
+    # same thing as the landing clause two sentences later.
+    stale = isinstance(flight_n, int) and isinstance(succ, int) and succ > flight_n
+    if att and att > 1 and succ is not None and not stale:
         if succ == att and success is not False:
-            parts.append(f"Perfect {succ} for {succ} on landings.")
+            # The two flourishes need a number big enough to be worth the
+            # flourish: "Not one of its two landings has missed" is a lot of
+            # words for two landings.
+            parts.append(pick(seed, "b-record", [f"Perfect {succ} for {succ} on landings."] + ([
+                f"It has stuck all {num_word(succ)} of its landings.",
+                f"Not one of its {num_word(succ)} landings has missed.",
+            ] if succ >= 4 else [])))
         elif succ < att:
-            parts.append(f"{succ} of {att} landings stuck.")
+            parts.append(pick(seed, "b-record", [
+                f"{succ} of its {att} landings have stuck.",
+                f"It has landed {succ} times out of {att}.",
+            ]))
 
-    # 3. Where it has been
-    if prev and turn:
-        parts.append(f"Last flew {prev} {ago(turn)}.")
-    elif turn:
-        parts.append(f"Back on the pad {ago(turn)}.")
-    elif prev:
-        parts.append(f"Last flew {prev}.")
-
-    # 4. Where it is going, or where it went.
+    # 3. Where it is going, or where it went. Ahead of the previous flight
+    # below it: on the way up, where this booster is headed is the part a
+    # reader is actually waiting on.
+    #
     # RTLS distances are fractions of a km, so rounding them reads as a bug.
     is_rtls = (l_type == "RTLS") or (dist is not None and dist < 5)
     if attempt is False:
-        parts.append("Expended on this flight, with no recovery planned.")
+        parts.append(pick(seed, "b-land", [
+            "It is expended on this flight, with no recovery planned.",
+            "There is no recovery planned: this core is expended.",
+        ]))
     elif l_loc:
         if resolved and success:
             if is_rtls:
-                parts.append(f"Flew itself back to {l_loc}.")
+                parts.append(f"It flew itself back to {l_loc}.")
             elif dist:
-                parts.append(f"Down on {l_loc}, {int(dist)} km downrange.")
+                parts.append(f"It came down on {l_loc}, {int(dist)} km downrange.")
             else:
-                parts.append(f"Down on {l_loc}.")
+                parts.append(f"It came down on {l_loc}.")
         elif resolved and success is False:
-            parts.append(f"Lost on the way back to {l_loc}.")
+            parts.append(f"It was lost on the way back to {l_loc}.")
         elif is_rtls:
-            parts.append(f"Flying back to {l_loc} rather than a drone ship.")
+            parts.append(f"It flies back to {l_loc} rather than a drone ship.")
         elif dist:
-            parts.append(f"Targeting {l_loc}, {int(dist)} km downrange.")
+            parts.append(pick(seed, "b-land", [
+                f"It is aiming for {l_loc}, {int(dist)} km downrange.",
+                f"Recovery is {int(dist)} km downrange, on {l_loc}.",
+            ]))
         else:
-            parts.append(f"Targeting {l_loc}.")
+            parts.append(f"It is aiming for {l_loc}.")
+
+    # 4. Where it has been
+    if prev and turn:
+        parts.append(pick(seed, "b-prev", [
+            f"It last flew {prev} {ago(turn)}.",
+            f"Its previous trip was {prev}, {ago(turn)}.",
+        ]))
+    elif turn:
+        parts.append(f"It last flew {ago(turn)}.")
+    elif prev:
+        parts.append(f"It last flew {prev}.")
 
     # 5. Floor. If we learned almost nothing, borrow an always-present stat.
     if len(parts) < 2:
@@ -606,13 +876,12 @@ def _single_booster_card(launch, stage, mode):
         if provider and a_succ and a_att:
             parts.append(f"{provider} has landed {a_succ} of {a_att} boosters.")
 
-    return " ".join(parts) if parts else None
+    return assemble(parts)
 
 
 def _stage_identity(stage):
     """(serial, flight_n) for one stage, or (serial, None) if unknown."""
-    launcher = dig(stage, "launcher", default={}) or {}
-    serial = dig(launcher, "serial_number", default="")
+    serial = real_serial(stage)
     flight_n = stage.get("launcher_flight_number")
     if flight_n is None and stage.get("reused") is False:
         flight_n = 1
@@ -635,6 +904,14 @@ def landing_place(landing, short=False):
     name = dig(landing, "location", "name", default="") or ""
     abbrev = dig(landing, "location", "abbrev", default="") or ""
     is_asds = dig(landing, "type", "abbrev", default="") == "ASDS"
+
+    # LL2 fills an unknown recovery site with a placeholder, which produced
+    # "Both are returning to N/A" on a Falcon Heavy whose landing plan had
+    # not been published.
+    if name.strip().lower() in ("n/a", "na", "unknown", "tbd", ""):
+        name = ""
+    if abbrev.strip().lower() in ("n/a", "na", "unknown", "tbd"):
+        abbrev = ""
 
     if is_asds:
         if short or not name:
@@ -778,6 +1055,12 @@ def _multi_booster_card(launch, stages, mode):
         if len(side_landings) == 1:
             parts.append(f"Both are {side_landings.pop()}.")
         else:
+            # This sentence names both cores itself, so a bare "Side boosters
+            # X and Y." above it is the same two serials twice in a row. The
+            # identity line only earns its place when it carries a flight
+            # count the landing line does not.
+            if parts and parts[-1] == f"Side boosters {serials}.":
+                parts.pop()
             parts.append(" and ".join(f"{s} {p}" for _, (s, _), p in sides) + ".")
 
     if core:
@@ -789,7 +1072,7 @@ def _multi_booster_card(launch, stages, mode):
         else:
             parts.append(f"The core, {serial}, is {phrase}.")
 
-    return " ".join(parts) if parts else None
+    return assemble(parts)
 
 
 
@@ -802,7 +1085,7 @@ def booster_label(launch):
     stages = all_boosters(launch)
     if len(stages) > 1:
         return "BOOSTERS"
-    serial = dig(stages[0] if stages else {}, "launcher", "serial_number", default="")
+    serial = real_serial(stages[0] if stages else {})
     return f"BOOSTER {serial}" if serial else "BOOSTER"
 
 
@@ -833,12 +1116,25 @@ def _stage_role(stage):
     return ""
 
 
+def real_serial(stage):
+    """
+    A booster serial worth printing, or "".
+
+    SpaceX does not always say which core is flying, and LL2 fills the gap
+    with "Unknown F9". Passing that through produced "Unknown F9 is a brand
+    new core", which is both unreadable and untrue: the core is not new,
+    it is unidentified.
+    """
+    serial = dig(stage or {}, "launcher", "serial_number", default="") or ""
+    return "" if "unknown" in serial.lower() else serial
+
+
 def booster_serial(launch):
     """Just the serial of the first listed core, or empty. Used by the
     single-booster label path; multi-booster launches use booster_label
     directly instead."""
     stages = all_boosters(launch)
-    return dig(stages[0] if stages else {}, "launcher", "serial_number", default="")
+    return real_serial(stages[0] if stages else {})
 
 
 def booster_career_card(launch, history=None, fleet=None):
@@ -871,6 +1167,7 @@ def booster_career_card(launch, history=None, fleet=None):
         # One or two flights is not a career worth summarising.
         return None
 
+    seed = card_seed(launch)
     parts = []
 
     # 1. Span. How long it has been flying, and how often.
@@ -881,7 +1178,16 @@ def booster_career_card(launch, history=None, fleet=None):
         if resolved:
             parts.append(f"That was {serial}'s {ordinal(n)} flight in {plural(months, 'month')}.")
         else:
-            parts.append(f"{serial} has flown {num_word(n)} times over {plural(months, 'month')}.")
+            # Both numbers spell out together or neither does: "flown
+            # nineteen times over 22 months" switched conventions halfway
+            # through its own sentence.
+            spell = spell_pair(n, months)
+            n_s = num_word(n) if spell else str(n)
+            m_s = plural_word(months, "month", spell)
+            parts.append(pick(seed, "career-span", [
+                f"{serial} has flown {n_s} times in {m_s}.",
+                f"{serial} has {n_s} flights behind it, over {m_s}.",
+            ]))
     elif resolved:
         parts.append(f"That was {serial}'s {ordinal(n)} flight.")
     else:
@@ -899,42 +1205,73 @@ def booster_career_card(launch, history=None, fleet=None):
         top_fam, top_n = named[0]
         if top_n == n:
             # A single-purpose core. Listing one item as a breakdown reads badly.
-            parts.append(f"Every one of those was a {top_fam} mission.")
+            parts.append(pick(seed, "career-mix", [
+                f"Every one of those was a {top_fam} mission.",
+                f"It has flown nothing but {top_fam} missions.",
+            ]))
         elif top_n >= n - 1:
-            parts.append(f"All but {plural(n - top_n, 'flight')} were {top_fam} missions.")
+            odd = n - top_n
+            parts.append(pick(seed, "career-mix", [
+                f"All but {plural_word(odd, 'flight')} were {top_fam} missions.",
+                f"Only {num_word(odd)} of those was not a {top_fam} mission."
+                if odd == 1 else
+                f"Only {num_word(odd)} of those were not {top_fam} missions.",
+            ]))
         else:
-            bits = [f"{num_word(v)} {k}" for k, v in named[:3]]
-            leftover = n - sum(v for _, v in named[:3])
+            shown = named[:3]
+            leftover = n - sum(v for _, v in shown)
+            # "26 Starlink, three NROL, one Transporter" reads as a typo. The
+            # whole list agrees, and the biggest count decides.
+            spell = spell_pair(*([v for _, v in shown] + ([leftover] if leftover > 0 else [])))
+            fmt = (lambda v: num_word(v)) if spell else (lambda v: str(v))
+            bits = [f"{fmt(v)} {k}" for k, v in shown]
             if leftover > 0:
                 noun = "other" if leftover == 1 else "others"
-                bits.append(f"{num_word(leftover)} {noun}")
-            parts.append(f"Its flights break down as {join_list(bits)}.")
+                bits.append(f"{fmt(leftover)} {noun}")
+            # "Its flights break down as" is filing-cabinet English. A colon
+            # puts the same list on screen in fewer characters and leads with
+            # the fact rather than with the accounting. The first variant
+            # names the dominant family in the stem, so the list must not
+            # name it again: "Mostly Starlink: eight Starlink, one NROL".
+            led = [f"{fmt(top_n)} of them"] + bits[1:]
+            parts.append(pick(seed, "career-mix", [
+                f"Mostly {top_fam}: {join_list(led)}.",
+                f"The mix: {join_list(bits)}.",
+            ]))
 
-    # 3. Personal best turnaround.
+    # 3. Fleet rank. The rarest thing this card can say, so it goes ahead
+    # of the turnaround and the pad count rather than behind them: on a core
+    # that leads the fleet, that is the sentence worth the space.
+    if fleet and serial:
+        ahead = sum(1 for c in fleet if c.get("flights", 0) > n)
+        if ahead == 0:
+            parts.append(pick(seed, "career-rank", [
+                "No core in the fleet has flown more.",
+                "Nothing else in the fleet has flown as often.",
+            ]))
+        elif ahead == 1:
+            parts.append("Only one core in the fleet has flown more.")
+        elif ahead <= 4:
+            parts.append(f"Only {num_word(ahead)} cores in the fleet have flown more.")
+
+    # 4. Personal best turnaround.
     gaps = []
     for i in range(1, len(flights)):
         g = days_between(flights[i - 1]["net"], flights[i]["net"])
         if g is not None and g > 0:
             gaps.append(g)
     if gaps:
-        parts.append(f"Its quickest turnaround was {plural(min(gaps), 'day')}.")
+        parts.append(pick(seed, "career-turn", [
+            f"Its quickest turnaround was {plural(min(gaps), 'day')}.",
+            f"At its fastest it was back on the pad in {plural(min(gaps), 'day')}.",
+        ]))
 
-    # 4. Pad spread. Only interesting when it has moved around.
+    # 5. Pad spread. Only interesting when it has moved around.
     pads = {f.get("pad") for f in flights if f.get("pad")}
     if len(pads) >= 3:
         parts.append(f"It has flown from {num_word(len(pads))} different pads.")
 
-    # 5. Fleet rank. The best line available, when we have the fleet list.
-    if fleet and serial:
-        ahead = sum(1 for c in fleet if c.get("flights", 0) > n)
-        if ahead == 0:
-            parts.append("No core in the fleet has flown more.")
-        elif ahead == 1:
-            parts.append("Only one core in the fleet has flown more.")
-        elif ahead <= 4:
-            parts.append(f"Only {num_word(ahead)} cores in the fleet have flown more.")
-
-    return " ".join(parts) if len(parts) >= 2 else None
+    return assemble(parts) if len(parts) >= 2 else None
 
 
 def career_label(history):
@@ -1081,32 +1418,94 @@ def destination_card(launch):
 
 
 def pad_card(launch):
-    """What this pad has been doing. Both figures are already in the payload."""
-    pad = short_pad(dig(launch, "pad", "name", default="")) or "This pad"
+    """
+    What this pad has been doing. Every figure is already in the payload.
+
+    Now that cadence_card has stopped repeating the pad's year count, this
+    card is free to lead with the pad's whole life rather than its last
+    twelve months, which is the more interesting half: SLC-40 running its
+    48th launch of the year is a statistic, SLC-40 having flown 401 of them
+    in total is a place with a history.
+
+    The turnaround is LL2's gap since the pad's previous launch -- this one
+    flight, not a typical figure -- so it is now written as the event it is.
+    "It turns around in about 6 days" claimed a habit from a sample of one.
+    """
+    seed = card_seed(launch)
+    # No name, no card. "First flight from Unknown Pad this year" was the old
+    # output, and "This pad" as a subject reads like a placeholder because it
+    # is one; the rotation has better things to show.
+    pad = named_pad(launch)
+    if not pad:
+        return None
     year = dig(launch, "pad_launch_attempt_count_year", default=None)
     total = dig(launch, "pad", "total_launch_count", default=None)
     parsed = parse_iso_duration(launch.get("pad_turnaround"))
-    turn = parsed[0] + parsed[1] / 24.0 if parsed else None
+    resolved = is_resolved(launch)
+
+    year = year if isinstance(year, int) else None
+    total = total if isinstance(total, int) else None
+
+    # LL2 occasionally reports a total below the year count for a pad that
+    # has just opened (Starship's Pad 2 arrived as 3 this year, 2 ever).
+    # Printing both invites the reader to catch us contradicting ourselves.
+    if total is not None and year is not None and total < year:
+        total = None
 
     parts = []
-    if isinstance(year, int) and year > 1:
-        if is_resolved(launch):
-            parts.append(f"That makes {year} launches from {pad} this year.")
-        else:
-            parts.append(f"{year} launches from {pad} so far this year.")
-    elif isinstance(total, int) and total > 1:
-        parts.append(f"{pad} has supported {total} launches.")
+
+    if total and total > 1 and year and year > 1:
+        # The second variant differs by tense: "That is N launches this year"
+        # only works once the launch has happened.
+        parts.append(pick(seed, "pad-lead", [
+            f"{pad} has flown {total} launches since it opened, {year} of them this year.",
+            f"That is {year} launches from {pad} this year, out of {total} in its lifetime."
+            if resolved else
+            f"{pad} is up to {year} launches this year, and {total} since it opened.",
+        ]))
+    elif total and total > 1:
+        parts.append(pick(seed, "pad-lead-total", [
+            f"{pad} has flown {total} launches since it opened.",
+            f"{total} launches have left {pad} since it opened.",
+        ]))
+    elif year and year > 1:
+        parts.append(f"That makes {year} launches from {pad} this year."
+                     if resolved else f"{pad} is up to {year} launches this year.")
+    elif year == 1:
+        parts.append(f"This is the first launch from {pad} this year."
+                     if not resolved else f"That was the first launch from {pad} this year.")
     else:
         return None
 
-    if isinstance(total, int) and total > 1 and parts and "supported" not in parts[0]:
-        parts.append(f"{total} in total since it opened.")
-    if turn is not None and turn >= 0:
-        if turn < 1:
-            parts.append("It turned around in under a day.")
-        elif turn < 10:
-            parts.append(f"It turns around in about {int(round(turn))} days.")
-    return " ".join(parts) if parts else None
+    # The gap since the pad's last launch, or failing that the pace it has
+    # been keeping. Not both: they are the same story told two ways, and
+    # "a launch every four days" directly above "6 days to reset" invites
+    # the reader to spot the seam.
+    #
+    # A gap measured in hours is the most impressive thing a pad can do, so
+    # it keeps its own wording rather than rounding to "under a day". Beyond
+    # about six weeks it stops being a turnaround and is just a gap.
+    days, hours = parsed if parsed else (None, None)
+    if days is not None and days < 45:
+        if days == 0:
+            parts.append(f"It was flying something else {plural(hours, 'hour')} earlier."
+                         if hours else "It was flying something else hours earlier.")
+        elif days == 1:
+            parts.append("Its previous launch was only a day earlier.")
+        else:
+            parts.append(pick(seed, "pad-turn", [
+                f"The pad had {plural(days, 'day')} to reset after the last one.",
+                f"Its previous launch was {plural(days, 'day')} earlier.",
+            ]))
+    else:
+        rate = rate_phrase(year, day_of_year(launch))
+        if rate and year and year >= 5:
+            parts.append(pick(seed, "pad-rate", [
+                f"At that rate the pad sees {rate}.",
+                f"It has been working at {rate}.",
+            ]))
+
+    return assemble(parts)
 
 
 def booster_next_card(launch, history):
@@ -1121,8 +1520,12 @@ def booster_next_card(launch, history):
 
     avg = sum(gaps) / len(gaps)
     best = min(gaps)
-    parts = [f"{serial} has averaged {int(round(avg))} days between flights, "
-             f"with a best of {int(round(best))}."]
+    parts = [pick(card_seed(launch), "next-avg", [
+        f"{serial} has averaged {int(round(avg))} days between flights, "
+        f"with a best of {int(round(best))}.",
+        f"{serial} turns around in {int(round(avg))} days on average, and has "
+        f"done it in {int(round(best))}.",
+    ])]
 
     # A date beats a duration: "around mid October" is something you can read,
     # where "in about 43 days" is arithmetic. Counted from THIS launch, not
@@ -1163,9 +1566,13 @@ def record_card(launch, history):
     flights = dig(stage, "launcher", "flights", default=None)
 
     if previous and len(previous) == len(gaps):
-        saved = min(previous) - turn
-        return (f"That was {serial}'s fastest turnaround yet: {int(round(turn))} days, "
-                f"{int(round(saved))} quicker than its previous best.")
+        saved = int(round(min(previous) - turn))
+        return pick(card_seed(launch), "record-turn", [
+            f"That was {serial}'s fastest turnaround yet: {int(round(turn))} days, "
+            f"{plural(saved, 'day')} quicker than its previous best.",
+            f"{serial} has never turned around this fast: {int(round(turn))} days, "
+            f"beating its own best by {plural(saved, 'day')}.",
+        ])
     if isinstance(flights, int) and flights >= 20:
         return (f"{serial} has now flown {flights} times, putting it among the "
                 f"most-flown rockets ever built.")
@@ -1197,6 +1604,48 @@ def clip(text, limit):
     # Leave room for the ellipsis so the result never exceeds the limit.
     cut = text[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:.")
     return cut + "\u2026"
+
+
+# The brief is the only card whose prose comes from the API rather than from
+# this file, and it was also the longest thing on the screen by a distance:
+# LL2 descriptions run to several paragraphs, and 485 characters of Amazon
+# Leo constellation planning arrived under MISSION BRIEF while every card
+# written here was held to 195. Two sentences of a real description is the
+# part that says what the mission is; the rest is usually constellation
+# arithmetic that the next paragraph repeats.
+BRIEF_BUDGET = 360
+
+
+def tidy_brief(text, limit=BRIEF_BUDGET):
+    """
+    Make an API description presentable as a card.
+
+      - collapses the whitespace LL2 leaves in its prose ("935 kg,  and");
+      - drops a leading "Note: ..." aside, which is an editor talking to
+        other editors ("Note: Satellite serial number and Cosmos designation
+        not confirmed.") rather than anything a reader wants first;
+      - clips to a sentence boundary, so the card ends on a full stop
+        instead of trailing off mid-clause.
+    """
+    text = re.sub(r"\s+", " ", (text or "").replace("\n", " ")).strip()
+    if not text:
+        return None
+
+    # Only when something substantial is left behind it: on a description
+    # that is nothing but the note, the note is the description.
+    m = re.match(r"^\(?[Nn]ote:.*?[.!?]\)?\s+(?=[A-Z0-9])", text)
+    if m and len(text) - m.end() >= MIN_USEFUL_CHARS:
+        text = text[m.end():].strip()
+
+    text = clip(text, limit)
+    if not text:
+        return None
+    # LL2 descriptions are not always punctuated ("Classified payload for the
+    # US National Reconnaissance Office"), and a card that stops without a
+    # full stop reads as though it was cut off.
+    if not text.endswith((".", "!", "?", "\u2026")):
+        text += "."
+    return text
 
 
 def outcome_label(launch):
@@ -1264,9 +1713,15 @@ def docking_card(launch, docking):
     else:
         timing = f"in about {int(round(when / 24))} days"
     tail = f", docking at {port}" if port else ""
-    return (f"{craft} catches up with the station {timing}{tail}. Rendezvous is a "
-            f"slow chase: the station will not wait, so the spacecraft has to "
-            f"arrive in the same place at the same speed.")
+    # The explainer is evergreen colour rather than news, so it is the part
+    # that stands down when the arrival sentence runs long. Trimmed to fit
+    # alongside a named docking port, which is the usual case: at its old
+    # length it was the one card that never fitted its own budget.
+    return assemble([
+        f"{craft} catches up with the station {timing}{tail}.",
+        "Rendezvous is a slow chase: the station will not wait, so the "
+        "spacecraft has to match its speed exactly.",
+    ])
 
 
 # ============================================================
@@ -1339,7 +1794,7 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     two cards the whole time. Everything shown is still about the launch in
     the header; only which cards are chosen changes.
     """
-    brief = None if is_boilerplate(launch, description) else description.strip()
+    brief = None if is_boilerplate(launch, description) else tidy_brief(description)
 
     # The label is free tense signal: it is always on screen and costs the
     # body no characters. Post-launch the brief is pinned to slot A for the
