@@ -34,10 +34,6 @@ UNREACHABLE_BY_DESIGN = {
     # Station drawings for the ISS board, which scripts/iss-events.mjs picks
     # by name. Nothing to do with the launch resolver.
     "iss", "iss_eva",
-    # Proton retired before this resolver had a key for it. Kept in case it
-    # is wanted for a historical view; delete the files and this entry
-    # together if not.
-    "proton_idle", "proton_ascent",
     # The placeholder an empty pad and an unmatched rocket fall back to.
     "empty", "generic_idle", "generic_ascent",
 }

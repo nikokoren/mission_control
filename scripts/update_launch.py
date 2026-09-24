@@ -242,6 +242,13 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
                 key = "soyuz_crew"
             else:
                 key = "soyuz"
+        # Proton-M and Proton Medium share one silhouette, so one key covers
+        # the family. The drawing has been in rockets/ since the first commit
+        # with nothing to reach it: facts.py has always had a Proton pool, so
+        # a Proton launch drew Proton trivia beside the generic question-mark
+        # rocket. The type is on its way out in favour of Angara and may never
+        # fly again, but the line costs nothing if it does not.
+        elif "proton" in r: key = "proton"
         elif "h3" in r: key = "h3"
         elif "antares" in r: key = "antares"
         elif "delta" in r: key = "delta4"
