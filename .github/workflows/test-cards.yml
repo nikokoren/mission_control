@@ -1,0 +1,57 @@
+# .github/workflows/test-cards.yml
+name: Card Checks
+
+# Paths, not just branches. The launch data workflow commits launch.json and
+# boosters/ every 15 minutes, which is ~96 pushes a day that cannot change how
+# the cards read: the card text is generated from the API payload by the code
+# in scripts/, so only that code and its corpus are worth a run.
+on:
+  push:
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/test-cards.yml"
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/test-cards.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A second push supersedes the first: these checks are a verdict on the tip,
+# not a record of every commit on the way to it.
+concurrency:
+  group: test-cards-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # No setup-python and no install step: the checks are stdlib only and
+      # read their corpus from the repo, so the runner's own python3 is
+      # everything they need. Keep it that way -- a test suite that needs a
+      # toolchain is one nobody runs locally either.
+      - name: Run the card checks
+        run: python3 tests/test_cards.py
+
+      # The checks can say the prose is well formed; they cannot say it reads
+      # well. Putting the whole corpus in the job summary means a reviewer can
+      # judge a wording change from the pull request itself. Runs even when the
+      # checks fail, because that is when you most want to see the output.
+      - name: Print the cards for review
+        if: always()
+        run: |
+          {
+            echo "## Cards"
+            echo
+            echo '```'
+            python3 tests/test_cards.py --show
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
