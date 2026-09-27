@@ -66,12 +66,35 @@ A failure also pins an outcome card to slot A for the whole result window.
 - Never truncate with a bare slice. Use `clip()` in `cards.py`: it prefers a
   sentence boundary and falls back to a word boundary plus an ellipsis.
 
+## Tests - run these
+
+    python3 tests/test_cards.py           # the checks
+    python3 tests/test_cards.py --show    # print every distinct card
+
+Stdlib only, no network, no framework: it walks a corpus of ~90 real API
+payloads in `tests/fixtures/` plus hand-written degenerate cases. **Run it
+before pushing anything under `scripts/`.** CI runs it too
+(`.github/workflows/test-cards.yml`), on changes to `scripts/` or `tests/`
+only, and prints the whole corpus into the job summary so a reviewer can judge
+wording from the pull request.
+
+The checks assert *properties* - punctuation, length, tense, self-consistency -
+not exact strings, so rewording a card does not break them. What they cannot
+judge is whether the prose reads well; that is what `--show` is for.
+
+If you add a check, **first confirm it fails** by breaking the code in the way
+it is meant to catch. A check that cannot fail is worse than no check.
+
 ## Working here
 
 - Push directly to `main`. **Always `git fetch` and rebase first** - the
   workflow pushes to `main` every ~15 minutes and a stale push is rejected.
-- Verify changes against live API data rather than fabricated fixtures.
-  Fabricated inputs have produced at least one false bug report.
+- **Other agents work in this repo concurrently.** Re-read a file before
+  editing if the session has been long, and never assume your last-known state
+  of `main` is current.
+- Verify changes against live API data or the fixture corpus, never against
+  payloads you invent. Fabricated input produced at least one false bug report
+  in this repo's history.
 - Restore `launch.json` with `git checkout launch.json` after any local test
   run; it belongs to the workflow.
 - `upcoming.json` and `previous.json` are fetched inputs and are gitignored.
