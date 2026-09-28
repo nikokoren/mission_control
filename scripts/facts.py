@@ -2,15 +2,16 @@
 Hand-written trivia bank, one pool per rocket family plus a general pool.
 
 Kept in its own file purely because it is long and never changes.
-The seed makes the choice stable: the same launch always gets the same
-fact, so it does not flicker between refreshes and does not force a new
-git commit every run.
+The seed shuffles the pool once per launch, and the caller's step (a time
+bucket) walks through that order. A fact holds for the whole bucket (no
+flicker between refreshes, no new git commit every run), and nothing
+repeats until the whole pool has been shown.
 """
 
 import random
 
 
-def get_rocket_fact(rocket_name, seed=""):
+def get_rocket_fact(rocket_name, seed="", step=0):
     r_name = (rocket_name or "").lower()
 
     general_facts = [
@@ -497,7 +498,9 @@ def get_rocket_fact(rocket_name, seed=""):
     pool = facts + general_facts if facts else general_facts
 
     try:
-        return random.Random(f"{seed}|{rocket_name}").choice(pool)
+        order = list(pool)
+        random.Random(f"{seed}|{rocket_name}").shuffle(order)
+        return order[step % len(order)]
     except (IndexError, KeyError) as e:
         print(f"Warning: Fact selection failed for {rocket_name}: {e}")
         return "Rockets are cool."

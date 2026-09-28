@@ -79,6 +79,12 @@ FRESH_HOURS = 4.0      # a result holds the screen at least this long
 QUIET_HOURS = 12.0      # if the next launch is further off than this, keep showing the result
 STALE_HOURS = 16.0     # but never show a result older than this
 
+# The fact pool is shuffled once per launch and stepped through one entry per
+# time bucket: stable between refreshes (no flicker, no commit every run), and
+# a launch that holds the screen for days works through its whole pool before
+# anything repeats.
+FACT_ROTATE_HOURS = 6
+
 
 # ============================================================
 # helpers
@@ -398,9 +404,10 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     rocket_name = dig(launch, "rocket", "configuration", "name", default="Unknown Rocket")
     launch_name = launch.get("name") or rocket_name
 
+    fact_bucket = int(now.timestamp() // (FACT_ROTATE_HOURS * 3600))
     fact_seed = str(launch.get("id") or launch_name)
     try:
-        rocket_fact = get_rocket_fact(rocket_name, fact_seed)
+        rocket_fact = get_rocket_fact(rocket_name, fact_seed, fact_bucket)
     except Exception as e:
         print(f"Warning: fact generation failed for {rocket_name}: {e}")
         rocket_fact = "Rockets are cool."
