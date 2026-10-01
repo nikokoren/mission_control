@@ -804,7 +804,11 @@ def _single_booster_card(launch, stage, mode):
     else:
         parts.append(f"The core is {serial}.")
 
-    # 2. Landing record. Never claim perfection on a flight we know was lost.
+    # 2. Landing record, only when it is imperfect. A clean record is
+    # implied by the booster flying again: "Perfect 2 for 2 on landings"
+    # under "This is the 3rd flight" says nothing a reader did not already
+    # know. A miss on a core that still flies is the unusual case worth a
+    # sentence.
     #
     # Two guards on the numbers themselves. LL2's launcher record is a live
     # career total while launcher_flight_number is this flight's index, so on
@@ -815,15 +819,7 @@ def _single_booster_card(launch, stage, mode):
     # same thing as the landing clause two sentences later.
     stale = isinstance(flight_n, int) and isinstance(succ, int) and succ > flight_n
     if att and att > 1 and succ is not None and not stale:
-        if succ == att and success is not False:
-            # The two flourishes need a number big enough to be worth the
-            # flourish: "Not one of its two landings has missed" is a lot of
-            # words for two landings.
-            parts.append(pick(seed, "b-record", [f"Perfect {succ} for {succ} on landings."] + ([
-                f"It has stuck all {num_word(succ)} of its landings.",
-                f"Not one of its {num_word(succ)} landings has missed.",
-            ] if succ >= 4 else [])))
-        elif succ < att:
+        if succ < att:
             parts.append(pick(seed, "b-record", [
                 f"{succ} of its {att} landings have stuck.",
                 f"It has landed {succ} times out of {att}.",
