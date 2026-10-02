@@ -51,7 +51,7 @@ def get_rocket_fact(rocket_name, seed="", step=0):
             "The Falcon 9 telemetry signal often cuts out right at landing due to the vibration of the landing burn shaking the antenna.",
             "Falcon 9's first stage has nine Merlin engines, but the rocket can keep flying even after losing an engine during ascent.",
             "Falcon 9's first stage flips around after separation and fires its engines again to fly back toward Earth.",
-            "Falcon 9 can land on a drone ship hundreds of kilometres downrange when returning to the launch site would take too much fuel.",
+            "Falcon 9 can land on a drone ship hundreds of kilometers downrange when returning to the launch site would take too much fuel.",
         ]
     elif "falcon heavy" in r_name:
         facts = [
@@ -82,8 +82,8 @@ def get_rocket_fact(rocket_name, seed="", step=0):
             "The Raptor engine uses a Full-Flow Staged Combustion cycle, a complex design only previously attempted by Soviet engineers.",
             "Starship is pressurized with autogenous gas (gaseous methane/oxygen) instead of heavy helium bottles.",
             "Starship is constructed from stainless steel rather than carbon fiber to better withstand reentry heat.",
-            "Starship is designed to be refuelled in orbit, making much longer journeys to the Moon or Mars possible.",
-            "Starship is 9 metres wide, more than twice the diameter of a Falcon 9.",
+            "Starship is designed to be refueled in orbit, making much longer journeys to the Moon or Mars possible.",
+            "Starship is 9 meters wide, more than twice the diameter of a Falcon 9.",
         ]
     elif "electron" in r_name:
         facts = [
@@ -95,7 +95,7 @@ def get_rocket_fact(rocket_name, seed="", step=0):
             "The Rutherford engine uses an electric motor the size of a soda can to spin its pumps at 40,000 RPM.",
             "Rocket Lab names their Electron missions with puns, such as 'It's a Business Time' and 'Rocket Like a Hurricane'.",
             "Electron's exhaust sometimes appears to sparkle because the ablative liner of the engine nozzle erodes intentionally.",
-            "Rocket Lab's Electron is surprisingly small, measuring only about 1.2 metres (4 feet) in diameter.",
+            "Rocket Lab's Electron is surprisingly small, measuring only about 1.2 meters (4 feet) in diameter.",
         ]
     elif "atlas v" in r_name:
         if "n22" in r_name:
@@ -459,7 +459,7 @@ def get_rocket_fact(rocket_name, seed="", step=0):
         ]
     elif "long march 4" in r_name:
         facts = [
-            "The Long March 4 family specialises in sun-synchronous orbits, where a satellite passes over the same spot at the same local time every day.",
+            "The Long March 4 family specializes in sun-synchronous orbits, where a satellite passes over the same spot at the same local time every day.",
             "The Long March 4B and 4C are three-stage rockets built for Earth observation and weather satellites.",
             "The Long March 4C's third stage can restart in flight, which the 4B's cannot.",
             "The Long March 4 family flies mostly from Taiyuan, in the mountains of Shanxi province.",

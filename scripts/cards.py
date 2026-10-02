@@ -1853,7 +1853,14 @@ POST_ROTATE_HOURS = 2 # post-launch: hours per pairing
 # the docking countdown is the most time-critical thing on a crewed flight,
 # a record is rare enough to lead with, and the evergreen explainers sit
 # behind the things that are specific to this launch.
-POST_ROTATION = ["docking", "record", "dest", "pad", "next", "fact"]
+#
+# The booster card was missing from this list, so any launch with a real
+# mission brief never said how its landing went: NROL-97's two Falcon Heavy
+# side boosters came home to LZ-1 and LZ-2 while slot B cycled through the
+# pad tally and a Tesla Roadster fact. A Starlink, with no brief to pin, did
+# show its landing. The landing is this flight's news, so it ranks with the
+# record, ahead of the explainers.
+POST_ROTATION = ["docking", "record", "booster", "dest", "pad", "next", "fact"]
 
 ROTATION_SCHEDULE = [
     (0, 1),   # inside SETTLE_HOURS
