@@ -156,6 +156,63 @@ def _get_booster_history(serial, flights_now):
 
 
 # ============================================================
+# when a pad first flew
+# ============================================================
+
+# Keyed by LL2's pad id: names repeat ("Orbital Launch Pad", "LC-1"). The
+# first launch from a pad never changes, so an entry is fetched once and kept.
+PADS_CACHE = "_pads"
+
+
+def get_pad_first_year(pad_id, pad_name=""):
+    """
+    The year of the first launch LL2 records from this pad, or None. That is
+    the span the pad's total_launch_count covers, so it is what gives the
+    total a scale: 200 launches since 2024 and 200 since 1965 are different
+    pads. One extra call per pad, ever. Never raises.
+    """
+    if not pad_id:
+        return None
+    try:
+        return _get_pad_first_year(pad_id, pad_name)
+    except Exception as e:
+        print(f"Warning: first launch lookup failed for pad {pad_id}: {e}")
+        return None
+
+
+def _get_pad_first_year(pad_id, pad_name):
+    pads = _read_cache(PADS_CACHE) or {}
+    entry = pads.get(str(pad_id))
+    if entry and isinstance(entry.get("first_year"), int):
+        print(f"First launch from pad {pad_id}: cache hit")
+        return entry["first_year"]
+
+    print(f"First launch from pad {pad_id}: fetching")
+    url = f"{API}/launch/?pad={pad_id}&ordering=net&limit=1&mode=list&format=json"
+    data = _get(url)
+    results = (data or {}).get("results") or []
+    if not results:
+        return None
+    first = results[0]
+
+    # The fleet lookup taught this one: LL2 ignores a filter it does not know
+    # and returns the whole table, which here would date every pad to
+    # Sputnik. The first launch has to have flown from the pad we asked about.
+    flown_from = _name_of(first.get("pad"))
+    if pad_name and flown_from and flown_from != pad_name:
+        print(f"Warning: pad filter looks unsupported ({flown_from!r} is not {pad_name!r}).")
+        return None
+    try:
+        year = int(str(first.get("net"))[:4])
+    except ValueError:
+        return None
+
+    pads[str(pad_id)] = {"name": pad_name or flown_from, "first_year": year}
+    _write_cache(PADS_CACHE, pads)
+    return year
+
+
+# ============================================================
 # fleet ranking
 # ============================================================
 

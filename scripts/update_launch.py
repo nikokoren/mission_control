@@ -16,8 +16,8 @@ import sys
 from datetime import datetime, timezone
 
 from cards import (build_slots, dig, short_pad, is_placeholder, lead_booster,
-                   real_serial, is_resolved, clip)
-from history import get_booster_history, get_fleet, get_docking
+                   real_serial, is_resolved, clip, strip_corporate)
+from history import get_booster_history, get_fleet, get_docking, get_pad_first_year
 from facts import get_rocket_fact
 
 # ============================================================
@@ -107,7 +107,7 @@ def normalize_org_name(name):
     for old, new in replacements.items():
         if old in name:
             return new
-    return name
+    return strip_corporate(name)
 
 
 def one_line(text):
@@ -468,10 +468,17 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         except Exception as e:
             print(f"Warning: docking check skipped: {e}")
 
+    # The year the pad first flew, for the scale of its lifetime total. One
+    # call per pad ever, and only for the launch on screen.
+    pad_first_year = None
+    pad_name = dig(launch, "pad", "name", default="")
+    if with_history and pad_name and "unknown" not in pad_name.lower():
+        pad_first_year = get_pad_first_year(dig(launch, "pad", "id"), pad_name)
+
     slot_a, slot_b = build_slots(launch, mode, description, program_description,
                                  rocket_fact, history=history, fleet=fleet,
                                  hours_until=hours_until, hours_since=hours_since,
-                                 docking=docking)
+                                 docking=docking, pad_first_year=pad_first_year)
 
     vis_status = dig(launch, "status", "abbrev", default="TBD")
     if vis_status == "PENDING":

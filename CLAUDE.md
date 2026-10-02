@@ -22,10 +22,15 @@ For layout, responsive or rocket-art-sizing questions, use the
 - `scripts/history.py` - booster history, fleet and docking lookups, cached in
   `boosters/`. LL2 ignores a `launcher_config` filter on `/launcher/`, so the
   fleet is the whole launcher table in `boosters/_fleet.json`, filtered by
-  rocket type in Python.
+  rocket type in Python. `boosters/_pads.json` holds each pad's first launch
+  year, fetched once per pad, for the pad card's lifetime total.
 - `rockets/` - rocket art. Mostly PNG, a few JPEG.
 - `launch.json` - **generated output, do not hand-edit.** The workflow rebuilds
-  and commits it about every 15 minutes.
+  and commits it about every 15 minutes. Pre-launch it changes on every run
+  because of `countdown`, and that is deliberate: TRMNL skips generating a new
+  screen when a polled payload is unchanged, so a countdown computed in the
+  markup from `date_ts` would freeze. Post-launch, where the countdown is not
+  shown, a run that only moves it writes nothing.
 
 Data source is the Launch Library 2 API (`ll.thespacedevs.com`).
 
@@ -109,6 +114,3 @@ it is meant to catch. A check that cannot fail is worse than no check.
   count in different words.
 - Rotation is keyed to `hours_until`, so a launch that slips jumps backward
   through the tiers.
-- `countdown` changes every run, so pre-launch the workflow commits
-  `launch.json` every 15 minutes. If the markup computed the countdown from
-  `date_ts` instead, those commits would stop.

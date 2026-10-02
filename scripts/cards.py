@@ -32,6 +32,7 @@ Two rules keep the prose from reading like a stat dump:
 import random
 import re
 from datetime import datetime, timedelta, timezone
+from statistics import median
 
 
 # ============================================================
@@ -117,6 +118,33 @@ def plural_word(n, word, spell=True):
 
 
 TIMES_WORDS = {1: "once", 2: "twice"}
+
+
+def span_parts(days):
+    """
+    (count, unit) for a span of days: months up to two years, years after.
+    "70 months" is a number to divide by twelve; "almost 6 years" is a span
+    a reader already knows the size of.
+    """
+    months = round(days / 30.0)
+    if months < 24:
+        return months, "month"
+    years = days / 365.25
+    whole = int(years)
+    return (whole + 1 if years - whole >= 0.75 else whole), "year"
+
+
+def span_words(days, spell=True):
+    """'22 months', 'more than 5 years', 'almost 6 years'."""
+    count, unit = span_parts(days)
+    text = plural_word(count, unit, spell)
+    if unit == "year":
+        frac = days / 365.25 - int(days / 365.25)
+        if frac >= 0.75:
+            return f"almost {text}"
+        if frac >= 0.25:
+            return f"more than {text}"
+    return text
 
 
 def times(n):
@@ -255,6 +283,17 @@ def org_possessive(provider):
     return f"{provider}'" if provider.endswith("s") else f"{provider}'s"
 
 
+# Legal forms, which no one says out loud: "That was China Rocket Co.
+# Ltd.'s 4th launch of the year", "Avio S.p.A's".
+CORPORATE_SUFFIX = re.compile(
+    r"[\s,]+(?:Co\.?,?\s+)?(?:Co\.|Ltd\.?|Inc\.?|LLC|GmbH|Corp\.?|S\.p\.A\.?|S\.A\.)$")
+
+
+def strip_corporate(name):
+    """'China Rocket Co. Ltd.' -> 'China Rocket'. Leaves other names alone."""
+    return CORPORATE_SUFFIX.sub("", name or "").strip() or (name or "")
+
+
 def card_org_name(name):
     """Provider name at card length. Falls back to whatever the API sent."""
     if not name:
@@ -262,7 +301,7 @@ def card_org_name(name):
     for full, short in CARD_ORG_NAMES.items():
         if full in name:
             return short
-    return name
+    return strip_corporate(name)
 
 
 # Mission families worth naming. Anything unmatched is counted as "other".
@@ -1230,19 +1269,19 @@ def booster_career_card(launch, history=None, fleet=None):
     span = days_between(flights[0]["net"], flights[-1]["net"])
     resolved = is_resolved(launch)
     if span and span > 60:
-        months = round(span / 30.0)
+        count, _ = span_parts(span)
         if resolved:
-            parts.append(f"That was {serial}'s {ordinal(n)} flight in {plural(months, 'month')}.")
+            parts.append(f"That was {serial}'s {ordinal(n)} flight in {span_words(span, False)}.")
         else:
             # Both numbers spell out together or neither does: "flown
             # nineteen times over 22 months" switched conventions halfway
             # through its own sentence.
-            spell = spell_pair(n, months)
+            spell = spell_pair(n, count)
             n_s = num_word(n) if spell else str(n)
-            m_s = plural_word(months, "month", spell)
+            m_s = span_words(span, spell)
             parts.append(pick(seed, "career-span", [
                 f"{serial} has flown {n_s} times in {m_s}.",
-                f"{serial} has {n_s} flights behind it, over {m_s}.",
+                f"{serial} has {n_s} flights behind it, in {m_s}.",
             ]))
     elif resolved:
         parts.append(f"That was {serial}'s {ordinal(n)} flight.")
@@ -1513,9 +1552,13 @@ def destination_card(launch):
     return None
 
 
-def pad_card(launch):
+def pad_card(launch, first_year=None):
     """
-    What this pad has been doing. Every figure is already in the payload.
+    What this pad has been doing. Every figure but one is already in the
+    payload; `first_year` is the year of the pad's first recorded launch,
+    looked up once per pad by history.py, and it is what gives the lifetime
+    total a scale: 224 launches since 1967 is a different pad from 224 in
+    two years.
 
     Now that cadence_card has stopped repeating the pad's year count, this
     card is free to lead with the pad's whole life rather than its last
@@ -1548,25 +1591,45 @@ def pad_card(launch):
     if total is not None and year is not None and total < year:
         total = None
 
+    # A first launch after this one is a bad cache entry, not a fact.
+    when = _iso(launch.get("net"))
+    launch_year = when.year if when else datetime.now(timezone.utc).year
+    if not isinstance(first_year, int) or first_year > launch_year:
+        first_year = None
+    # A pad that first flew this year has one count, not two: its lifetime
+    # is its year, and "4 launches since its first in 2026, 4 of them this
+    # year" says the same number twice.
+    new_pad = first_year == launch_year
+    if new_pad:
+        total = None
+    since = f"since its first in {first_year}" if first_year else "since it opened"
+    lifetime = since if first_year else "in its lifetime"
+
     parts = []
 
     if total and total > 1 and year and year > 1:
         # The second variant differs by tense: "That is N launches this year"
         # only works once the launch has happened.
         parts.append(pick(seed, "pad-lead", [
-            f"{pad} has flown {total} launches since it opened, {year} of them this year.",
-            f"That is {year} launches from {pad} this year, out of {total} in its lifetime."
+            f"{pad} has flown {total} launches {since}, {year} of them this year.",
+            f"That is {year} launches from {pad} this year, out of {total} {lifetime}."
             if resolved else
-            f"{pad} is up to {year} launches this year, and {total} since it opened.",
+            f"{pad} is up to {year} launches this year, and {total} {since}.",
         ]))
     elif total and total > 1:
         parts.append(pick(seed, "pad-lead-total", [
-            f"{pad} has flown {total} launches since it opened.",
-            f"{total} launches have left {pad} since it opened.",
+            f"{pad} has flown {total} launches {since}.",
+            f"{total} launches have left {pad} {since}.",
         ]))
+    elif year and year > 1 and new_pad:
+        parts.append(f"That makes {year} launches from {pad} since it opened this year."
+                     if resolved else f"{pad} only opened this year and is up to {year} launches.")
     elif year and year > 1:
         parts.append(f"That makes {year} launches from {pad} this year."
                      if resolved else f"{pad} is up to {year} launches this year.")
+    elif year == 1 and new_pad:
+        parts.append(f"That was the first launch ever from {pad}."
+                     if resolved else f"This is the first launch ever from {pad}.")
     elif year == 1:
         parts.append(f"This is the first launch from {pad} this year."
                      if not resolved else f"That was the first launch from {pad} this year.")
@@ -1618,26 +1681,30 @@ def booster_next_card(launch, history):
     if len(gaps) < 2:
         return None
 
-    avg = sum(gaps) / len(gaps)
-    best = min(gaps)
-    parts = [pick(card_seed(launch), "next-avg", [
-        f"{serial} has averaged {int(round(avg))} days between flights, "
-        f"with a best of {int(round(best))}.",
-        f"{serial} turns around in {int(round(avg))} days on average, and has "
-        f"done it in {int(round(best))}.",
+    # The median, not the mean. One long gap -- a core parked for a year
+    # between missions -- dragged the mean to where it described no gap the
+    # core ever flew: B1072's 672, 122 and 32 days averaged to "275 days
+    # between flights".
+    typical = int(round(median(gaps)))
+    best = int(round(min(gaps)))
+    parts = [pick(card_seed(launch), "next-typical", [
+        f"{serial} typically goes {typical} days between flights, "
+        f"with a best of {best}.",
+        f"{serial} usually turns around in about {typical} days, and has "
+        f"done it in {best}.",
     ])]
 
     # A date beats a duration: "around mid October" is something you can read,
     # where "in about 43 days" is arithmetic. Counted from THIS launch, not
     # from now, so the answer does not drift as the card sits on screen.
     #
-    # An earlier version restated the average here ("within about 43 days"),
-    # which repeated the number in the first sentence and misused a mean as
-    # an upper bound: by definition half its flights take longer than that.
+    # An earlier version restated the typical gap here ("within about 43
+    # days"), which repeated the number in the first sentence and used a
+    # middle value as an upper bound: half its flights take longer than that.
     when = _iso(launch.get("net"))
     if when is not None:
         try:
-            nxt = when + timedelta(days=avg)
+            nxt = when + timedelta(days=typical)
             day = nxt.day
             part = "early" if day <= 10 else ("mid" if day <= 20 else "late")
             parts.append(f"On that form it should fly again around {part} "
@@ -1647,14 +1714,32 @@ def booster_next_card(launch, history):
     return " ".join(parts)
 
 
-def record_card(launch, history):
-    """Did this flight set a personal best for the core? Fires rarely, which
-    is what makes it worth showing when it does."""
+# A fleet lead below this is a fleet too young for the lead to mean much:
+# two Zhuque-3 cores with a flight each are not a record table.
+FLEET_RECORD_MIN = 10
+# From here, every fifth flight is a round number worth a sentence.
+MILESTONE_FROM = 20
+
+
+def record_card(launch, history, fleet=None):
+    """
+    Something no flight of this core, or no core of its type, had done
+    before. Three things qualify, rarest first:
+
+      1. its fastest turnaround yet;
+      2. the fleet lead: more flights than any other core of its type, or
+         level with the leader;
+      3. a round number: every fifth flight from the twentieth.
+
+    The third used to be every flight from the twentieth, which by 2026 was
+    most of the Falcon 9 fleet's veterans, so A RECORD was on screen for a
+    sentence that was true of half the fleet.
+    """
     stage = history_stage(launch, history)
     serial = real_serial(stage)
-    turn = dig(stage, "turn_around_time_days", default=None)
-    if not serial or not isinstance(turn, (int, float)) or turn <= 0:
+    if not serial:
         return None
+    seed = card_seed(launch)
 
     # Only the gaps before this flight. The cached list carries this flight
     # too, so comparing against all of it compared the turnaround with
@@ -1662,18 +1747,17 @@ def record_card(launch, history):
     # always took this flight's own gap with it, so the record branch could
     # never fire -- and if LL2's day count and ours differed by one, it
     # would have announced a record over itself.
+    turn = dig(stage, "turn_around_time_days", default=None)
     previous = _gaps(_flights_before(history, launch))
-    if len(previous) < 2:
-        return None
-
-    saved = int(round(min(previous) - turn))
-    if saved >= 1:
-        return pick(card_seed(launch), "record-turn", [
-            f"That was {serial}'s fastest turnaround yet: {int(round(turn))} days, "
-            f"{plural(saved, 'day')} quicker than its previous best.",
-            f"{serial} has never turned around this fast: {int(round(turn))} days, "
-            f"beating its own best by {plural(saved, 'day')}.",
-        ])
+    if isinstance(turn, (int, float)) and turn > 0 and len(previous) >= 2:
+        saved = int(round(min(previous) - turn))
+        if saved >= 1:
+            return pick(seed, "record-turn", [
+                f"That was {serial}'s fastest turnaround yet: {int(round(turn))} days, "
+                f"{plural(saved, 'day')} quicker than its previous best.",
+                f"{serial} has never turned around this fast: {int(round(turn))} days, "
+                f"beating its own best by {plural(saved, 'day')}.",
+            ])
 
     # This flight's number, not the launcher's live career total, which on a
     # past launch already counts the flights since: B1063's 34th flight was
@@ -1681,7 +1765,23 @@ def record_card(launch, history):
     n = stage.get("launcher_flight_number")
     if not isinstance(n, int):
         n = dig(stage, "launcher", "flights", default=None)
-    if isinstance(n, int) and n >= 20:
+    if not isinstance(n, int):
+        return None
+
+    rocket = dig(launch, "rocket", "configuration", "name", default="")
+    kind = f"{rocket} core" if rocket else "core in the fleet"
+    others = [c.get("flights") for c in fleet or []
+              if c.get("serial") != serial and isinstance(c.get("flights"), int)]
+    if others and n >= FLEET_RECORD_MIN:
+        if n > max(others):
+            return pick(seed, "record-fleet", [
+                f"{serial} has now flown {n} times, more than any other {kind}.",
+                f"No other {kind} has flown as often as {serial}, now on {n} flights.",
+            ])
+        if n == max(others):
+            return f"{serial} has now flown {n} times, level with the most-flown {kind}."
+
+    if n >= MILESTONE_FROM and n % 5 == 0:
         return (f"{serial} has now flown {n} times, putting it among the "
                 f"most-flown rockets ever built.")
     return None
@@ -1899,7 +1999,7 @@ def post_pair(n, hours_since):
 
 def build_slots(launch, mode, description, program_description, rocket_fact,
                 history=None, fleet=None, hours_until=None, hours_since=None,
-                docking=None):
+                docking=None, pad_first_year=None):
     """
     Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
     A card claimed by slot A is skipped by slot B, so nothing appears twice.
@@ -1921,11 +2021,11 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         "brief":   ("MISSION RECAP" if resolved else "MISSION BRIEF", brief),
         "booster": (booster_label(launch), booster_card(launch, mode)),
         "career":  (career_label(history), booster_career_card(launch, history, fleet)),
-        "pad":     ("PAD HISTORY", pad_card(launch)),
+        "pad":     ("PAD HISTORY", pad_card(launch, pad_first_year)),
         "dest":    ("DESTINATION EXPLAINED", destination_card(launch)),
         "next":    (f"{real_serial(history_stage(launch, history)) or 'BOOSTER'} NEXT",
                     booster_next_card(launch, history)),
-        "record":  ("A RECORD", record_card(launch, history)),
+        "record":  ("A RECORD", record_card(launch, history, fleet)),
         "docking": ("NEXT MILESTONE", docking_card(launch, docking)),
         "program": ("PROGRAM CONTEXT", program_card(launch, program_description)),
         "outlook": ("LAUNCH OUTLOOK", outlook_card(launch, mode)),

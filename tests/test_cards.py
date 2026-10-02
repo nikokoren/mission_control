@@ -23,7 +23,7 @@ judge the wording yourself, which is the part a test cannot do.
 
 Each check was confirmed to fail by breaking cards.py in the way it is meant to
 catch: reverting the possessive fix, unseeding pick(), letting a card skip
-assemble(), inverting a tense branch, and so on -- 20 in all. A check that
+assemble(), inverting a tense branch, and so on -- 22 in all. A check that
 cannot fail is worse than no check, so do that with any new one.
 
 Two things the fixtures cannot pin down. Cards that phrase a duration from the
@@ -156,7 +156,25 @@ EDGE_CASES = [
             "reused": False, "launcher_flight_number": 1,
             "launcher": {"serial_number": "Booster 21"},
             "landing": {"attempt": True, "location": {"name": "Gulf of Mexico"}}}]}}},
+    # A pad whose first launch is this one. Its lifetime and its year are the
+    # same single launch, so the card has to say so once.
+    {"mode": "PRE_LAUNCH", "launch": {
+        "id": "edge-pad-new", "name": "Brand | New Pad",
+        "status": {"abbrev": "Go"}, "net": "2026-09-01T00:00:00Z",
+        "pad": {"name": "Launch Complex 7", "total_launch_count": 1},
+        "pad_launch_attempt_count_year": 1}},
+    # A first-launch year after the launch itself, as a bad cache entry would
+    # give. It has to be dropped, not printed as "since its first in 2031".
+    {"mode": "POST_LAUNCH", "launch": {
+        "id": "edge-pad-bad-year", "name": "Bad | Pad Year",
+        "status": {"abbrev": "Success"}, "net": "2026-09-01T00:00:00Z",
+        "pad": {"name": "Launch Complex 8", "total_launch_count": 40},
+        "pad_launch_attempt_count_year": 3}},
 ]
+
+# First-launch years for the edge cases above, which have no pad id and so no
+# entry in the pad cache.
+EDGE_PAD_YEARS = {"edge-pad-new": 2026, "edge-pad-bad-year": 2031}
 
 
 def load_fixtures():
@@ -196,6 +214,26 @@ def caches_for(launch):
     return history, fleet
 
 
+def pad_year_for(launch):
+    """The pad's first-launch year, as update_launch.py would pass it.
+
+    The cache is keyed by pad id, which the pruned fixtures do not carry, so
+    the lookup here goes by name and only trusts a name that is unique in the
+    cache. Pads the workflow has not shown yet have no entry, and their card
+    falls back to "since it opened", as it does in production.
+    """
+    if launch.get("id") in EDGE_PAD_YEARS:
+        return EDGE_PAD_YEARS[launch["id"]]
+    name = C.dig(launch, "pad", "name", default="")
+    path = os.path.join(BOOSTERS, H.PADS_CACHE + ".json")
+    if not name or not os.path.exists(path):
+        return None
+    with open(path) as f:
+        years = {e.get("first_year") for e in (json.load(f) or {}).values()
+                 if e.get("name") == name}
+    return years.pop() if len(years) == 1 else None
+
+
 def descriptions(launch):
     """The two text fields, pre-processed exactly as update_launch.py does."""
     desc = (C.dig(launch, "mission", "description", default="") or "")
@@ -213,7 +251,7 @@ def slots_for(launch, mode, hours):
         launch, mode, desc, pdesc, FACT, history=history, fleet=fleet,
         hours_until=hours if mode == "PRE_LAUNCH" else None,
         hours_since=hours if mode == "POST_LAUNCH" else None,
-        docking=DOCKING)
+        docking=DOCKING, pad_first_year=pad_year_for(launch))
 
 
 def generated_cards(launch, mode):
@@ -229,9 +267,9 @@ def generated_cards(launch, mode):
         "outlook": C.outlook_card(launch, mode),
         "booster": C.booster_card(launch, mode),
         "career": C.booster_career_card(launch, history, fleet),
-        "pad": C.pad_card(launch),
+        "pad": C.pad_card(launch, pad_year_for(launch)),
         "next": C.booster_next_card(launch, history),
-        "record": C.record_card(launch, history),
+        "record": C.record_card(launch, history, fleet),
         "docking": C.docking_card(launch, DOCKING),
     }
     return {k: v for k, v in out.items() if v}
@@ -447,7 +485,9 @@ def check_tense(fixtures):
 # the check quietly skipped whichever wording it had not been taught -- which
 # is how a contradiction slipped past it once already.
 PAD_YEAR = re.compile(r"(\d+) launches(?: from [^,.]+?)? this year|(\d+) of them this year")
-PAD_TOTAL = re.compile(r"(\d+)(?: launches)?(?: have left [^,.]+?)? (?:since it opened|in its lifetime)")
+PAD_TOTAL = re.compile(r"(\d+)(?: launches)?(?: have left [^,.]+?)? "
+                       r"(?:since it opened|in its lifetime|since its first in \d{4})")
+PAD_FIRST = re.compile(r"since its first in (\d{4})")
 
 
 def pad_figures(text):
@@ -506,6 +546,27 @@ def check_contradictions(fixtures):
             if k is not None and n is not None:
                 f.check(k * 2 > n, f"{name}: 'Mostly' for {k} of {n} flights", text)
 
+        # A fleet record has to be one: no other core of the type has flown
+        # as often, in the same fleet list the claim was made from.
+        text = cards.get("record")
+        claim = text and re.search(r"has now flown (\d+) times, more than any other"
+                                   r"|has flown as often as .+?, now on (\d+) flights", text)
+        if claim:
+            history, fleet = caches_for(launch)
+            n = int(claim.group(1) or claim.group(2))
+            rivals = [c for c in fleet or [] if c.get("serial") != (history or {}).get("serial")
+                      and c.get("flights", 0) >= n]
+            f.check(not rivals, f"{name}: fleet record claimed at {n} flights",
+                    f"{text}\n      but {rivals[:3]}")
+
+        # A pad cannot have first flown after the launch on the card.
+        text = cards.get("pad")
+        first = text and PAD_FIRST.search(text)
+        when = C._iso(launch.get("net"))
+        if first and when:
+            f.check(int(first.group(1)) <= when.year,
+                    f"{name}: pad first flew in {first.group(1)}, after this launch", text)
+
         # A pad on its first launch was not flying something else hours
         # earlier: LL2's P0D turnaround means "no previous launch".
         text = cards.get("pad")
@@ -543,7 +604,7 @@ def check_attribution(fixtures):
         cards = {
             "career": C.booster_career_card(launch, history, fleet),
             "next": C.booster_next_card(launch, history),
-            "record": C.record_card(launch, history),
+            "record": C.record_card(launch, history, fleet),
         }
         for key, text in cards.items():
             if not text:
