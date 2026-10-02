@@ -15,8 +15,8 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from cards import (build_slots, dig, short_pad, is_placeholder, all_boosters,
-                   is_resolved, clip)
+from cards import (build_slots, dig, short_pad, is_placeholder, lead_booster,
+                   real_serial, is_resolved, clip)
 from history import get_booster_history, get_fleet, get_docking
 from facts import get_rocket_fact
 
@@ -108,6 +108,12 @@ def normalize_org_name(name):
         if old in name:
             return new
     return name
+
+
+def one_line(text):
+    """Collapse every run of whitespace to one space. Replacing only newlines
+    let a stray carriage return through to the screen."""
+    return re.sub(r"\s+", " ", text or "").strip()
 
 
 def load_json(filename):
@@ -365,13 +371,13 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     description = ""
     desc = dig(launch, "mission", "description", default="")
     if not is_placeholder(desc, launch.get("name", "")):
-        description = clip(desc.replace("\n", " "), 600)
+        description = clip(one_line(desc), 600)
 
     program_description = ""
     if programs:
         p_desc = dig(programs[0], "description", default="")
         if not is_placeholder(p_desc):
-            program_description = clip(p_desc.replace("\n", " "), 400)
+            program_description = clip(one_line(p_desc), 400)
 
     # A real mission patch is square by convention and fills a square box
     # nicely. The provider logo fallback is usually a wide wordmark, which
@@ -422,20 +428,11 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     # the new core's blank one.
     history = None
     fleet = None
-    if with_history:
-        best_serial, best_flights = None, -1
-        for s in all_boosters(launch):
-            launcher = dig(s, "launcher", default={}) or {}
-            serial = launcher.get("serial_number")
-            if not serial:
-                continue
-            flights = launcher.get("flights") or 0
-            if flights > best_flights:
-                best_serial, best_flights = serial, flights
-        if best_serial:
-            history = get_booster_history(best_serial, best_flights if best_flights >= 0 else None)
-            if history:
-                fleet = get_fleet(dig(launch, "rocket", "configuration", "id"))
+    lead = lead_booster(launch) if with_history else None
+    if lead:
+        history = get_booster_history(real_serial(lead), dig(lead, "launcher", "flights") or 0)
+        if history:
+            fleet = get_fleet(dig(launch, "rocket", "configuration", "id"))
 
     # --- the two variable slots ---
     # Hours to this launch, used only to decide the rotation tier. Derived
@@ -455,17 +452,21 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         pass
 
     # ISS-bound flights only: when does it actually arrive? One extra call,
-    # skipped entirely for everything else.
+    # and only where the answer can reach the screen. The docking card ranks
+    # only post-launch, so asking before liftoff -- every 15 minutes for the
+    # whole countdown of a crew or cargo flight, and again for the NEXT UP
+    # launch whose cards are thrown away -- spent rate limit on nothing.
     docking = None
-    try:
-        spacecraft = dig(launch, "rocket", "spacecraft_stage", "spacecraft",
-                         "name", default="")
-        iss_bound = any("International Space Station" in (p.get("name") or "")
-                        for p in (launch.get("program") or []))
-        if spacecraft and iss_bound:
-            docking = get_docking(spacecraft)
-    except Exception as e:
-        print(f"Warning: docking check skipped: {e}")
+    if with_history and mode == "POST_LAUNCH":
+        try:
+            spacecraft = dig(launch, "rocket", "spacecraft_stage", "spacecraft",
+                             "name", default="")
+            iss_bound = any("International Space Station" in (p.get("name") or "")
+                            for p in (launch.get("program") or []))
+            if spacecraft and iss_bound:
+                docking = get_docking(spacecraft)
+        except Exception as e:
+            print(f"Warning: docking check skipped: {e}")
 
     slot_a, slot_b = build_slots(launch, mode, description, program_description,
                                  rocket_fact, history=history, fleet=fleet,

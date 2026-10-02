@@ -23,7 +23,7 @@ judge the wording yourself, which is the part a test cannot do.
 
 Each check was confirmed to fail by breaking cards.py in the way it is meant to
 catch: reverting the possessive fix, unseeding pick(), letting a card skip
-assemble(), inverting a tense branch, and so on -- 17 in all. A check that
+assemble(), inverting a tense branch, and so on -- 20 in all. A check that
 cannot fail is worse than no check, so do that with any new one.
 
 Two things the fixtures cannot pin down. Cards that phrase a duration from the
@@ -43,6 +43,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 import cards as C  # noqa: E402  (after the path is set up)
+import history as H  # noqa: E402
 
 FIXTURES = os.path.join(HERE, "fixtures", "launches.json")
 BOOSTERS = os.path.join(ROOT, "boosters")
@@ -172,24 +173,26 @@ def caches_for(launch):
     Read from boosters/, so coverage of the career cards depends on which cores
     happen to be cached there. A launch with no cache still renders; its career
     card just stands down, which is the same thing that happens in production
-    the first time a core flies.
+    the first time a core flies. The core is chosen by the same lead_booster
+    production uses -- on a Falcon Heavy the most-flown core, not the first
+    listed -- and its file found by the cache's own naming.
     """
-    serial = C.booster_serial(launch)
-    if not serial:
+    lead = C.lead_booster(launch)
+    if not lead:
         return None, None
-    path = os.path.join(BOOSTERS, serial.replace("/", "_") + ".json")
-    history = None
-    if os.path.exists(path):
-        with open(path) as f:
-            history = json.load(f)
+    serial = C.real_serial(lead)
+    path = os.path.join(BOOSTERS, os.path.basename(H._cache_path(serial)))
+    if not os.path.exists(path):
+        return None, None
+    with open(path) as f:
+        history = json.load(f)
 
     fleet = None
-    for name in sorted(glob.glob(os.path.join(BOOSTERS, "_fleet_*.json"))):
-        with open(name) as f:
+    path = os.path.join(BOOSTERS, H.FLEET_CACHE + ".json")
+    if os.path.exists(path):
+        with open(path) as f:
             cores = (json.load(f) or {}).get("cores")
-        if cores:
-            fleet = cores
-            break
+        fleet = H._fleet_of(cores, C.dig(launch, "rocket", "configuration", "id"))
     return history, fleet
 
 
@@ -454,6 +457,9 @@ def pad_figures(text):
     return first(PAD_YEAR.search(text)), first(PAD_TOTAL.search(text))
 
 
+WORD_NUMS = {word: n for n, word in C.NUM_WORDS.items()}
+
+
 def check_contradictions(fixtures):
     """
     Statements inside one card that cannot all be true.
@@ -489,6 +495,24 @@ def check_contradictions(fixtures):
                 f.check(year <= total,
                         f"{name}: {year} launches this year out of {total} ever", text)
 
+        # "Mostly" a family means more than half the flights were it.
+        text = cards.get("career")
+        mostly = text and re.search(r"Mostly [^:]+: (\w+) of them", text)
+        total = text and re.search(r"(\w+?)(?:st|nd|rd|th)? (?:flight\b|flights behind|times\b)", text)
+        if mostly and total:
+            def as_int(word):
+                return int(word) if word.isdigit() else WORD_NUMS.get(word)
+            k, n = as_int(mostly.group(1)), as_int(total.group(1))
+            if k is not None and n is not None:
+                f.check(k * 2 > n, f"{name}: 'Mostly' for {k} of {n} flights", text)
+
+        # A pad on its first launch was not flying something else hours
+        # earlier: LL2's P0D turnaround means "no previous launch".
+        text = cards.get("pad")
+        if text and "first launch from" in text:
+            f.check("something else" not in text,
+                    f"{name}: a first launch with a same-day turnaround", text)
+
         # A launch that failed did not leave a success streak intact.
         if C.dig(launch, "status", "abbrev", default="") in ("Failure", "Partial Failure"):
             for key, text in cards.items():
@@ -496,6 +520,47 @@ def check_contradictions(fixtures):
                         and "has failed in" not in text,
                         f"{name}: {key} claims a success streak on a failed launch", text)
     return f.report("never states two things that cannot both be true")
+
+
+def check_attribution(fixtures):
+    """
+    A card that quotes a core's record names that core.
+
+    The history belongs to one core, and on a Falcon Heavy that is the
+    most-flown of three rather than the first listed. The NEXT and RECORD
+    cards used to take their name from the first listed stage and their
+    numbers from the history, so they could pin one core's record on another.
+    """
+    f = Failures()
+    asked = 0
+    for row in fixtures:
+        launch, mode = row["launch"], row["mode"]
+        history, fleet = caches_for(launch)
+        serial = (history or {}).get("serial")
+        if not serial:
+            continue
+        others = {C.real_serial(s) for s in C.all_boosters(launch)} - {serial, ""}
+        cards = {
+            "career": C.booster_career_card(launch, history, fleet),
+            "next": C.booster_next_card(launch, history),
+            "record": C.record_card(launch, history),
+        }
+        for key, text in cards.items():
+            if not text:
+                continue
+            asked += 1
+            f.check(serial in text, f"{launch.get('name','?')}: {key} does not name {serial}", text)
+            for other in others:
+                f.check(other not in text,
+                        f"{launch.get('name','?')}: {key} quotes {serial}'s record as {other}'s", text)
+        for hours in HOURS:
+            for slot in slots_for(launch, mode, hours):
+                label = slot.get("label") or ""
+                if label.endswith((" NEXT", " CAREER")):
+                    f.check(label in (f"{serial} NEXT", f"{serial} CAREER"),
+                            f"{launch.get('name','?')}: label {label!r} on {serial}'s record")
+    f.check(asked > 0, "no launch had a history card to check")
+    return f.report(f"names the core whose record it quotes ({asked} cards)")
 
 
 def check_fixture_shape(fixtures):
@@ -587,7 +652,8 @@ def main(argv):
 
     checks = [check_renders, check_deterministic, check_no_repeats,
               check_rotates, check_lengths, check_prose, check_articles,
-              check_tense, check_contradictions, check_fixture_shape]
+              check_tense, check_contradictions, check_attribution,
+              check_fixture_shape]
     passed = [check(fixtures) for check in checks]
     failed = passed.count(False)
     print(f"\n{len(passed) - failed}/{len(passed)} checks passed")

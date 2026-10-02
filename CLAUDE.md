@@ -20,7 +20,9 @@ For layout, responsive or rocket-art-sizing questions, use the
 - `scripts/cards.py` - the card builders and the slot/rotation logic.
 - `scripts/facts.py` - the rocket fact pool.
 - `scripts/history.py` - booster history, fleet and docking lookups, cached in
-  `boosters/`.
+  `boosters/`. LL2 ignores a `launcher_config` filter on `/launcher/`, so the
+  fleet is the whole launcher table in `boosters/_fleet.json`, filtered by
+  rocket type in Python.
 - `rockets/` - rocket art. Mostly PNG, a few JPEG.
 - `launch.json` - **generated output, do not hand-edit.** The workflow rebuilds
   and commits it about every 15 minutes.
@@ -103,8 +105,10 @@ it is meant to catch. A check that cannot fail is worse than no check.
 
 - `is_placeholder` misses "Details TBD" style stubs when the description is
   over 60 characters, so they reach the card.
-- `description` strips `\n` but not `\r`, so a stray carriage return survives.
 - `cadence_card` and `pad_card` can both be on screen stating the same pad
   count in different words.
 - Rotation is keyed to `hours_until`, so a launch that slips jumps backward
   through the tiers.
+- `countdown` changes every run, so pre-launch the workflow commits
+  `launch.json` every 15 minutes. If the markup computed the countdown from
+  `date_ts` instead, those commits would stop.

@@ -4,7 +4,7 @@ Cached lookups for booster history.
 Both of these hit extra API endpoints, so everything is cached in the repo:
 
   boosters/B1088.json      one booster's flight list
-  boosters/_fleet_164.json every core of one rocket type, for ranking
+  boosters/_fleet.json     every core LL2 knows, for ranking within a type
 
 A booster's history only changes when it flies, so we refetch only when the
 serial is new or its flight count has gone up. The fleet list moves slowly,
@@ -112,9 +112,12 @@ def _get_booster_history(serial, flights_now):
     # before this was one word, so the bug sat unnoticed until a Chinese
     # reusable turned up. quote with an empty safe list covers spaces, slashes
     # and anything else that would corrupt the query.
+    # The limit has to clear the most-flown core with room to spare. At 40,
+    # B1067 was three flights from losing its newest flights off the end of
+    # the page, after which its career card would have frozen.
     url = (
         f"{API}/launch/?serial_number={urllib.parse.quote(str(serial), safe='')}"
-        "&mode=list&limit=40&format=json"
+        "&mode=list&limit=100&format=json"
     )
     data = _get(url)
     if not data:
@@ -206,42 +209,66 @@ def _get_docking(spacecraft_name, station_id):
 
 def get_fleet(config_id):
     """
-    Returns [{'serial','flights'}, ...] sorted most flown first, or None.
-    Never raises, for the same reason as get_booster_history.
+    Returns [{'serial','flights'}, ...] for one rocket type, sorted most flown
+    first, or None. Never raises, for the same reason as get_booster_history.
     """
     try:
-        return _get_fleet(config_id)
+        return _fleet_of(_get_all_cores(), config_id)
     except Exception as e:
         print(f"Warning: fleet lookup failed for config {config_id}: {e}")
         return None
 
 
-def _get_fleet(config_id):
+def _fleet_of(cores, config_id):
+    """The cores of one rocket type, most flown first. None if there are none."""
     if not config_id:
         return None
+    fleet = [{"serial": c["serial"], "flights": c["flights"]}
+             for c in cores or [] if c.get("config") == config_id]
+    fleet.sort(key=lambda c: c["flights"], reverse=True)
+    return fleet or None
 
-    name = f"_fleet_{config_id}"
-    cached = _read_cache(name)
+
+# LL2 2.2.0 ignores a launcher_config filter on /launcher/, under that name
+# and as launcher_config__id: both return the whole table. The old per-type
+# fetch therefore cached the same first 100 launchers of the database under
+# every rocket type, Starship test articles included, and ranked a core
+# against whatever happened to be in it. The table is small (under 200
+# rows), so take all of it in one weekly pass and filter here. That is also
+# fewer calls than one fetch per rocket type.
+FLEET_CACHE = "_fleet"
+FLEET_MAX_PAGES = 5
+
+
+def _get_all_cores():
+    cached = _read_cache(FLEET_CACHE)
     if cached and (time.time() - cached.get("fetched_at", 0)) < FLEET_MAX_AGE:
-        print(f"Fleet list for config {config_id}: cache hit")
+        print("Fleet list: cache hit")
         return cached.get("cores")
 
-    print(f"Fleet list for config {config_id}: fetching")
-    url = f"{API}/launcher/?launcher_config={config_id}&limit=100&format=json"
-    data = _get(url)
-    if not data:
-        return (cached or {}).get("cores")
-
+    print("Fleet list: fetching")
     cores = []
-    for r in data.get("results") or []:
-        serial = r.get("serial_number")
-        flights = r.get("flights")
-        if serial and isinstance(flights, int):
-            cores.append({"serial": serial, "flights": flights})
+    url = f"{API}/launcher/?limit=100&format=json"
+    for _ in range(FLEET_MAX_PAGES):
+        data = _get(url)
+        if not data:
+            # A partial table would rank a core against half its fleet.
+            return (cached or {}).get("cores")
+        for r in data.get("results") or []:
+            serial = r.get("serial_number")
+            flights = r.get("flights")
+            config = (r.get("launcher_config") or {}).get("id")
+            if serial and isinstance(flights, int) and config:
+                cores.append({"serial": serial, "flights": flights, "config": config})
+        url = data.get("next")
+        if not url:
+            break
+    else:
+        print(f"Warning: launcher table runs past {FLEET_MAX_PAGES} pages. Keeping the cached fleet.")
+        return (cached or {}).get("cores")
 
     if not cores:
         return (cached or {}).get("cores")
 
-    cores.sort(key=lambda c: c["flights"], reverse=True)
-    _write_cache(name, {"fetched_at": int(time.time()), "cores": cores})
+    _write_cache(FLEET_CACHE, {"fetched_at": int(time.time()), "cores": cores})
     return cores

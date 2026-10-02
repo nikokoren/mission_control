@@ -303,7 +303,16 @@ def named_pad(launch):
     manages to say nothing twice.
     """
     name = short_pad(dig(launch, "pad", "name", default=""))
-    return "" if "unknown" in name.lower() else name
+    if "unknown" in name.lower():
+        return ""
+    # LL2 names some pads by number alone. "That is 5 launches from 201 this
+    # year" reads as arithmetic; the header already calls it "Pad 201". The
+    # Russian sites write theirs as "31/6" and "43/3", which are sites.
+    if name.isdigit():
+        return f"Pad {name}"
+    if re.match(r"\d+/\d+", name):
+        return f"Site {name}"
+    return name
 
 
 # Landing sites LL2 names without an article. "Targeting Gulf of Mexico"
@@ -561,11 +570,12 @@ def is_schedule_change(comment):
 
 
 def _iso(value):
-    """Parse an LL2 timestamp, or None. Never raises."""
+    """Parse an LL2 timestamp as UTC, or None. Never raises."""
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except (TypeError, ValueError):
         return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def _ago(dt, now=None):
@@ -962,7 +972,22 @@ def _stage_landing_phrase(stage, resolved):
         return f"returning to {place}"
     if place:
         return f"targeting {place}"
-    return "recovery planned" if attempt else "expended"
+    # "due for recovery" rather than "recovery planned", which every caller
+    # puts after "is" or "are": "The core, B1106, is recovery planned."
+    return "due for recovery" if attempt else "expended"
+
+
+def _be(phrase, resolved, plural=False):
+    """
+    A landing phrase as a predicate: "is expended", "were lost on the way
+    back". "landed at LZ-1" is already a verb in the past tense and takes no
+    auxiliary; "is landed at LZ-1" is not English.
+    """
+    if phrase.startswith("landed"):
+        return phrase
+    if resolved:
+        return f"{'were' if plural else 'was'} {phrase}"
+    return f"{'are' if plural else 'is'} {phrase}"
 
 
 def _stage_outcome_class(stage):
@@ -1042,33 +1067,45 @@ def _multi_booster_card(launch, stages, mode):
     if sides:
         serials = " and ".join(s for _, (s, _), _ in sides)
         flights = [fn for _, (_, fn), _ in sides if fn]
-        if len(flights) == len(sides) and len(set(flights)) == 1:
-            parts.append(f"Side boosters {serials} both fly their {ordinal(flights[0])} mission.")
-        elif all(fn == 1 for fn in flights) and len(flights) == len(sides):
-            parts.append(f"Side boosters {serials} are both brand new.")
+        known = len(flights) == len(sides)
+        # Past tense once the outcome is known, as everywhere else: these
+        # lines said "both fly their 3rd mission" under MISSION RECAP.
+        are, fly = ("were", "flew") if resolved else ("are", "fly")
+        # New cores first: otherwise two first flights matched the
+        # same-count branch and read "both fly their 1st mission".
+        if known and all(fn == 1 for fn in flights):
+            parts.append(f"Side boosters {serials} {are} both brand new.")
+        elif known and len(set(flights)) == 1:
+            parts.append(f"Side boosters {serials} both {fly} their {ordinal(flights[0])} mission.")
+        elif known and len(flights) == 2:
+            parts.append(f"Side boosters {serials} {are} on their "
+                         f"{ordinal(flights[0])} and {ordinal(flights[1])} flights.")
         else:
-            parts.append(f"Side boosters {serials}.")
+            # Not "Side boosters X and Y." on its own: a verbless line is the
+            # telegram style the single-core card was rewritten to get away from.
+            parts.append(f"The side boosters {are} {serials}.")
 
         side_landings = {p for *_, p in sides}
         if len(side_landings) == 1:
-            parts.append(f"Both are {side_landings.pop()}.")
+            parts.append(f"Both {_be(side_landings.pop(), resolved, plural=True)}.")
         else:
-            # This sentence names both cores itself, so a bare "Side boosters
-            # X and Y." above it is the same two serials twice in a row. The
+            # This sentence names both cores itself, so a bare list of the
+            # two serials above it is the same two names twice in a row. The
             # identity line only earns its place when it carries a flight
             # count the landing line does not.
-            if parts and parts[-1] == f"Side boosters {serials}.":
+            if parts and parts[-1] == f"The side boosters {are} {serials}.":
                 parts.pop()
-            parts.append(" and ".join(f"{s} {p}" for _, (s, _), p in sides) + ".")
+            parts.append(" and ".join(f"{s} {_be(p, resolved)}" for _, (s, _), p in sides) + ".")
 
     if core:
         _, (serial, flight_n), phrase = core[0]
         if flight_n == 1:
-            parts.append(f"The core, {serial}, is new and {phrase}.")
+            parts.append(f"The core, {serial}, {'was' if resolved else 'is'} new and {phrase}.")
         elif flight_n:
-            parts.append(f"The core, {serial}, on its {ordinal(flight_n)} flight, is {phrase}.")
+            parts.append(f"The core, {serial}, on its {ordinal(flight_n)} flight, "
+                         f"{_be(phrase, resolved)}.")
         else:
-            parts.append(f"The core, {serial}, is {phrase}.")
+            parts.append(f"The core, {serial}, {_be(phrase, resolved)}.")
 
     return assemble(parts)
 
@@ -1127,12 +1164,43 @@ def real_serial(stage):
     return "" if "unknown" in serial.lower() else serial
 
 
-def booster_serial(launch):
-    """Just the serial of the first listed core, or empty. Used by the
-    single-booster label path; multi-booster launches use booster_label
-    directly instead."""
-    stages = all_boosters(launch)
-    return real_serial(stages[0] if stages else {})
+def lead_booster(launch):
+    """
+    The core whose career the history cards tell, or None.
+
+    On a Falcon Heavy that is the most-flown of the three, so a brand new
+    center core beside a veteran side booster tells the veteran's story
+    rather than its own blank one. Placeholder serials are skipped: "Unknown
+    FH" is not a core, and looking it up as one fetched and cached the flight
+    list of every unidentified Falcon Heavy core as if it were one career.
+    """
+    best, best_flights = None, -1
+    for stage in all_boosters(launch):
+        if not real_serial(stage):
+            continue
+        flights = dig(stage, "launcher", "flights", default=0)
+        flights = flights if isinstance(flights, int) else 0
+        if flights > best_flights:
+            best, best_flights = stage, flights
+    return best
+
+
+def history_stage(launch, history):
+    """
+    The stage on this launch that `history` belongs to, or None.
+
+    The NEXT and RECORD cards name a core and quote its record, so both have
+    to come from the same core. Reading the first listed stage instead put
+    one Falcon Heavy core's name on another's numbers: "B1104 has averaged
+    275 days between flights" was B1072's record.
+    """
+    serial = (history or {}).get("serial")
+    if not serial:
+        return None
+    for stage in all_boosters(launch):
+        if real_serial(stage) == serial:
+            return stage
+    return None
 
 
 def booster_career_card(launch, history=None, fleet=None):
@@ -1144,21 +1212,11 @@ def booster_career_card(launch, history=None, fleet=None):
         return None
 
     serial = history.get("serial") or ""
-    all_flights = history.get("launches") or []
 
     # The API returns upcoming launches too, so drop anything that has not
     # happened yet. Otherwise a booster still on the pad gets credited with
     # a flight it has not made.
-    from datetime import datetime, timedelta, timezone
-    now = datetime.now(timezone.utc)
-    flights = []
-    for f in all_flights:
-        try:
-            when = datetime.fromisoformat(str(f.get("net")).replace("Z", "+00:00"))
-            if when <= now:
-                flights.append(f)
-        except (ValueError, TypeError):
-            continue
+    flights = _flown(history)
 
     n = len(flights)
     if n < 3:
@@ -1231,9 +1289,11 @@ def booster_career_card(launch, history=None, fleet=None):
             # the fact rather than with the accounting. The first variant
             # names the dominant family in the stem, so the list must not
             # name it again: "Mostly Starlink: eight Starlink, one NROL".
+            # "Mostly" only for an actual majority: B1072 rendered "Mostly
+            # NROL: one of them and three others".
             led = [f"{fmt(top_n)} of them"] + bits[1:]
             parts.append(pick(seed, "career-mix", [
-                f"Mostly {top_fam}: {join_list(led)}.",
+                f"Mostly {top_fam}: {join_list(led)}." if top_n * 2 > n else None,
                 f"The mix: {join_list(bits)}.",
             ]))
 
@@ -1253,11 +1313,7 @@ def booster_career_card(launch, history=None, fleet=None):
             parts.append(f"Only {num_word(ahead)} cores in the fleet have flown more.")
 
     # 4. Personal best turnaround.
-    gaps = []
-    for i in range(1, len(flights)):
-        g = days_between(flights[i - 1]["net"], flights[i]["net"])
-        if g is not None and g > 0:
-            gaps.append(g)
+    gaps = _gaps(flights)
     if gaps:
         parts.append(pick(seed, "career-turn", [
             f"Its quickest turnaround was {plural(min(gaps), 'day')}.",
@@ -1384,21 +1440,63 @@ ORBIT_NOTES = {
 }
 
 
-def _flight_gaps(history):
-    """Days between consecutive flights of this core, derived the same way
-    the career card does it. The cache stores flights, not gaps."""
+def _history_flights(history):
+    """The cached flight list, oldest first."""
     # The cache stores the flight list under "launches"; "flights" is an
     # integer count, and reading that one instead is what produced
     # "object of type 'int' has no len()".
     flights = (history or {}).get("launches") or []
-    if not isinstance(flights, list):
+    return flights if isinstance(flights, list) else []
+
+
+def _flown(history):
+    """
+    The flights this core has actually made. The cached list also carries
+    flights still to come -- the one on the pad, and any the core is already
+    assigned to -- and a gap to a flight that has not happened is a guess,
+    not a turnaround.
+    """
+    now = datetime.now(timezone.utc)
+    flown = []
+    for f in _history_flights(history):
+        when = _iso(f.get("net"))
+        if when is not None and when <= now:
+            flown.append(f)
+    return flown
+
+
+def _flights_before(history, launch):
+    """
+    This core's flights before this launch. Matched on the mission name
+    first, since a slipped launch keeps its name but not its date; failing
+    that, anything comfortably earlier than this launch's NET.
+    """
+    flights = _history_flights(history)
+    name = (launch.get("name") or "").split(" | ")[-1].strip()
+    if name:
+        for i, f in enumerate(flights):
+            if f.get("name") == name:
+                return flights[:i]
+    when = _iso(launch.get("net"))
+    if when is None:
         return []
+    cutoff = when - timedelta(hours=12)
+    return [f for f in flights if (_iso(f.get("net")) or when) < cutoff]
+
+
+def _gaps(flights):
+    """Days between consecutive flights. The cache stores flights, not gaps."""
     gaps = []
     for i in range(1, len(flights)):
         g = days_between(flights[i - 1].get("net"), flights[i].get("net"))
         if g is not None and g > 0:
             gaps.append(g)
     return gaps
+
+
+def _flight_gaps(history):
+    """Days between the flights this core has actually made."""
+    return _gaps(_flown(history))
 
 
 def destination_card(launch):
@@ -1484,10 +1582,15 @@ def pad_card(launch):
     # it keeps its own wording rather than rounding to "under a day". Beyond
     # about six weeks it stops being a turnaround and is just a gap.
     days, hours = parsed if parsed else (None, None)
+    # P0D is how LL2 writes "no previous launch", not a same-day turnaround:
+    # it arrives on a pad's first launch ever, where it produced "That was
+    # the first launch from Pallas-1 Launch Pad this year. It was flying
+    # something else hours earlier."
+    if days == 0 and not hours:
+        days = None
     if days is not None and days < 45:
         if days == 0:
-            parts.append(f"It was flying something else {plural(hours, 'hour')} earlier."
-                         if hours else "It was flying something else hours earlier.")
+            parts.append(f"It was flying something else {plural(hours, 'hour')} earlier.")
         elif days == 1:
             parts.append("Its previous launch was only a day earlier.")
         else:
@@ -1508,9 +1611,8 @@ def pad_card(launch):
 
 def booster_next_card(launch, history):
     """When this core is likely to fly again, from its own cached record."""
-    stage = (dig(launch, "rocket", "launcher_stage", default=[]) or [{}])[0]
-    serial = dig(stage, "launcher", "serial_number", default="")
-    if not serial or not history:
+    serial = real_serial(history_stage(launch, history))
+    if not serial:
         return None
     gaps = _flight_gaps(history)
     if len(gaps) < 2:
@@ -1548,31 +1650,39 @@ def booster_next_card(launch, history):
 def record_card(launch, history):
     """Did this flight set a personal best for the core? Fires rarely, which
     is what makes it worth showing when it does."""
-    stage = (dig(launch, "rocket", "launcher_stage", default=[]) or [{}])[0]
-    serial = dig(stage, "launcher", "serial_number", default="")
+    stage = history_stage(launch, history)
+    serial = real_serial(stage)
     turn = dig(stage, "turn_around_time_days", default=None)
-    if not serial or not history or not isinstance(turn, (int, float)):
-        return None
-    gaps = _flight_gaps(history)
-    if len(gaps) < 2:
+    if not serial or not isinstance(turn, (int, float)) or turn <= 0:
         return None
 
-    # The current flight's own gap is in the cached list, so comparing
-    # against min(gaps) compares the flight with itself and every flight
-    # looks like a record. Exclude gaps at or below this one first.
-    previous = [g for g in gaps if g > turn]
-    flights = dig(stage, "launcher", "flights", default=None)
+    # Only the gaps before this flight. The cached list carries this flight
+    # too, so comparing against all of it compared the turnaround with
+    # itself: the earlier fix dropped every gap at or below this one, which
+    # always took this flight's own gap with it, so the record branch could
+    # never fire -- and if LL2's day count and ours differed by one, it
+    # would have announced a record over itself.
+    previous = _gaps(_flights_before(history, launch))
+    if len(previous) < 2:
+        return None
 
-    if previous and len(previous) == len(gaps):
-        saved = int(round(min(previous) - turn))
+    saved = int(round(min(previous) - turn))
+    if saved >= 1:
         return pick(card_seed(launch), "record-turn", [
             f"That was {serial}'s fastest turnaround yet: {int(round(turn))} days, "
             f"{plural(saved, 'day')} quicker than its previous best.",
             f"{serial} has never turned around this fast: {int(round(turn))} days, "
             f"beating its own best by {plural(saved, 'day')}.",
         ])
-    if isinstance(flights, int) and flights >= 20:
-        return (f"{serial} has now flown {flights} times, putting it among the "
+
+    # This flight's number, not the launcher's live career total, which on a
+    # past launch already counts the flights since: B1063's 34th flight was
+    # rendered "B1063 has now flown 35 times".
+    n = stage.get("launcher_flight_number")
+    if not isinstance(n, int):
+        n = dig(stage, "launcher", "flights", default=None)
+    if isinstance(n, int) and n >= 20:
+        return (f"{serial} has now flown {n} times, putting it among the "
                 f"most-flown rockets ever built.")
     return None
 
@@ -1806,7 +1916,8 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         "career":  (career_label(history), booster_career_card(launch, history, fleet)),
         "pad":     ("PAD HISTORY", pad_card(launch)),
         "dest":    ("DESTINATION EXPLAINED", destination_card(launch)),
-        "next":    (f"{booster_serial(launch) or 'BOOSTER'} NEXT", booster_next_card(launch, history)),
+        "next":    (f"{real_serial(history_stage(launch, history)) or 'BOOSTER'} NEXT",
+                    booster_next_card(launch, history)),
         "record":  ("A RECORD", record_card(launch, history)),
         "docking": ("NEXT MILESTONE", docking_card(launch, docking)),
         "program": ("PROGRAM CONTEXT", program_card(launch, program_description)),
