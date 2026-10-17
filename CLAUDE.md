@@ -106,6 +106,32 @@ it is meant to catch. A check that cannot fail is worse than no check.
   run; it belongs to the workflow.
 - `upcoming.json` and `previous.json` are fetched inputs and are gitignored.
 
+## Design work queued - TRMNL X
+
+Observed on a real TRMNL X (2026-10-17), not in preview: **the top is cramped
+and there is a lot of empty space below it.** The X is 1040x780 against the
+OG's 800x480, so its columns are proportionally much taller. Anything sized by
+width - which is most of this layout, built for the OG - keeps its original
+proportions and leaves vertical slack underneath. Same root cause as the
+rocket-art problem in the `trmnl-framework` skill; fixing one may inform the
+other.
+
+- **Rework the BY / ON / FROM line.** Currently three cramped labelled fields
+  in one row. The data side is here: `provider` (short form from
+  `normalize_org_name`) and `location_str`, assembled at
+  `update_launch.py:401` as `"{pad} @ {location}, {country}"` - e.g.
+  `SLC-40 @ Cape Canaveral SFS, USA`. The arrangement is markup-side. Worth
+  deciding whether the X should stack or re-flow these rather than reuse the
+  OG's single row.
+- **Rethink the top bar and the left-side text fields** (exploratory, not
+  decided). The whole upper-left block was composed for the OG's 800x480 and
+  may want a different arrangement at `lg:` rather than a scaled one.
+
+Both need the markup, which is not in this repo - ask for the Markup tab
+before proposing specific classes. The framework's responsive prefixes
+(`sm:` / `lg:` / `portrait:`) allow a genuinely different arrangement per
+device, not just a rescaled one; see the `trmnl-framework` skill.
+
 ## Known open items
 
 - `is_placeholder` misses "Details TBD" style stubs when the description is
