@@ -66,9 +66,13 @@
 {%- assign xb_clamp = 5 -%}
 {%- if xb_len > 285 -%}{%- assign xb_cls = "description lg:description--large mc-regular" -%}{%- assign xb_clamp = 6 -%}{%- endif -%}
 {%- if xb_len > 410 -%}{%- assign xb_cls = "label label--small lg:description" -%}{%- assign xb_clamp = 7 -%}{%- endif -%}
-{%- comment -%} The third card is the supporting one: a size below the
-    other two, so three cards read as two stories and a footnote. {%- endcomment -%}
-{%- assign xc_cls = "description lg:description--large mc-regular" -%}
+{%- comment -%} Slot C follows slot B's tiers: it holds full cards (the
+    booster story on a crewed flight, launch stats, trivia), not footnotes. {%- endcomment -%}
+{%- assign xc_len = xc_text | size -%}
+{%- assign xc_cls = "description description--large lg:description--xlarge" -%}
+{%- assign xc_clamp = 5 -%}
+{%- if xc_len > 285 -%}{%- assign xc_cls = "description lg:description--large mc-regular" -%}{%- assign xc_clamp = 6 -%}{%- endif -%}
+{%- if xc_len > 410 -%}{%- assign xc_cls = "label label--small lg:description" -%}{%- assign xc_clamp = 7 -%}{%- endif -%}
 
 <div class="layout">
   <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
@@ -207,7 +211,7 @@
         <div class="divider shrink-0"></div>
         <div class="flex flex--col flex--left w--full gap--xsmall">
           <span class="label label--small lg:label--base">{{ xc_label }}</span>
-          <span class="{{ xc_cls }}" data-clamp="4" data-clamp-lg-portrait="2">{{ xc_text }}</span>
+          <span class="{{ xc_cls }}" data-clamp="{{ xc_clamp }}" data-clamp-lg-portrait="3">{{ xc_text }}</span>
         </div>
         {% endif %}
       </div>
