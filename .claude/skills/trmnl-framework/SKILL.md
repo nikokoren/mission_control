@@ -1,23 +1,29 @@
 ---
 name: trmnl-framework
-description: Reference for designing TRMNL e-ink recipes - device dimensions, responsive prefixes, aspect ratio and image utilities, and how this repo's half of the recipe relates to the markup half. Use when working on how the Mission Control display looks: layout, rocket art sizing, per-device or per-orientation behaviour, view sizes, or any question about TRMNL Framework classes.
+description: Reference for designing TRMNL e-ink recipes - device dimensions, responsive prefixes, aspect ratio and image utilities, framework targets, and the recipe source stored in markup/. Use when working on how the Mission Control display looks: layout, rocket art sizing, per-device or per-orientation behaviour, view sizes, or any question about TRMNL Framework classes.
 ---
 
 # TRMNL Framework reference
 
-## Read this first: always re-fetch
+## Read this first: framework target and documentation
 
-**Assume the user is on the latest framework version.** Use the **unversioned**
-doc URLs (`https://trmnl.com/framework/docs/<page>`) - they track latest.
-Never cite a pinned tree (`/3.0/`, `/3.1/`) as current.
+**The imported recipe uses TRMNL Framework CSS 2.3.7**, confirmed by the author
+on November 1, 2026. **New layout work targets the latest stable framework**;
+the author suggested **3.4.4**, pending verification against official sources.
+OG compatibility and any needed OG layout changes will be addressed afterward.
+Use the unversioned docs (`https://trmnl.com/framework/docs/<page>`) for the
+new target; they track latest. Use version-matched documentation and stylesheet
+behavior when explaining the imported 2.3.7 templates.
 
 This file is a **snapshot, verified 2026-09-27 against v3.3**. The framework
 moves fast and versions differ materially: `aspect_ratio` was Beta in 3.0 and
 is stable in 3.3; 3.3 added themes, a TRMNLPaint JS API, adaptive charts, maps
 and icons. Version trees seen so far: 1.2, 2.3, 3.0, 3.1, 3.3.
 
-**Before giving load-bearing advice, re-fetch the page you are relying on.**
-If what you find disagrees with this file, the web wins - and update this file.
+The reference notes below describe 3.3 and do not establish compatibility with
+either 2.3.7 or the latest target. **Before giving load-bearing advice,
+re-fetch the page you are relying on and verify the relevant version.** Update
+these notes when verified behavior differs.
 
 Docs index: https://trmnl.com/framework/docs
 ~40 subpages under Guides, Arrangement, Responsive Utilities, Styling,
@@ -89,13 +95,15 @@ For deliberate overflow (>100%) the utilities cap out - write the `cqh` value
 in your own CSS. Container queries are plain CSS; only the generated utilities
 are capped.
 
-## This repo is only half the recipe
+## Recipe source and editor
 
-`nikokoren/mission_control` generates `launch.json` and hosts the rocket art.
-**The markup lives in TRMNL's plugin editor and is not in git** - confirmed by
-searching every path and every blob in the full history. Do not claim to have
-read the markup. Ask the user to paste the Markup tab, or reason explicitly
-from screenshots and say that you are doing so.
+`nikokoren/mission_control` generates `launch.json`, hosts the rocket art, and
+stores the four view templates, shared styles, and form fields in `markup/`.
+These editor copies were supplied by the author on November 1, 2026. Read the
+relevant templates and `markup/shared.liquid` before making layout claims.
+See `markup/README.md` for the file-to-editor mapping. Publishing changes to
+the active TRMNL recipe is a separate manual editor step; a GitHub push alone
+does not deploy the templates.
 
 ## The rocket art scale system
 
@@ -123,6 +131,7 @@ it device-independent:
 
 ## Open questions - do not guess these, ask
 
-- Which framework version the recipe declares.
 - The pixel width and height of the rocket column in each view.
-Both were unknown as of this snapshot, and canvas-height math depends on them.
+The markup defines relative sizes, but actual rendered bounds are needed for
+canvas-height math. The imported recipe uses 2.3.7; new layouts target latest,
+as noted above.

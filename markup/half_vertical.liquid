@@ -1,0 +1,51 @@
+{%- assign title_cls = "title title--large lg:title--xlarge" -%}
+{%- if name.size > 14 -%}{%- assign title_cls = "title lg:title--large" -%}{%- endif -%}
+{%- if name.size > 22 -%}{%- assign title_cls = "title title--small lg:title--base" -%}{%- endif -%}
+
+<div class="layout">
+  <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
+
+    <div class="flex flex--row flex--top w--full shrink-0 gap--medium">
+      <div class="flex flex--col flex--left grow gap--xsmall">
+        <span class="label label--small lg:label--base">MISSION</span>
+        <span class="{{ title_cls }}">{{ name }}</span>
+      </div>
+
+      <div class="flex flex--col flex--right shrink-0 gap--xsmall">
+        {%- if mode == 'PRE_LAUNCH' -%}
+          <span class="label label--small lg:label--base">COUNTDOWN</span>
+          <span class="label label--large label--outline lg:label--xlarge value--tnums">{{ countdown }}</span>
+        {%- else -%}
+          <span class="label label--small lg:label--base">STATUS</span>
+          <span class="label label--large lg:label--xlarge {% if status == 'Success' %}label--inverted{% else %}label--outline{% endif %}">
+            {%- if status == 'Success' -%}SUCCESS
+            {%- elsif status == 'Failure' -%}FAILURE
+            {%- elsif status == 'Partial Failure' -%}PARTIAL FAIL
+            {%- elsif status == 'PENDING' -%}CONFIRMING
+            {%- else -%}{{ status | upcase }}
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- comment -%} ---- the rocket, height-bound hero ---- {%- endcomment -%}
+    <div class="divider shrink-0"></div>
+
+ <div class="grow flex flex--row {% if rocket_ascending %}flex--top{% else %}flex--bottom{% endif %} flex--center-x w--full h--min-[40cqh] portrait:h--min-[16cqh] mc-clip">      <img
+        class="image w--max-full h--max-full"
+        src="{{ rocket_visual }}"
+        data-alt="{{ rocket_visual_alt }}"
+        data-gen="{{ generic_visual }}"
+        onerror="if(this.dataset.f!='1'&&this.dataset.alt){this.dataset.f='1';this.src=this.dataset.alt;}else{this.onerror=null;this.src=this.dataset.gen;}"
+      />
+    </div>
+
+    <div class="divider shrink-0"></div>
+    <div class="flex flex--col flex--left w--full shrink-0 gap--xsmall">
+      <span class="label label--small lg:label--large">ROCKET USED</span>
+      <span class="title title--base lg:title--xlarge">{{ rocket }}</span>
+    </div>
+
+  </div>
+</div>

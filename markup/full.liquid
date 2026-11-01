@@ -1,0 +1,182 @@
+{%- comment -%} Title tier by name length: ~34/42/60 chars a line. {%- endcomment -%}
+{%- assign title_cls = "title title--large lg:title--xxlarge" -%}
+{%- if name.size > 22 -%}{%- assign title_cls = "title lg:title--xlarge" -%}{%- endif -%}
+{%- if name.size > 34 -%}{%- assign title_cls = "title title--small lg:title--large" -%}{%- endif -%}
+
+{%- comment -%} Info row load, width-normalised by each column's share. {%- endcomment -%}
+{%- assign by_load = provider | size -%}
+{%- assign for_load = agency | size | times: 10 | divided_by: 14 -%}
+{%- assign from_load = location_str | size | times: 10 | divided_by: 25 -%}
+{%- assign info_load = by_load -%}
+{%- if for_load > info_load -%}{%- assign info_load = for_load -%}{%- endif -%}
+{%- if from_load > info_load -%}{%- assign info_load = from_load -%}{%- endif -%}
+{%- assign info_cls = "description description--large lg:description--xlarge" -%}
+{%- if info_load > 24 -%}{%- assign info_cls = "description lg:description--large" -%}{%- endif -%}
+
+{%- assign a_len = slot_a_text | size -%}
+{%- assign a_cls = "description description--large lg:description--xlarge" -%}
+{%- assign a_clamp = 7 -%}
+{%- if a_len > 400 -%}
+  {%- assign a_cls = "description lg:description--large" -%}
+  {%- assign a_clamp = 8 -%}
+{%- endif -%}
+{%- if a_len > 520 -%}
+  {%- assign a_cls = "label label--small lg:description" -%}
+  {%- assign a_clamp = 9 -%}
+{%- endif -%}
+
+{%- assign b_len = slot_b_text | size -%}
+{%- assign b_cls = "description description--large lg:description--xlarge" -%}
+{%- assign b_clamp = 5 -%}
+{%- if b_len > 285 -%}
+  {%- assign b_cls = "description lg:description--large" -%}
+  {%- assign b_clamp = 6 -%}
+{%- endif -%}
+{%- if b_len > 410 -%}
+  {%- assign b_cls = "label label--small lg:description" -%}
+  {%- assign b_clamp = 7 -%}
+{%- endif -%}
+
+<div class="layout">
+  <div class="flex flex--row portrait:flex--col flex--top w--full h--full gap--large portrait:gap--small mx--2 my--2">
+
+    {%- comment -%} ============ MAIN COLUMN ============ {%- endcomment -%}
+    <div class="w--[62cqw] portrait:w--full h--full portrait:h--[56cqh] flex flex--col gap--small">
+
+      {%- comment -%} --- header --- {%- endcomment -%}
+      <div class="flex flex--row flex--center-y w--full gap--medium">
+        {%- if image != '' and image != blank -%}
+          <img class="image shrink-0 {% if image_is_patch %} h--max-16 lg:h--max-28 {% else %}w--max-28 lg:w--max-36 h--max-16 lg:h--max-28{% endif %}" src="{{ image }}"
+               onerror="this.onerror=null; this.style.display='none';" />
+        {%- endif -%}
+
+        <div class="flex flex--col flex--left grow gap--xsmall">
+          <span class="label label--small lg:label--base">MISSION</span>
+          <span class="{{ title_cls }}" data-clamp="2">{{ name }}</span>
+        </div>
+
+        <div class="flex flex--col flex--right shrink-0 gap--xsmall">
+          {%- if mode == 'PRE_LAUNCH' -%}
+            <span class="label label--small lg:label--base">COUNTDOWN</span>
+            <span class="label label--outline lg:label--xlarge value--tnums">{{ countdown }}</span>
+          {%- else -%}
+            <span class="label label--small lg:label--base">STATUS</span>
+            <span class="label lg:label--xlarge {% if status == 'Success' %}label--inverted{% else %}label--outline{% endif %}">
+              {%- if status == 'Success' -%}SUCCESS
+              {%- elsif status == 'Failure' -%}FAILURE
+              {%- elsif status == 'Partial Failure' -%}PARTIAL FAIL
+              {%- elsif status == 'PENDING' -%}CONFIRMING
+              {%- else -%}{{ status | upcase }}
+              {%- endif -%}
+            </span>
+          {%- endif -%}
+
+          {% if mode == 'PRE_LAUNCH' and window_start_ts != window_end_ts %}
+            {%- assign duration = window_end_ts | minus: window_start_ts -%}
+            {%- assign elapsed = date_ts | minus: window_start_ts -%}
+            {%- if duration > 0 -%}
+              {%- assign pct = elapsed | times: 100.0 | divided_by: duration -%}
+            {%- else -%}
+              {%- assign pct = 50 -%}
+            {%- endif -%}
+            {%- if pct < 0 -%}{%- assign pct = 0 -%}{%- endif -%}
+            {%- if pct > 100 -%}{%- assign pct = 100 -%}{%- endif -%}
+            {%- assign frac = pct | divided_by: 100.0 -%}
+
+            <div class="mc-tl">
+              <span class="label label--small lg:label--base">LAUNCH WINDOW</span>
+              <div class="mc-tl-bar">
+                <div class="mc-tl-line">
+                  <div class="mc-tl-dot" style="left: calc(6px + {{ frac }} * (100% - 12px));"></div>
+                </div>
+                {%- comment -%} Hidden when T-0 equals an end label: the same
+                    time twice, stacked, reads as a bug. {%- endcomment -%}
+                {% if date_ts != window_start_ts and date_ts != window_end_ts %}
+                <span class="mc-tl-t0 label label--small value--tnums" style="{% if pct < 15 %}left: 0;{% elsif pct > 85 %}right: 0;{% else %}left: {{ pct }}%; transform: translateX(-50%);{% endif %}">{{ date_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
+                {% endif %}
+              </div>
+              <div class="mc-tl-ends">
+                <span class="label label--small value--tnums">{{ window_start_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
+                <span class="label label--small value--tnums">{{ window_end_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {%- comment -%} --- info row --- {%- endcomment -%}
+      <div class="divider shrink-0"></div>
+
+      <div class="flex flex--row w--full shrink-0 gap--medium">
+  <div class="shrink-0 flex flex--col flex--left gap--xsmall">
+    <span class="label label--small lg:label--base">BY</span>
+    <span class="description" data-clamp="2">{{ provider }}</span>
+  </div>
+
+  {%- if agency != '' and agency != blank -%}
+  <div class="shrink-0 flex flex--col flex--left gap--xsmall">
+    <span class="label label--small lg:label--base">FOR</span>
+    <span class="description" data-clamp="2">{{ agency }}</span>
+  </div>
+  {%- endif -%}
+
+  <div class="shrink-0 flex flex--col flex--left gap--xsmall">
+    <span class="label label--small lg:label--base">ON</span>
+    <span class="description value--tnums" data-clamp="2">{{ date_ts | plus: trmnl.user.utc_offset | date: "%b %-d %H:%M" }}</span>
+  </div>
+
+  <div class="grow flex flex--col flex--left gap--xsmall">
+    <span class="label label--small lg:label--base">FROM</span>
+    <span class="description" data-clamp="2">{{ location_str }}</span>
+  </div>
+</div>
+
+      <div class="divider shrink-0"></div>
+
+      <div class="grow flex flex--col w--full gap--small mc-clip">
+        <div class="flex flex--col flex--left w--full gap--xsmall">
+          <span class="label label--small lg:label--base">{{ slot_a_label }}</span>
+          <span class="{{ a_cls }}" data-clamp="{{ a_clamp }}" data-clamp-portrait="3" data-clamp-lg-portrait="3">{{ slot_a_text }}</span>
+        </div>
+
+        {% if slot_b_text != "" %}
+        <div class="divider shrink-0"></div>
+        <div class="flex flex--col flex--left w--full gap--xsmall">
+          <span class="label label--small lg:label--base">{{ slot_b_label }}</span>
+          <span class="{{ b_cls }}" data-clamp="{{ b_clamp }}" data-clamp-portrait="4" data-clamp-lg-portrait="4">{{ slot_b_text }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="divider--v stretch-y shrink-0 portrait:hidden"></div>
+    <div class="divider shrink-0 hidden portrait:visible"></div>
+
+    {%- comment -%} ============ SIDEBAR ============ {%- endcomment -%}
+    <div class="w--[31cqw] portrait:w--full h--full portrait:h--[40cqh] flex flex--col gap--small">
+
+      <div class="flex flex--col flex--left w--full shrink-0 gap--xsmall">
+        <span class="label label--small lg:label--base">DESTINATION</span>
+        <span class="title--small lg:title--base" data-clamp="2">{{ orbit }}</span>
+      </div>
+
+      <div class="divider shrink-0"></div>
+
+      <div class="grow flex flex--row {% if rocket_ascending %}flex--top{% else %}flex--bottom{% endif %} flex--center-x w--full h--min-[40cqh] portrait:h--min-[16cqh] mc-clip">        <img
+          class="image w--max-full h--max-full"
+          src="{{ rocket_visual }}"
+          data-alt="{{ rocket_visual_alt }}"
+          data-gen="{{ generic_visual }}"
+          onerror="if(this.dataset.f!='1'&&this.dataset.alt){this.dataset.f='1';this.src=this.dataset.alt;}else{this.onerror=null;this.src=this.dataset.gen;}"
+        />
+      </div>
+
+      <div class="divider shrink-0"></div>
+      <div class="flex flex--col flex--left w--full shrink-0 gap--xsmall">
+        <span class="label label--small lg:label--base">ROCKET USED</span>
+        <span class="title lg:title--large" data-clamp="2">{{ rocket }}</span>
+      </div>
+    </div>
+
+  </div>
+</div>

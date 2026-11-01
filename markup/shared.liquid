@@ -1,0 +1,31 @@
+<style>
+    .mc-clip { overflow: hidden; }
+
+    /* ---------- launch window bar ---------- */
+    .mc-tl {display: flex; flex-direction: column; gap: 3px; }
+
+    .mc-tl-bar { position: relative; height: 24px; width: 100%;
+                 display: flex; align-items: flex-end; }
+
+    .mc-tl-line { position: relative; width: 100%; height: 2px; background: black; }
+
+    /* box-sizing pinned so the dot is 12px under either global box model.
+       Horizontal position is set inline with calc: a computed percentage of
+       elapsed window time, which no class can express. */
+    .mc-tl-dot {
+        box-sizing: border-box;
+        width: 12px; height: 12px;
+        background: white;
+        border: 2px solid black;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+
+    .mc-tl-t0 { position: absolute; top: 0; background: white;
+                white-space: nowrap; z-index: 3; }
+
+    .mc-tl-ends { display: flex; place-content: space-between; width: 100%; }
+</style>

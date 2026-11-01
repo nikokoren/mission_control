@@ -1,0 +1,42 @@
+{%- comment -%} Left column ~560px: tiers hold ~34/42/60 chars. {%- endcomment -%}
+{%- assign title_cls = "title title--large lg:title--xxlarge" -%}
+{%- if name.size > 24 -%}{%- assign title_cls = "title lg:title--xlarge" -%}{%- endif -%}
+{%- if name.size > 38 -%}{%- assign title_cls = "title title--small lg:title--large" -%}{%- endif -%}
+
+<div class="layout">
+  <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
+
+    <div class="flex flex--row flex--top w--full shrink-0 gap--large">
+      <div class="flex flex--col flex--left grow gap--xsmall">
+        <span class="label label--base lg:label--large">MISSION</span>
+        <span class="{{ title_cls }}" data-clamp-portrait="2" data-clamp-lg-portrait="2">{{ name }}</span>
+      </div>
+
+      <div class="flex flex--col flex--right shrink-0 gap--xsmall">
+        {%- if mode == 'PRE_LAUNCH' -%}
+          <span class="label label--small lg:label--base">COUNTDOWN</span>
+          <span class="label label--xlarge label--outline lg:label--xxlarge value--tnums">{{ countdown }}</span>
+        {%- else -%}
+          <span class="label label--base lg:label--large">STATUS</span>
+          <span class="label label--xlarge lg:label--xxlarge {% if status == 'Success' %}label--inverted{% else %}label--outline{% endif %}">
+            {%- if status == 'Success' -%}SUCCESS
+            {%- elsif status == 'Failure' -%}FAILURE
+            {%- elsif status == 'Partial Failure' -%}PARTIAL FAIL
+            {%- elsif status == 'PENDING' -%}CONFIRMING
+            {%- else -%}{{ status | upcase }}
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+      </div>
+    </div>
+
+    <div class="divider shrink-0"></div>
+
+    <div class="grow flex flex--col flex--left w--full gap--xsmall mc-clip">
+      <span class="label label--base lg:label--large">{{ slot_a_label }}</span>
+      <span class="title lg:title--large"
+            data-clamp="7" data-clamp-lg="9" data-clamp-portrait="6" data-clamp-lg-portrait="6">{{ slot_a_text }}</span>
+    </div>
+
+  </div>
+</div>

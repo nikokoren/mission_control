@@ -1,0 +1,76 @@
+{%- comment -%}
+    Title tiers at 400px hold roughly 25, 31 and 44 characters a line.
+    On X there is more room, so each tier steps up one with lg:.
+{%- endcomment -%}
+{%- assign title_cls = "title title--large lg:title--xlarge" -%}
+{%- if name.size > 14 -%}{%- assign title_cls = "title lg:title--large" -%}{%- endif -%}
+{%- if name.size > 22 -%}{%- assign title_cls = "title title--small lg:title--base" -%}{%- endif -%}
+
+<div class="layout">
+  <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
+
+    <div class="flex flex--row portrait:flex--col flex--center-y portrait:flex--left
+                grow w--full gap--medium">
+
+      <div class="flex flex--col flex--left grow gap--xsmall">
+        <span class="label label--small lg:label--base">MISSION</span>
+        <span class="{{ title_cls }}">{{ name }}</span>
+      </div>
+
+      <div class="flex flex--col flex--right portrait:flex--left shrink-0 gap--xsmall">
+        {%- if mode == 'PRE_LAUNCH' -%}
+          <span class="label label--small lg:label--base">COUNTDOWN</span>
+          <span class="label label--large label--outline lg:label--xlarge value--tnums">{{ countdown }}</span>
+        {%- else -%}
+          <span class="label label--small lg:label--base">STATUS</span>
+          <span class="label label--large lg:label--xlarge {% if status == 'Success' %}label--inverted{% else %}label--outline{% endif %}">
+            {%- if status == 'Success' -%}SUCCESS
+            {%- elsif status == 'Failure' -%}FAILURE
+            {%- elsif status == 'Partial Failure' -%}PARTIAL FAIL
+            {%- elsif status == 'PENDING' -%}CONFIRMING
+            {%- else -%}{{ status | upcase }}
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+
+        {% if mode == 'PRE_LAUNCH' and window_start_ts != window_end_ts %}
+          {%- assign duration = window_end_ts | minus: window_start_ts -%}
+          {%- assign elapsed = date_ts | minus: window_start_ts -%}
+          {%- if duration > 0 -%}
+            {%- assign pct = elapsed | times: 100.0 | divided_by: duration -%}
+          {%- else -%}
+            {%- assign pct = 50 -%}
+          {%- endif -%}
+          {%- if pct < 0 -%}{%- assign pct = 0 -%}{%- endif -%}
+          {%- if pct > 100 -%}{%- assign pct = 100 -%}{%- endif -%}
+          {%- assign frac = pct | divided_by: 100.0 -%}
+
+          <div class="mc-tl">
+            <span class="label label--small lg:label--base">LAUNCH WINDOW</span>
+            <div class="mc-tl-bar">
+              <div class="mc-tl-line">
+                <div class="mc-tl-dot" style="left: calc(6px + {{ frac }} * (100% - 12px));"></div>
+              </div>
+              {% if date_ts != window_start_ts and date_ts != window_end_ts %}
+              <span class="mc-tl-t0 label label--small value--tnums" style="{% if pct < 15 %}left: 0;{% elsif pct > 85 %}right: 0;{% else %}left: {{ pct }}%; transform: translateX(-50%);{% endif %}">{{ date_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
+              {% endif %}
+            </div>
+            <div class="mc-tl-ends">
+              <span class="label label--small value--tnums">{{ window_start_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
+              <span class="label label--small value--tnums">{{ window_end_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {%- comment -%} ---- vehicle ---- {%- endcomment -%}
+    <div class="divider shrink-0"></div>
+
+    <div class="flex flex--col flex--center-x w--full shrink-0 gap--xsmall">
+      <span class="label label--base lg:label--large">ROCKET USED</span>
+      <span class="title title--large lg:title--xlarge">{{ rocket }}</span>
+    </div>
+
+  </div>
+</div>

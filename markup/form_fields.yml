@@ -1,0 +1,6 @@
+- keyname: about
+  name: About This Plugin
+  category: education,discovery
+  field_type: author_bio
+  description: Turn your TRMNL into your very own Mission Control, with a window onto the world’s launch pads. See what’s being prepared for launch, count down to liftoff, watch it leave the pad, and follow the mission until it’s done.<br><br>Find out what’s going up and why, which booster is flying, and how many times that same booster has already been to space and come home again. When a reusable booster returns, you’ll see it back on the pad. When it doesn’t, the pad sits empty while the next rocket is being prepared. From Cape Canaveral to Jiuquan, every orbital launch gets its turn.<br><br>Comes with hand-drawn pixel art rockets, each one drawn to scale, with a tiny figure at the bottom for perspective. Turns out you are quite small.<br><br>Install (don't Fork!) to automatically receive new hand drawn rocket images and updates.
+  email_address: isarworks@gmail.com

@@ -2,19 +2,27 @@
 
 A TRMNL e-ink plugin ("recipe") showing the next or most recent rocket launch.
 
-## This repo is half the recipe
+## Recipe source
 
-This repo is the **data half**: it builds `launch.json` and hosts the rocket
-art. The **markup half** lives in TRMNL's plugin editor and is not in git -
-verified by searching every path and every blob in the full history. Never
-claim to have read the markup; ask for the Markup tab, or say explicitly that
-you are reasoning from screenshots.
+This repo builds `launch.json`, hosts the rocket art, and stores the recipe's
+Liquid templates, shared styles, and form fields in `markup/`. The author
+supplied the editor copies on November 1, 2026; see `markup/README.md` for the
+file-to-editor mapping and manual publishing instructions. A GitHub push does
+not automatically update the TRMNL editor.
+
+The imported recipe uses **TRMNL Framework CSS 2.3.7**. New layout work targets
+the **latest stable framework** (the author suggested **3.4.4**, pending
+verification). OG compatibility and any needed OG layout changes will be
+addressed afterward. Read the templates before making layout claims, and
+distinguish repository source from any later changes made only in the editor.
 
 For layout, responsive or rocket-art-sizing questions, use the
 `trmnl-framework` skill in `.claude/skills/`.
 
 ## Layout
 
+- `markup/` - full, half horizontal, half vertical, and quadrant templates,
+  shared styles, and form fields from the TRMNL recipe editor.
 - `scripts/update_launch.py` - entry point. Picks which launch gets the screen,
   builds the output, writes `launch.json`.
 - `scripts/cards.py` - the card builders and the slot/rotation logic.
@@ -120,15 +128,15 @@ other.
   in one row. The data side is here: `provider` (short form from
   `normalize_org_name`) and `location_str`, assembled at
   `update_launch.py:401` as `"{pad} @ {location}, {country}"` - e.g.
-  `SLC-40 @ Cape Canaveral SFS, USA`. The arrangement is markup-side. Worth
-  deciding whether the X should stack or re-flow these rather than reuse the
-  OG's single row.
+  `SLC-40 @ Cape Canaveral SFS, USA`. The arrangement is in
+  `markup/full.liquid`. Worth deciding whether the X should stack or re-flow
+  these rather than reuse the OG's single row.
 - **Rethink the top bar and the left-side text fields** (exploratory, not
   decided). The whole upper-left block was composed for the OG's 800x480 and
   may want a different arrangement at `lg:` rather than a scaled one.
 
-Both need the markup, which is not in this repo - ask for the Markup tab
-before proposing specific classes. The framework's responsive prefixes
+For both, read `markup/full.liquid` and `markup/shared.liquid` before proposing
+changes. The framework's responsive prefixes
 (`sm:` / `lg:` / `portrait:`) allow a genuinely different arrangement per
 device, not just a rescaled one; see the `trmnl-framework` skill.
 
