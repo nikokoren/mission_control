@@ -185,6 +185,12 @@ other.
   decided). The whole upper-left block was composed for the OG's 800x480 and
   may want a different arrangement at `lg:` rather than a scaled one.
 
+- **Half and quadrant views come later, and cheaply.** Usage data the author
+  shared from the ISS Tracker Map recipe (224 installs, November 2026):
+  Full 201, Half Vertical 12, Half Horizontal 8, Quadrant 8 - about 90% of
+  installs use the full view. Keep the smaller views working and readable
+  on 3.4.4, but spend design effort on the full view first.
+
 For both, read `markup/full.liquid` and `markup/shared.liquid` before proposing
 changes. The framework's responsive prefixes
 (`sm:` / `lg:` / `portrait:`) allow a genuinely different arrangement per
