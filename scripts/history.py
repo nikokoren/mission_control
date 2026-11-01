@@ -216,34 +216,65 @@ def _get_pad_first_year(pad_id, pad_name):
 # fleet ranking
 # ============================================================
 
-def get_docking(spacecraft_name, station_id=4):
+def get_docking(spacecraft_name, station_id=4, launch_id=None, now=None):
     """
     For an ISS-bound launch: when does the spacecraft actually arrive?
-    One extra call, cached like the others, and it never raises.
-    Returns {"hours_until", "port", "spacecraft"} or None.
+    One extra call, uncached, made only post-launch for an ISS-bound flight.
+    Never raises.
+
+    Returns None, or
+        {"hours_until", "port", "spacecraft",       # what docking_card reads
+         "event_id", "docking_ts", "station"}       # the footer's raw event
+
+    LL2's docking_event has no status field. Its "docking" time is the
+    schedule until someone updates it, so a time in the past is not proof the
+    spacecraft arrived: callers must not treat it as one.
     """
-    if not spacecraft_name:
+    if not spacecraft_name and not launch_id:
         return None
     try:
-        return _get_docking(spacecraft_name, station_id)
+        return _get_docking(spacecraft_name, station_id, launch_id, now)
     except Exception as e:
-        print(f"Warning: docking lookup failed for {spacecraft_name}: {e}")
+        print(f"Warning: docking lookup failed for {spacecraft_name or launch_id}: {e}")
         return None
 
 
-def _get_docking(spacecraft_name, station_id):
-    from datetime import datetime, timezone
+def _docking_matches(ev, want, launch_id):
+    """
+    The launch id is the reliable key: every docking event carries the id of
+    the launch that delivered it, so a Dragon on its fourth trip cannot be
+    mistaken for its third. The spacecraft name is the fallback for an event
+    without one. An empty name on either side matches nothing: "" is a
+    substring of every string, which used to hand any launch the first
+    docking event in the list.
+    """
+    ev_launch = ev.get("launch_id")
+    if launch_id and ev_launch:
+        return str(ev_launch) == str(launch_id)
+    craft = (((ev.get("flight_vehicle") or {}).get("spacecraft") or {}).get("name") or "").lower()
+    if not want or not craft:
+        return False
+    return want in craft or craft in want
+
+
+def _get_docking(spacecraft_name, station_id, launch_id, now=None):
     url = (f"{API}/docking_event/?limit=10&ordering=-docking"
            f"&space_station__id={station_id}")
-    data = _get(url)
+    return match_docking(_get(url), spacecraft_name, launch_id, now)
+
+
+def match_docking(data, spacecraft_name, launch_id=None, now=None):
+    """The docking event for this flight in one /docking_event/ page, shaped
+    for docking_card and the footer. Split from the fetch so the tests can
+    run it on recorded events."""
+    from datetime import datetime, timezone
     if not data:
         return None
-    now = datetime.now(timezone.utc)
-    want = str(spacecraft_name).lower()
+    now = now or datetime.now(timezone.utc)
+    want = str(spacecraft_name or "").lower()
 
     for ev in (data.get("results") or []):
-        craft = ((ev.get("flight_vehicle") or {}).get("spacecraft") or {}).get("name") or ""
-        if want not in craft.lower() and craft.lower() not in want:
+        if not isinstance(ev, dict) or not _docking_matches(ev, want, launch_id):
             continue
         raw = ev.get("docking")
         if not raw:
@@ -252,14 +283,21 @@ def _get_docking(spacecraft_name, station_id):
             when = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
         except ValueError:
             continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
         hours = (when - now).total_seconds() / 3600.0
         # Only interesting within a few days either side of the event.
         if hours < -24 or hours > 120:
             continue
+        craft = ((ev.get("flight_vehicle") or {}).get("spacecraft") or {}).get("name") or ""
+        location = ev.get("docking_location") or {}
         return {
             "hours_until": hours,
-            "port": ((ev.get("docking_location") or {}).get("name") or ""),
-            "spacecraft": craft or "The spacecraft",
+            "port": (location.get("name") or ""),
+            "spacecraft": craft or spacecraft_name or "The spacecraft",
+            "event_id": ev.get("id"),
+            "docking_ts": int(when.timestamp()),
+            "station": ((location.get("spacestation") or {}).get("name") or ""),
         }
     return None
 

@@ -20,6 +20,15 @@ change the framework version used by the active recipe.
 | `shared.liquid` | Shared code, including the `<style>` wrapper |
 | `form_fields.yml` | Form fields, including the About This Plugin metadata |
 
+## TRMNL X changes
+
+`full.liquid` and `shared.liquid` now carry the X layout: a footer, a
+destination explanation and a larger info row, all behind `lg:` classes, so
+the OG renders as before. These use Framework **3.4.4** classes
+(`lg:grow`, `lg:portrait:h--[Ncqh]`, `data-clamp-lg-portrait`). Switch the
+recipe's framework version to 3.4.4 when publishing them. The payload fields
+they read are listed in `CLAUDE.md` under "TRMNL X layout".
+
 ## Editing and publishing
 
 The Liquid templates consume the fields generated in `launch.json` by

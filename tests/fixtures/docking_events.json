@@ -1,0 +1,41 @@
+{
+ "_source": "LL2 2.2.0 /docking_event/644/ and /645/, fetched 2026-11-01, pruned to the fields history.match_docking reads",
+ "results": [
+  {
+   "id": 644,
+   "launch_id": "18441371-8b2e-457c-afb5-1ec1b11ab630",
+   "docking": "2026-10-01T23:05:00Z",
+   "departure": null,
+   "flight_vehicle": {
+    "spacecraft": {
+     "name": "Crew Dragon Grace"
+    }
+   },
+   "docking_location": {
+    "name": "Harmony forward",
+    "spacestation": {
+     "id": 4,
+     "name": "International Space Station"
+    }
+   }
+  },
+  {
+   "id": 645,
+   "launch_id": "bf2c3027-a314-403e-a416-2bfd5d165ad1",
+   "docking": "2026-10-15T14:27:00Z",
+   "departure": null,
+   "flight_vehicle": {
+    "spacecraft": {
+     "name": "Cargo Dragon C211"
+    }
+   },
+   "docking_location": {
+    "name": "Harmony zenith",
+    "spacestation": {
+     "id": 4,
+     "name": "International Space Station"
+    }
+   }
+  }
+ ]
+}

@@ -41,6 +41,11 @@ jobs:
       - name: Run the card checks
         run: python3 tests/test_cards.py
 
+      # The display data around the cards: the TRMNL X destination panel,
+      # its footer, and when launch.json is rewritten.
+      - name: Run the display checks
+        run: python3 tests/test_display.py
+
       # The checks can say the prose is well formed; they cannot say it reads
       # well. Putting the whole corpus in the job summary means a reviewer can
       # judge a wording change from the pull request itself. Runs even when the

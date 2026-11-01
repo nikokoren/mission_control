@@ -1,6 +1,10 @@
 <style>
     .mc-clip { overflow: hidden; }
 
+    /* Takes the height its column leaves over, and may shrink below its
+       content: the main row gives way to the X footer when there is one. */
+    .mc-fill { flex: 1 1 0; min-height: 0; }
+
     /* ---------- launch window bar ---------- */
     .mc-tl {display: flex; flex-direction: column; gap: 3px; }
 
