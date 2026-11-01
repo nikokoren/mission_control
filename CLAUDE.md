@@ -185,11 +185,16 @@ other.
   decided). The whole upper-left block was composed for the OG's 800x480 and
   may want a different arrangement at `lg:` rather than a scaled one.
 
-- **Half and quadrant views come later, and cheaply.** Usage data the author
-  shared from the ISS Tracker Map recipe (224 installs, November 2026):
-  Full 201, Half Vertical 12, Half Horizontal 8, Quadrant 8 - about 90% of
-  installs use the full view. Keep the smaller views working and readable
-  on 3.4.4, but spend design effort on the full view first.
+- **Half and quadrant views: usage data, not a verdict.** The author shared
+  the ISS Tracker Map recipe's view counts (224 installs, November 2026):
+  Full 201, Half Vertical 12, Half Horizontal 8, Quadrant 8. That is usage,
+  not demand: people may pick the full view because the smaller views are
+  weak, not because they do not want a mashup. Do not read it as "the small
+  views do not matter". Better evidence before deciding how much effort they
+  get: this recipe's own view counts, the split on other recipes whose small
+  views are known to be good, and a look at how bad the current half and
+  quadrant layouts actually are. Until then, the full view goes first only
+  because it is where the X work already is.
 
 For both, read `markup/full.liquid` and `markup/shared.liquid` before proposing
 changes. The framework's responsive prefixes
