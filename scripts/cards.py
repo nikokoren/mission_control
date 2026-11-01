@@ -1560,55 +1560,130 @@ ISS_PROGRAM = "International Space Station"
 # know this flight's altitude, inclination or trajectory -- and they never
 # repeat the mission brief. Matched like ORBIT_NOTES: exact name first,
 # then containment, so "Very Low Earth Orbit" finds the LEO note.
+#
+# Each destination has several variants, rotated by the clock (see
+# destination_explanation), because most launches go to low Earth orbit and
+# one note on every screen goes stale. Kept clear of ideas the fact pool
+# already states -- 16 sunrises a day, LEO at 17,500 mph, orbit as falling,
+# the Karman line -- so DID YOU KNOW? cannot say the same thing beside it.
 PANEL_NOTE_MAX = 120
+PANEL_ROTATE_HOURS = 6
 
 PANEL_NOTES = {
     "low earth orbit": (
         "Anywhere from about 160 to 2,000 km up. A satellite here circles the "
-        "planet roughly every 90 minutes."),
+        "planet roughly every 90 minutes.",
+        "Most satellites in orbit today work below 2,000 km, which makes this "
+        "the busiest region of space.",
+        "Thin traces of atmosphere still reach this high. Without a push now "
+        "and then, an orbit here slowly decays.",
+        "Being close to the ground means fast signals and sharp images, so "
+        "internet and imaging satellites live here.",
+        "A satellite this low crosses the sky in minutes, so any one ground "
+        "station sees it only briefly per pass.",
+        "Old satellites here do not stay up forever: drag pulls the lowest "
+        "ones down to burn up within years.",
+    ),
     "sun-synchronous orbit": (
         "Tilted so a satellite passes over each place at the same local time, "
-        "keeping the light the same in every image."),
+        "keeping the light the same in every image.",
+        "Its orbital plane turns about one degree a day, in step with Earth's "
+        "yearly trip around the Sun.",
+        "A near-polar orbit, typically 600 to 800 km up, favored for weather, "
+        "mapping and Earth imaging.",
+    ),
     "geostationary transfer orbit": (
         "A long ellipse, the stepping stone to geostationary orbit 36,000 km "
-        "up over the equator."),
+        "up over the equator.",
+        "Low point a few hundred km up, high point near 36,000 km. A burn at "
+        "the top later rounds the orbit out.",
+        "Rockets leave satellites here rather than at 36,000 km, and the "
+        "satellites make the final climb themselves.",
+    ),
     "geostationary orbit": (
         "36,000 km above the equator, where a satellite keeps pace with the "
-        "turning Earth and seems to hover."),
+        "turning Earth and seems to hover.",
+        "One lap takes as long as one turn of the Earth, so a dish on the "
+        "ground can stay pointed at one spot.",
+        "Three satellites spaced around this ring can see almost the whole "
+        "planet, apart from the poles.",
+    ),
     "geosynchronous orbit": (
         "36,000 km up, where one lap takes a day, so a satellite returns over "
-        "the same ground at the same time."),
+        "the same ground at the same time.",
+        "A 24-hour orbit that may be tilted, so from the ground the satellite "
+        "traces a figure eight across the sky.",
+    ),
     "medium earth orbit": (
         "Between the low satellites and the geostationary belt. Home to "
-        "navigation constellations like GPS."),
+        "navigation constellations like GPS.",
+        "Roughly 2,000 to 35,000 km up. GPS satellites orbit near 20,000 km "
+        "and circle the planet twice a day.",
+        "High enough for wide coverage, low enough for a short signal path. "
+        "Navigation and some internet satellites work here.",
+    ),
     "polar orbit": (
         "Passes near both poles, so the planet turns beneath it and every "
-        "point on the surface comes into view."),
+        "point on the surface comes into view.",
+        "Crossing near the poles on every lap, a satellite here covers the "
+        "whole globe in strips as Earth turns.",
+        "Favored for weather and mapping satellites, since no part of the "
+        "planet is out of reach.",
+    ),
     "highly elliptical orbit": (
         "Lingers for hours near its high point, giving long views of high "
-        "latitudes a geostationary satellite sees poorly."),
+        "latitudes a geostationary satellite sees poorly.",
+        "Its high point can reach tens of thousands of km. Soviet Molniya "
+        "satellites used it to cover the far north.",
+    ),
     "trans lunar injection": (
         "The burn that leaves Earth orbit for the Moon. The trip takes about "
-        "three days."),
+        "three days.",
+        "A long arc out to where the Moon will be a few days later, aimed so "
+        "its gravity can take over.",
+    ),
     "lunar orbit": (
-        "An orbit around the Moon, about 384,000 km from Earth."),
+        "An orbit around the Moon, about 384,000 km from Earth.",
+        "With no air to slow it, an orbit around the Moon can be very low, "
+        "though lumpy gravity slowly bends it.",
+    ),
     "mars orbit": (
-        "An orbit around Mars. The cruise there takes six to nine months."),
+        "An orbit around Mars. The cruise there takes six to nine months.",
+        "Launches to Mars wait for windows that open about every 26 months, "
+        "when the two planets line up.",
+    ),
     "sun-earth l2": (
         "A balance point 1.5 million km beyond Earth, where a telescope keeps "
-        "the Sun, Earth and Moon behind it."),
+        "the Sun, Earth and Moon behind it.",
+        "About four times farther than the Moon. A telescope there stays cold "
+        "and has most of the sky to itself.",
+    ),
     "heliocentric orbit": (
         "An orbit around the Sun rather than Earth, the road every "
-        "interplanetary mission travels."),
+        "interplanetary mission travels.",
+        "Leaving Earth's pull takes about 11 km/s. Past that, the Sun's "
+        "gravity is the one that matters.",
+    ),
     "suborbital": (
         "Up and back down without the sideways speed to stay up. Altitude is "
-        "easy; orbital speed is the hard part."),
+        "easy; orbital speed is the hard part.",
+        "Suborbital flights reach space and fall back, never reaching the "
+        "roughly 7.8 km/s it takes to stay up.",
+        "A suborbital hop gives a few minutes of weightlessness before the "
+        "fall back to Earth.",
+    ),
 }
 
 # About the station itself, never this flight's arrival.
-ISS_NOTE = (
+ISS_NOTES = (
     "The station circles Earth about 400 km up, once every 90 minutes. "
-    "Visiting craft spend hours to days catching up."
+    "Visiting craft spend hours to days catching up.",
+    "Crewed without a break since November 2000, the station is about the "
+    "size of a football field.",
+    "Air drag slowly lowers the station, so it is boosted back up a few "
+    "times a year, often by visiting craft.",
+    "Its crew of about seven runs experiments that need weightlessness, "
+    "from biology to materials science.",
 )
 
 
@@ -1636,24 +1711,40 @@ def destination_label(launch, orbit_name):
     return orbit_name
 
 
-def destination_explanation(launch):
-    """
-    What the destination means, for the panel under its name: the station
-    for an ISS-bound flight, otherwise the short orbit note. Generic context only,
-    so it does not repeat the mission brief. None when there is nothing
-    useful to say, and the panel then drops the block entirely.
-    """
+def _panel_variants(launch):
+    """Every note for this launch's destination, or ()."""
     if is_iss_bound(launch):
-        return ISS_NOTE
+        return ISS_NOTES
     orbit = (dig(launch, "mission", "orbit", "name", default="") or "").strip().lower()
     if not orbit or orbit in ("unknown", "n/a", "tbd"):
-        return None
+        return ()
     if orbit in PANEL_NOTES:
         return PANEL_NOTES[orbit]
-    for key, text in PANEL_NOTES.items():
+    for key, notes in PANEL_NOTES.items():
         if key in orbit or orbit in key:
-            return text
-    return None
+            return notes
+    return ()
+
+
+def destination_explanation(launch, now=None):
+    """
+    What the destination means, for the panel under its name: the station
+    for an ISS-bound flight, otherwise a short orbit note. Generic context
+    only, so it does not repeat the mission brief. None when there is
+    nothing useful to say, and the panel then drops the block entirely.
+
+    A pure function of the launch and the clock, like everything else here:
+    the variants are shuffled once per launch and stepped through one per
+    PANEL_ROTATE_HOURS, so the note is stable between refreshes, changes
+    over a long hold, and starts somewhere different on the next launch.
+    """
+    notes = list(_panel_variants(launch))
+    if not notes:
+        return None
+    random.Random(f"{card_seed(launch)}|panel").shuffle(notes)
+    now = now or datetime.now(timezone.utc)
+    step = int(now.timestamp() // (PANEL_ROTATE_HOURS * 3600))
+    return notes[step % len(notes)]
 
 
 def pad_card(launch, first_year=None):
@@ -2006,6 +2097,74 @@ def outcome_card(launch):
     return reason
 
 
+# Roles as LL2 names them, in the order a crew list reads best, and how each
+# reads in a sentence. Anything else is lowercased as sent.
+CREW_ROLES = {
+    "commander": "commander", "spacecraft commander": "commander",
+    "pilot": "pilot",
+    "flight engineer": "flight engineer",
+    "mission specialist": "mission specialist",
+    "payload specialist": "payload specialist",
+}
+CREW_ORDER = ["commander", "pilot", "mission specialist", "flight engineer",
+              "payload specialist"]
+
+
+def crew_card(launch):
+    """
+    Who is aboard, by role, from LL2's launch_crew. X only. None for an
+    uncrewed flight: a Cargo Dragon or a Progress has nobody to name, and
+    the card never guesses.
+    """
+    crew = dig(launch, "rocket", "spacecraft_stage", "launch_crew", default=[]) or []
+    groups = {}
+    count = 0
+    for member in crew:
+        if not isinstance(member, dict):
+            continue
+        name = (dig(member, "astronaut", "name", default="") or "").strip()
+        if not name:
+            continue
+        raw = (dig(member, "role", "role", default="") or "").strip().lower()
+        role = CREW_ROLES.get(raw, raw)
+        groups.setdefault(role, []).append(name)
+        count += 1
+    if not count:
+        return None
+
+    craft = (dig(launch, "rocket", "spacecraft_stage", "spacecraft", "name",
+                 default="") or "").strip()
+    status = dig(launch, "status", "abbrev", default="")
+    if is_resolved(launch):
+        verb = "carried"
+    elif status in ("In Flight", "PENDING"):
+        verb = "is carrying"
+    else:
+        verb = "carries"
+    subject = craft or "The spacecraft"
+    crew_of = f"a crew of {num_word(count)}"
+
+    roles = sorted(groups, key=lambda r: (CREW_ORDER.index(r) if r in CREW_ORDER
+                                          else len(CREW_ORDER), r))
+    parts = []
+    for role in roles:
+        names = groups[role]
+        if not role:
+            parts.extend(names)
+        elif len(names) == 1:
+            parts.append(f"{role} {names[0]}")
+        else:
+            parts.append(f"{role}s {join_list(names)}")
+    with_roles = f"{subject} {verb} {crew_of}: {join_list(parts)}."
+    if len(with_roles) <= CARD_BUDGET:
+        return with_roles
+    names_only = f"{subject} {verb} {crew_of}: " \
+        f"{join_list([n for r in roles for n in groups[r]])}."
+    if len(names_only) <= CARD_BUDGET:
+        return names_only
+    return f"{subject} {verb} {crew_of}."
+
+
 def docking_card(launch, docking):
     """For ISS-bound flights: when the spacecraft actually arrives. Needs the
     one extra /docking_event/ lookup passed in from the caller."""
@@ -2103,25 +2262,16 @@ def post_pair(n, hours_since):
     return (2 * idx) % n, (2 * idx + 1) % n
 
 
-def build_slots(launch, mode, description, program_description, rocket_fact,
+def _pair_slots(launch, mode, description, program_description, rocket_fact,
                 history=None, fleet=None, hours_until=None, hours_since=None,
-                docking=None, pad_first_year=None, exclude=()):
+                docking=None, pad_first_year=None, exclude=(), lg=False):
     """
-    Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
-    A card claimed by slot A is skipped by slot B, so nothing appears twice.
-
-    exclude names cards to leave out entirely, for a view that already shows
-    the same thing elsewhere: the TRMNL X puts the destination explanation in
-    its sidebar and the docking countdown in its footer, so its slots skip
-    "dest" and "docking". A card left out here is out of the ranking and the
-    rotation too, exactly as if it had had nothing to say.
-
-    When a launch is more than SETTLE_HOURS away, the pairing rotates through
-    the deeper cards so a display watched over two days does not show the same
-    two cards the whole time. Everything shown is still about the launch in
-    the header; only which cards are chosen changes.
+    The pair behind build_slots, with each slot's card key and the whole
+    card table, so build_slots can pick the X's third slot from what is
+    left. Rotation and pinning are documented on build_slots.
     """
-    brief = None if is_boilerplate(launch, description) else tidy_brief(description)
+    brief = None if is_boilerplate(launch, description) else \
+        tidy_brief(description, LG_BRIEF_BUDGET if lg else BRIEF_BUDGET)
 
     # The label is free tense signal: it is always on screen and costs the
     # body no characters. Post-launch the brief is pinned to slot A for the
@@ -2143,6 +2293,9 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         "outlook": ("LAUNCH OUTLOOK", outlook_card(launch, mode)),
         "cadence": ("LAUNCH CADENCE", cadence_card(launch)),
         "fact":    ("DID YOU KNOW?", (rocket_fact or "").strip() or None),
+        # X only: not in any ranked list, so it reaches the screen through
+        # the X's third slot alone and the OG pairing is untouched.
+        "crew":    ("CREW", crew_card(launch) if lg else None),
     }
     for key in exclude or ():
         if key in cards:
@@ -2201,19 +2354,20 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
             if text:
                 used.add(key)
                 picked.append(key)
-                return {"label": label, "text": text}
+                return {"label": label, "text": text, "key": key}
         picked.append(None)
         return None
 
     slot_a = take(order_a) or {
         "label": "MISSION STATUS",
         "text": "Specific details are currently classified or unavailable.",
+        "key": None,
     }
-    slot_b = take(order_b) or {"label": "", "text": ""}
+    slot_b = take(order_b) or {"label": "", "text": "", "key": None}
 
     def as_slot(key):
         label, text = cards[key]
-        return {"label": label, "text": text}
+        return {"label": label, "text": text, "key": key}
 
     # ---- rotation ----
     ranked = [k for k in picked if k]
@@ -2246,20 +2400,20 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     if pinned:
         rest = [k for k in under if k != pinned and cards[k][1]]
         if not rest:
-            return as_slot(pinned), {"label": "", "text": ""}
+            return as_slot(pinned), {"label": "", "text": "", "key": None}, cards
         if hours_since is None or hours_since <= POST_SETTLE_HOURS:
             step = 0
         else:
             step = int((hours_since - POST_SETTLE_HOURS) // POST_ROTATE_HOURS)
-        return as_slot(pinned), as_slot(rest[step % len(rest)])
+        return as_slot(pinned), as_slot(rest[step % len(rest)]), cards
 
     if len(ranked) < 3:
-        return slot_a, slot_b
+        return slot_a, slot_b, cards
 
     if mode == "PRE_LAUNCH":
         tier = rotation_tier(hours_until)
         if tier == 0:
-            return slot_a, slot_b
+            return slot_a, slot_b, cards
         a_i, b_i = ROTATION_SCHEDULE[tier]
         a_i = min(a_i, len(ranked) - 1)
         b_i = min(b_i, len(ranked) - 1)
@@ -2270,4 +2424,60 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         b_i = a_i - 1 if a_i > 0 else 1
         b_i = min(b_i, len(ranked) - 1)
 
-    return as_slot(ranked[a_i]), as_slot(ranked[b_i])
+    return as_slot(ranked[a_i]), as_slot(ranked[b_i]), cards
+
+
+# The X's third slot takes only cards about this flight: what happened to
+# it, who flew on it, its booster, a record it set, how its date has moved.
+# Never a fallback (trivia, cadence, the pad tally, program blurbs, the
+# destination note). With none of these left over, the X shows two cards,
+# like the OG, rather than padding a routine flight with more prose.
+THIRD_SLOT = ["outcome", "crew", "record", "booster", "career", "outlook"]
+
+# The X's mission brief. Longer than BRIEF_BUDGET because length is where a
+# brief earns its place: boilerplate never becomes a brief at all, so the
+# extra room goes to missions with something to say.
+LG_BRIEF_BUDGET = 500
+
+
+def build_slots(launch, mode, description, program_description, rocket_fact,
+                history=None, fleet=None, hours_until=None, hours_since=None,
+                docking=None, pad_first_year=None, exclude=(), lg=False):
+    """
+    Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
+    A card claimed by slot A is skipped by slot B, so nothing appears twice.
+
+    exclude names cards to leave out entirely, for a view that already shows
+    the same thing elsewhere: the TRMNL X puts the destination explanation in
+    its sidebar and the docking countdown in its footer, so its slots skip
+    "dest" and "docking". A card left out here is out of the ranking and the
+    rotation too, exactly as if it had had nothing to say.
+
+    lg=True builds the TRMNL X's set and returns (slot_a, slot_b, slot_c):
+    the brief may run to LG_BRIEF_BUDGET, the crew card exists, and slot_c
+    is the first THIRD_SLOT card the pair did not use -- or empty.
+
+    When a launch is more than SETTLE_HOURS away, the pairing rotates through
+    the deeper cards so a display watched over two days does not show the same
+    two cards the whole time. Everything shown is still about the launch in
+    the header; only which cards are chosen changes.
+    """
+    a, b, cards = _pair_slots(
+        launch, mode, description, program_description, rocket_fact,
+        history=history, fleet=fleet, hours_until=hours_until,
+        hours_since=hours_since, docking=docking,
+        pad_first_year=pad_first_year, exclude=exclude, lg=lg)
+
+    def public(slot):
+        return {"label": slot["label"], "text": slot["text"]}
+
+    if not lg:
+        return public(a), public(b)
+    shown = {a.get("key"), b.get("key")}
+    c = {"label": "", "text": ""}
+    for key in THIRD_SLOT:
+        label, text = cards[key]
+        if key not in shown and text:
+            c = {"label": label, "text": text}
+            break
+    return public(a), public(b), c

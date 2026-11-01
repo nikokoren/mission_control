@@ -19,6 +19,9 @@
   {%- assign xa_label = lg_slot_a_label -%}{%- assign xa_text = lg_slot_a_text -%}
   {%- assign xb_label = lg_slot_b_label -%}{%- assign xb_text = lg_slot_b_text -%}
 {%- endif -%}
+{%- comment -%} Present only when there is a card about this flight left over. {%- endcomment -%}
+{%- assign xc_label = lg_slot_c_label | default: "" -%}
+{%- assign xc_text = lg_slot_c_text | default: "" -%}
 
 {%- comment -%} The footer exists only after launch, only with a next event,
     and only on the X. Absent, it takes no row and gives its height back. {%- endcomment -%}
@@ -53,13 +56,16 @@
 {%- assign xa_len = xa_text | size -%}
 {%- assign xa_cls = "description description--large lg:description--xlarge" -%}
 {%- assign xa_clamp = 7 -%}
-{%- if xa_len > 400 -%}{%- assign xa_cls = "description lg:description--large" -%}{%- assign xa_clamp = 8 -%}{%- endif -%}
+{%- if xa_len > 400 -%}{%- assign xa_cls = "description lg:description--large mc-regular" -%}{%- assign xa_clamp = 8 -%}{%- endif -%}
 {%- if xa_len > 520 -%}{%- assign xa_cls = "label label--small lg:description" -%}{%- assign xa_clamp = 9 -%}{%- endif -%}
 {%- assign xb_len = xb_text | size -%}
 {%- assign xb_cls = "description description--large lg:description--xlarge" -%}
 {%- assign xb_clamp = 5 -%}
-{%- if xb_len > 285 -%}{%- assign xb_cls = "description lg:description--large" -%}{%- assign xb_clamp = 6 -%}{%- endif -%}
+{%- if xb_len > 285 -%}{%- assign xb_cls = "description lg:description--large mc-regular" -%}{%- assign xb_clamp = 6 -%}{%- endif -%}
 {%- if xb_len > 410 -%}{%- assign xb_cls = "label label--small lg:description" -%}{%- assign xb_clamp = 7 -%}{%- endif -%}
+{%- comment -%} The third card is the supporting one: a size below the
+    other two, so three cards read as two stories and a footnote. {%- endcomment -%}
+{%- assign xc_cls = "description lg:description--large mc-regular" -%}
 
 <div class="layout">
   <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
@@ -132,14 +138,19 @@
       {%- comment -%} --- info row --- {%- endcomment -%}
       <div class="divider shrink-0"></div>
 
-      <div class="flex flex--row w--full shrink-0 gap--medium">
+      {%- comment -%} On the X, BY and ON keep their width and FOR and FROM
+          share what is left, each shrinking in proportion to its length,
+          so a long agency and a long pad both wrap instead of one taking
+          the room and the other being squeezed. Labels align at the top.
+          The OG keeps its row as it was (mc-info is scoped to the X). {%- endcomment -%}
+      <div class="flex flex--row w--full shrink-0 gap--medium mc-info">
   <div class="shrink-0 flex flex--col flex--left gap--xsmall">
     <span class="label label--small lg:label--base">BY</span>
     <span class="{{ info_cls }}" data-clamp="2">{{ provider }}</span>
   </div>
 
   {%- if agency != '' and agency != blank -%}
-  <div class="shrink-0 flex flex--col flex--left gap--xsmall">
+  <div class="shrink-0 flex flex--col flex--left gap--xsmall mc-info-fluid">
     <span class="label label--small lg:label--base">FOR</span>
     <span class="{{ info_cls }}" data-clamp="2">{{ agency }}</span>
   </div>
@@ -150,7 +161,7 @@
     <span class="{{ info_cls }} value--tnums" data-clamp="2">{{ date_ts | plus: trmnl.user.utc_offset | date: "%b %-d %H:%M" }}</span>
   </div>
 
-  <div class="grow flex flex--col flex--left gap--xsmall">
+  <div class="grow flex flex--col flex--left gap--xsmall mc-info-fluid">
     <span class="label label--small lg:label--base">FROM</span>
     <span class="{{ info_cls }}" data-clamp="2">{{ location_str }}</span>
   </div>
@@ -186,6 +197,14 @@
         <div class="flex flex--col flex--left w--full gap--xsmall">
           <span class="label label--small lg:label--base">{{ xb_label }}</span>
           <span class="{{ xb_cls }}" data-clamp="{{ xb_clamp }}" data-clamp-lg-portrait="4">{{ xb_text }}</span>
+        </div>
+        {% endif %}
+
+        {% if xc_text != "" %}
+        <div class="divider shrink-0"></div>
+        <div class="flex flex--col flex--left w--full gap--xsmall">
+          <span class="label label--small lg:label--base">{{ xc_label }}</span>
+          <span class="{{ xc_cls }}" data-clamp="4" data-clamp-lg-portrait="2">{{ xc_text }}</span>
         </div>
         {% endif %}
       </div>

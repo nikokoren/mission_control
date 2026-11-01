@@ -266,13 +266,89 @@ def check_destination(rows):
     return f.report(f"destination panel and X slots ({iss} ISS flights)")
 
 
+def check_panel_variants(rows):
+    """Every destination note fits, and the clock walks a launch through all of them."""
+    f = Failures()
+    pools = list(C.PANEL_NOTES.items()) + [("iss", C.ISS_NOTES)]
+    for key, notes in pools:
+        f.check(len(notes) >= 2, f"{key}: has variants to rotate", notes)
+        f.check(len(set(notes)) == len(notes), f"{key}: variants are distinct", notes)
+        for text in notes:
+            f.check(len(text) <= C.PANEL_NOTE_MAX, f"{key}: fits the panel ({len(text)})", text)
+            f.check(text[-1] in ".!?", f"{key}: is a sentence", text)
+    f.check(len(C.PANEL_NOTES["low earth orbit"]) >= 5,
+            "low Earth orbit, where most launches go, has the most variants", "")
+
+    step = timedelta(hours=C.PANEL_ROTATE_HOURS)
+    t0 = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    starts = set()
+    for r in rows:
+        launch = r["launch"]
+        pool = C._panel_variants(launch)
+        if not pool:
+            continue
+        seen = [C.destination_explanation(launch, t0 + i * step) for i in range(len(pool))]
+        f.check(set(seen) == set(pool),
+                f"{launch['name']}: every variant shows within {len(pool)} steps", seen)
+        f.check(C.destination_explanation(launch, t0 + step / 3) == seen[0],
+                f"{launch['name']}: stable within a step", "")
+        starts.add((pool[0], seen[0]))
+    leo_starts = {s for p, s in starts if p == C.PANEL_NOTES["low earth orbit"][0]}
+    f.check(len(leo_starts) > 1, "LEO launches do not all start on the same note", leo_starts)
+    return f.report("rotates the destination notes")
+
+
+def check_lg_slots(rows):
+    """The X's third slot, longer brief and crew card, against the OG pair."""
+    f = Failures()
+    with_c = without_c = longer = 0
+    for r in rows:
+        launch, mode = r["launch"], r["mode"]
+        desc, pdesc = descriptions(launch)
+        for hours in (None, 1, 9, 20, 40, 80):
+            kw = dict(hours_until=hours if mode == "PRE_LAUNCH" else None,
+                      hours_since=hours if mode == "POST_LAUNCH" else None)
+            og = C.build_slots(launch, mode, desc, pdesc, FACT, **kw)
+            a, b, c = C.build_slots(launch, mode, desc, pdesc, FACT, lg=True,
+                                    exclude=["dest"], **kw)
+            crew = C.crew_card(launch)
+            for slot in og:
+                f.check(not crew or slot["text"] != crew,
+                        f"{launch['name']}: the crew card stays off the OG", slot)
+            if not c["text"]:
+                without_c += 1
+                continue
+            with_c += 1
+            f.check(c["text"] not in (a["text"], b["text"]),
+                    f"{launch['name']}: slot C repeats nothing", c)
+            f.check(c["label"] not in ("DID YOU KNOW?", "LAUNCH CADENCE", "PAD HISTORY",
+                                       "PROGRAM CONTEXT", "DESTINATION EXPLAINED",
+                                       "MISSION BRIEF", "MISSION RECAP")
+                    and not c["label"].endswith(" NEXT"),
+                    f"{launch['name']}: slot C is never a fallback card", c)
+        brief = None if C.is_boilerplate(launch, desc) else C.tidy_brief(desc)
+        lg_brief = None if C.is_boilerplate(launch, desc) else \
+            C.tidy_brief(desc, C.LG_BRIEF_BUDGET)
+        if brief and lg_brief and len(lg_brief) > len(brief):
+            longer += 1
+            f.check(len(lg_brief) <= C.LG_BRIEF_BUDGET + 1,
+                    f"{launch['name']}: X brief within its budget", len(lg_brief))
+    f.check(with_c and without_c, "the corpus has flights with and without a third card",
+            (with_c, without_c))
+    f.check(longer > 0, "some brief gets longer on the X", "")
+    return f.report(f"X slots: third card on {with_c} renders, none on {without_c}; "
+                    f"{longer} longer briefs")
+
+
 def main():
     rows, dockings = load()
     checks = [check_docking_match(rows, dockings),
               check_footer_lifecycle(rows, dockings),
               check_next_launch(rows),
               check_writes(rows),
-              check_destination(rows)]
+              check_destination(rows),
+              check_panel_variants(rows),
+              check_lg_slots(rows)]
     failed = checks.count(False)
     print(f"\n{len(checks) - failed}/{len(checks)} checks passed")
     return 1 if failed else 0

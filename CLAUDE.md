@@ -123,14 +123,25 @@ as the current release, 2026-10-24), and every class it adds was checked
 against the 3.4.4 stylesheet.
 
 - **Info row** (BY / FOR / ON / FROM): values are `lg:description--large`,
-  one step up. `xlarge` is two steps and too heavy for four fields.
+  one step up. `xlarge` is two steps and too heavy for four fields. On the X
+  BY and ON keep their width; FOR and FROM shrink in proportion to their
+  length and wrap, and labels align at the top (`mc-info` in shared.liquid,
+  scoped to `.screen--lg`).
 - **Destination panel**: DESTINATION, `destination` (the station for an
   ISS-bound flight, else the orbit; `orbit` itself is unchanged), then
   `destination_explanation` (generic context, never mission-specific; empty
-  means the block is dropped), then the rocket, then ROCKET USED.
-- **X slots**: `lg_slot_a_*` / `lg_slot_b_*` are the slots built without the
-  cards the panel and footer already show (`dest`, and `docking` when the
-  footer is a docking). `slot_a_*` / `slot_b_*` stay the OG contract.
+  means the block is dropped), then the rocket, then ROCKET USED. The notes
+  are `PANEL_NOTES` / `ISS_NOTES` in `cards.py`, several variants per
+  destination (six for LEO), at most `PANEL_NOTE_MAX` characters, shuffled
+  per launch and stepped every `PANEL_ROTATE_HOURS`. Keep them clear of what
+  the fact pool already says.
+- **X slots**: `build_slots(..., lg=True)` gives `lg_slot_a_*` / `_b_*` /
+  `_c_*`, without the cards the panel and footer already show (`dest`, and
+  `docking` when the footer is a docking). The X's brief may run to
+  `LG_BRIEF_BUDGET`; the `crew` card exists only here. Slot C is the first
+  `THIRD_SLOT` card the pair did not use - flight-specific cards only, never
+  trivia, cadence, pad or program - and is empty otherwise, so a routine
+  flight keeps two cards. `slot_a_*` / `slot_b_*` stay the OG contract.
 - **Footer**: `footer_*` fields, post-launch only, chosen by `choose_footer()`
   in `update_launch.py`: a scheduled docking still ahead for this ISS-bound
   spacecraft, else the next launch with real timing (`net_precision` of
@@ -152,8 +163,11 @@ proportions and leaves vertical slack underneath. Same root cause as the
 rocket-art problem in the `trmnl-framework` skill; fixing one may inform the
 other.
 
-- **Rework the BY / ON / FROM line further.** The text is one step bigger on
-  the X now; the arrangement is still the OG's single row. The data side is here: `provider` (short form from
+- **Rework the BY / ON / FROM line further.** On the X the text is one step
+  bigger and long FOR / FROM values now share the width instead of one
+  squeezing the other, but it is still the OG's single row; the OG row
+  still has the squeeze. Long agency names could also use LL2's agency
+  abbreviation (not in the fixtures yet). The data side is here: `provider` (short form from
   `normalize_org_name`) and `location_str`, assembled at
   `update_launch.py:401` as `"{pad} @ {location}, {country}"` - e.g.
   `SLC-40 @ Cape Canaveral SFS, USA`. The arrangement is in

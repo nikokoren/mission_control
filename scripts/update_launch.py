@@ -505,21 +505,20 @@ def process_launch_data(launch, mode_override=None, with_history=False, candidat
 
     # --- the TRMNL X: destination panel and footer ---
     # The X shows the destination explanation in its sidebar and, after
-    # launch, the next event in a footer. Its text slots must not repeat
-    # either, so it gets its own pair built without those cards. The OG keeps
-    # slot_a_* / slot_b_* exactly as before until its own layout moves.
-    dest_explanation = destination_explanation(launch) or ""
+    # launch, the next event in a footer, so its text slots skip both. It
+    # also has room the OG lacks: a longer mission brief, the crew card, and
+    # a third slot that appears only for a card about this flight. The OG
+    # keeps slot_a_* / slot_b_* exactly as before until its own layout moves.
+    dest_explanation = destination_explanation(launch, now) or ""
     footer = choose_footer(launch, mode, docking, candidates or [], now)
     lg_exclude = []
     if dest_explanation:
         lg_exclude.append("dest")
     if footer.get("footer_kind") == "docking":
         lg_exclude.append("docking")
-    if lg_exclude:
-        lg_a, lg_b = build_slots(launch, mode, description, program_description,
-                                 rocket_fact, exclude=lg_exclude, **slot_args)
-    else:
-        lg_a, lg_b = slot_a, slot_b
+    lg_a, lg_b, lg_c = build_slots(launch, mode, description, program_description,
+                                   rocket_fact, exclude=lg_exclude, lg=True,
+                                   **slot_args)
 
     vis_status = dig(launch, "status", "abbrev", default="TBD")
     if vis_status == "PENDING":
@@ -580,12 +579,14 @@ def process_launch_data(launch, mode_override=None, with_history=False, candidat
         "slot_b_label": slot_b["label"],
         "slot_b_text": slot_b["text"],
 
-        # The same two slots for the TRMNL X, without whatever its
-        # destination panel and footer already show.
+        # The TRMNL X's slots: without what its destination panel and
+        # footer already show, and a third only for a card about this flight.
         "lg_slot_a_label": lg_a["label"],
         "lg_slot_a_text": lg_a["text"],
         "lg_slot_b_label": lg_b["label"],
         "lg_slot_b_text": lg_b["text"],
+        "lg_slot_c_label": lg_c["label"],
+        "lg_slot_c_text": lg_c["text"],
 
         "rocket_visual": vis_url,
         "rocket_visual_alt": vis_alt,

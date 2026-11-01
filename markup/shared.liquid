@@ -14,6 +14,16 @@
        next -- rather than two parts of one. */
     .mc-rule { width: 100%; height: 2px; min-height: 2px; background: #444; }
 
+    /* X info row (BY / FOR / ON / FROM). The framework's flex--row centres
+       items vertically, which dropped a one-line label below a two-line
+       neighbour's; and FOR was shrink-0, so a long agency kept its full
+       width and FROM took all the squeeze. On the X: labels align at the
+       top, and FOR and FROM shrink in proportion to their content (flex-
+       basis auto), so both wrap evenly. Scoped to .screen--lg so the OG
+       row is untouched. */
+    .trmnl .screen--lg .mc-info { align-items: flex-start; }
+    .trmnl .screen--lg .mc-info-fluid { flex: 1 1 auto; min-width: 0; }
+
     /* Separates the footer's BY and FROM pairs more than label from value. */
     .mc-gap-left { margin-left: var(--gap-medium, 16px); }
 
