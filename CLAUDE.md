@@ -85,6 +85,7 @@ A failure also pins an outcome card to slot A for the whole result window.
 
     python3 tests/test_cards.py           # the checks
     python3 tests/test_cards.py --show    # print every distinct card
+    python3 tests/test_display.py         # X destination panel, footer, writes
 
 Stdlib only, no network, no framework: it walks a corpus of ~90 real API
 payloads in `tests/fixtures/` plus hand-written degenerate cases. **Run it
@@ -114,6 +115,33 @@ it is meant to catch. A check that cannot fail is worse than no check.
   run; it belongs to the workflow.
 - `upcoming.json` and `previous.json` are fetched inputs and are gitignored.
 
+## TRMNL X layout (full view)
+
+The X gets its own arrangement through `lg:` classes; the OG renders as
+before. Markup in `markup/full.liquid` targets Framework **3.4.4** (confirmed
+as the current release, 2026-10-24), and every class it adds was checked
+against the 3.4.4 stylesheet.
+
+- **Info row** (BY / FOR / ON / FROM): values are `lg:description--large`,
+  one step up. `xlarge` is two steps and too heavy for four fields.
+- **Destination panel**: DESTINATION, `destination` (the station for an
+  ISS-bound flight, else the orbit; `orbit` itself is unchanged), then
+  `destination_explanation` (generic context, never mission-specific; empty
+  means the block is dropped), then the rocket, then ROCKET USED.
+- **X slots**: `lg_slot_a_*` / `lg_slot_b_*` are the slots built without the
+  cards the panel and footer already show (`dest`, and `docking` when the
+  footer is a docking). `slot_a_*` / `slot_b_*` stay the OG contract.
+- **Footer**: `footer_*` fields, post-launch only, chosen by `choose_footer()`
+  in `update_launch.py`: a scheduled docking still ahead for this ISS-bound
+  spacecraft, else the next launch with real timing (`net_precision` of
+  SEC/MIN/HR, status Go/TBC/TBD), else nothing and the row is removed. A past
+  docking time is not proof of docking (LL2 has no docking status), so it
+  never holds the footer. This does not change `choose_target()`.
+- **Writes**: `needs_write()` writes whenever a countdown that is on screen
+  moved, which post-launch now includes the footer's. Expect a commit every
+  run while a footer is shown.
+- Docking events are matched by `launch_id` in `history.match_docking()`.
+
 ## Design work queued - TRMNL X
 
 Observed on a real TRMNL X (2026-10-17), not in preview: **the top is cramped
@@ -124,8 +152,8 @@ proportions and leaves vertical slack underneath. Same root cause as the
 rocket-art problem in the `trmnl-framework` skill; fixing one may inform the
 other.
 
-- **Rework the BY / ON / FROM line.** Currently three cramped labelled fields
-  in one row. The data side is here: `provider` (short form from
+- **Rework the BY / ON / FROM line further.** The text is one step bigger on
+  the X now; the arrangement is still the OG's single row. The data side is here: `provider` (short form from
   `normalize_org_name`) and `location_str`, assembled at
   `update_launch.py:401` as `"{pad} @ {location}, {country}"` - e.g.
   `SLC-40 @ Cape Canaveral SFS, USA`. The arrangement is in

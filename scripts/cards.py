@@ -1552,6 +1552,53 @@ def destination_card(launch):
     return None
 
 
+ISS_PROGRAM = "International Space Station"
+
+# Educational context about the station itself, never about this flight: no
+# arrival time, altitude or trajectory that the payload does not supply.
+ISS_NOTE = (
+    "The International Space Station circles Earth in low Earth orbit, about "
+    "400 km up, once every 90 minutes. Visiting spacecraft launch into a lower "
+    "orbit and spend hours to days catching up before they dock."
+)
+
+
+def is_iss_bound(launch):
+    """
+    True when LL2 files the launch under the International Space Station
+    program. The same test update_launch.py uses before asking for a docking
+    time, so the destination label and the docking lookup cannot disagree.
+    Crew, cargo Dragon, Cygnus and Progress flights all carry it; a Starlink
+    or a free-flying crew capsule does not.
+    """
+    return any(ISS_PROGRAM in ((p or {}).get("name") or "")
+               for p in (launch.get("program") or []) if isinstance(p, dict))
+
+
+def destination_label(launch, orbit_name):
+    """
+    The name the destination panel shows. For a reliably ISS-bound flight the
+    station says more than "Low Earth Orbit"; everything else keeps the orbit
+    name. The orbit field itself is never rewritten -- the station is a
+    presentation of it, not a replacement.
+    """
+    if is_iss_bound(launch):
+        return ISS_PROGRAM
+    return orbit_name
+
+
+def destination_explanation(launch):
+    """
+    What the destination means, for the panel under its name: the station
+    for an ISS-bound flight, otherwise the orbit note. Generic context only,
+    so it does not repeat the mission brief. None when there is nothing
+    useful to say, and the panel then drops the block entirely.
+    """
+    if is_iss_bound(launch):
+        return ISS_NOTE
+    return destination_card(launch)
+
+
 def pad_card(launch, first_year=None):
     """
     What this pad has been doing. Every figure but one is already in the
@@ -1913,7 +1960,9 @@ def docking_card(launch, docking):
     if when is None:
         return None
     if when < 0:
-        return f"{craft} is already docked at {port}." if port else None
+        # LL2 records no docking status, so a time that has passed is an
+        # expired estimate, not proof the spacecraft arrived.
+        return None
     if when < 1:
         timing = "within the hour"
     elif when < 48:
@@ -1999,10 +2048,16 @@ def post_pair(n, hours_since):
 
 def build_slots(launch, mode, description, program_description, rocket_fact,
                 history=None, fleet=None, hours_until=None, hours_since=None,
-                docking=None, pad_first_year=None):
+                docking=None, pad_first_year=None, exclude=()):
     """
     Returns (slot_a, slot_b), each a dict with 'label' and 'text'.
     A card claimed by slot A is skipped by slot B, so nothing appears twice.
+
+    exclude names cards to leave out entirely, for a view that already shows
+    the same thing elsewhere: the TRMNL X puts the destination explanation in
+    its sidebar and the docking countdown in its footer, so its slots skip
+    "dest" and "docking". A card left out here is out of the ranking and the
+    rotation too, exactly as if it had had nothing to say.
 
     When a launch is more than SETTLE_HOURS away, the pairing rotates through
     the deeper cards so a display watched over two days does not show the same
@@ -2032,6 +2087,9 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
         "cadence": ("LAUNCH CADENCE", cadence_card(launch)),
         "fact":    ("DID YOU KNOW?", (rocket_fact or "").strip() or None),
     }
+    for key in exclude or ():
+        if key in cards:
+            cards[key] = (cards[key][0], None)
 
     # Cadence and fact sit at the end as real fallbacks. Without them a
     # launch with a stub description dropped straight to the hardcoded

@@ -3,15 +3,27 @@
 {%- if name.size > 22 -%}{%- assign title_cls = "title lg:title--xlarge" -%}{%- endif -%}
 {%- if name.size > 34 -%}{%- assign title_cls = "title title--small lg:title--large" -%}{%- endif -%}
 
-{%- comment -%} Info row load, width-normalised by each column's share. {%- endcomment -%}
-{%- assign by_load = provider | size -%}
-{%- assign for_load = agency | size | times: 10 | divided_by: 14 -%}
-{%- assign from_load = location_str | size | times: 10 | divided_by: 25 -%}
-{%- assign info_load = by_load -%}
-{%- if for_load > info_load -%}{%- assign info_load = for_load -%}{%- endif -%}
-{%- if from_load > info_load -%}{%- assign info_load = from_load -%}{%- endif -%}
-{%- assign info_cls = "description description--large lg:description--xlarge" -%}
-{%- if info_load > 24 -%}{%- assign info_cls = "description lg:description--large" -%}{%- endif -%}
+{%- comment -%} BY / FOR / ON / FROM values: one step up on the X, where the
+    plain description read cramped. description--large is the next size;
+    xlarge is two steps and too heavy for four fields in one row. The OG
+    stays at plain description. {%- endcomment -%}
+{%- assign info_cls = "description lg:description--large" -%}
+
+{%- comment -%} The X has its own slot pair, built without the cards its
+    destination panel and footer already show. A payload from before those
+    fields existed falls back to the OG pair. {%- endcomment -%}
+{%- if lg_slot_a_label == nil -%}
+  {%- assign xa_label = slot_a_label -%}{%- assign xa_text = slot_a_text -%}
+  {%- assign xb_label = slot_b_label -%}{%- assign xb_text = slot_b_text -%}
+{%- else -%}
+  {%- assign xa_label = lg_slot_a_label -%}{%- assign xa_text = lg_slot_a_text -%}
+  {%- assign xb_label = lg_slot_b_label -%}{%- assign xb_text = lg_slot_b_text -%}
+{%- endif -%}
+
+{%- comment -%} The footer exists only after launch, only with a next event,
+    and only on the X. Absent, it takes no row and gives its height back. {%- endcomment -%}
+{%- assign has_footer = false -%}
+{%- if footer_kind == "launch" or footer_kind == "docking" -%}{%- assign has_footer = true -%}{%- endif -%}
 
 {%- assign a_len = slot_a_text | size -%}
 {%- assign a_cls = "description description--large lg:description--xlarge" -%}
@@ -37,11 +49,24 @@
   {%- assign b_clamp = 7 -%}
 {%- endif -%}
 
+{%- comment -%} Same tiers for the X pair. {%- endcomment -%}
+{%- assign xa_len = xa_text | size -%}
+{%- assign xa_cls = "description description--large lg:description--xlarge" -%}
+{%- assign xa_clamp = 7 -%}
+{%- if xa_len > 400 -%}{%- assign xa_cls = "description lg:description--large" -%}{%- assign xa_clamp = 8 -%}{%- endif -%}
+{%- if xa_len > 520 -%}{%- assign xa_cls = "label label--small lg:description" -%}{%- assign xa_clamp = 9 -%}{%- endif -%}
+{%- assign xb_len = xb_text | size -%}
+{%- assign xb_cls = "description description--large lg:description--xlarge" -%}
+{%- assign xb_clamp = 5 -%}
+{%- if xb_len > 285 -%}{%- assign xb_cls = "description lg:description--large" -%}{%- assign xb_clamp = 6 -%}{%- endif -%}
+{%- if xb_len > 410 -%}{%- assign xb_cls = "label label--small lg:description" -%}{%- assign xb_clamp = 7 -%}{%- endif -%}
+
 <div class="layout">
-  <div class="flex flex--row portrait:flex--col flex--top w--full h--full gap--large portrait:gap--small mx--2 my--2">
+  <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
+  <div class="flex flex--row portrait:flex--col flex--top w--full mc-fill gap--large portrait:gap--small">
 
     {%- comment -%} ============ MAIN COLUMN ============ {%- endcomment -%}
-    <div class="w--[62cqw] portrait:w--full h--full portrait:h--[56cqh] flex flex--col gap--small">
+    <div class="w--[62cqw] portrait:w--full h--full portrait:h--[56cqh] {% if has_footer %}lg:portrait:h--[50cqh]{% endif %} flex flex--col gap--small">
 
       {%- comment -%} --- header --- {%- endcomment -%}
       <div class="flex flex--row flex--center-y w--full gap--medium">
@@ -110,30 +135,31 @@
       <div class="flex flex--row w--full shrink-0 gap--medium">
   <div class="shrink-0 flex flex--col flex--left gap--xsmall">
     <span class="label label--small lg:label--base">BY</span>
-    <span class="description" data-clamp="2">{{ provider }}</span>
+    <span class="{{ info_cls }}" data-clamp="2">{{ provider }}</span>
   </div>
 
   {%- if agency != '' and agency != blank -%}
   <div class="shrink-0 flex flex--col flex--left gap--xsmall">
     <span class="label label--small lg:label--base">FOR</span>
-    <span class="description" data-clamp="2">{{ agency }}</span>
+    <span class="{{ info_cls }}" data-clamp="2">{{ agency }}</span>
   </div>
   {%- endif -%}
 
   <div class="shrink-0 flex flex--col flex--left gap--xsmall">
     <span class="label label--small lg:label--base">ON</span>
-    <span class="description value--tnums" data-clamp="2">{{ date_ts | plus: trmnl.user.utc_offset | date: "%b %-d %H:%M" }}</span>
+    <span class="{{ info_cls }} value--tnums" data-clamp="2">{{ date_ts | plus: trmnl.user.utc_offset | date: "%b %-d %H:%M" }}</span>
   </div>
 
   <div class="grow flex flex--col flex--left gap--xsmall">
     <span class="label label--small lg:label--base">FROM</span>
-    <span class="description" data-clamp="2">{{ location_str }}</span>
+    <span class="{{ info_cls }}" data-clamp="2">{{ location_str }}</span>
   </div>
 </div>
 
       <div class="divider shrink-0"></div>
 
-      <div class="grow flex flex--col w--full gap--small mc-clip">
+      {%- comment -%} OG slots. Hidden on the X, which has its own pair below. {%- endcomment -%}
+      <div class="grow flex flex--col w--full gap--small mc-clip lg:hidden">
         <div class="flex flex--col flex--left w--full gap--xsmall">
           <span class="label label--small lg:label--base">{{ slot_a_label }}</span>
           <span class="{{ a_cls }}" data-clamp="{{ a_clamp }}" data-clamp-portrait="3" data-clamp-lg-portrait="3">{{ slot_a_text }}</span>
@@ -147,22 +173,56 @@
         </div>
         {% endif %}
       </div>
+
+      {%- comment -%} X slots. {%- endcomment -%}
+      <div class="grow hidden lg:flex flex--col w--full gap--small mc-clip">
+        <div class="flex flex--col flex--left w--full gap--xsmall">
+          <span class="label label--small lg:label--base">{{ xa_label }}</span>
+          <span class="{{ xa_cls }}" data-clamp="{{ xa_clamp }}" data-clamp-lg-portrait="3">{{ xa_text }}</span>
+        </div>
+
+        {% if xb_text != "" %}
+        <div class="divider shrink-0"></div>
+        <div class="flex flex--col flex--left w--full gap--xsmall">
+          <span class="label label--small lg:label--base">{{ xb_label }}</span>
+          <span class="{{ xb_cls }}" data-clamp="{{ xb_clamp }}" data-clamp-lg-portrait="4">{{ xb_text }}</span>
+        </div>
+        {% endif %}
+      </div>
     </div>
 
     <div class="divider--v stretch-y shrink-0 portrait:hidden"></div>
     <div class="divider shrink-0 hidden portrait:visible"></div>
 
     {%- comment -%} ============ SIDEBAR ============ {%- endcomment -%}
-    <div class="w--[31cqw] portrait:w--full h--full portrait:h--[40cqh] flex flex--col gap--small">
+    {%- comment -%} lg:grow: flex--row centres its children, which left the
+        two columns inset from the full-width footer on the X. Letting the
+        sidebar take the slack lines both edges up with it. {%- endcomment -%}
+    <div class="w--[31cqw] lg:grow portrait:w--full h--full portrait:h--[40cqh] {% if has_footer %}lg:portrait:h--[34cqh]{% endif %} flex flex--col gap--small">
 
+      {%- comment -%} Destination name, then on the X what it means. The OG
+          keeps the orbit name; the X shows destination, which is the
+          station for an ISS-bound flight. Visibility sits on wrappers, not on
+          the clamped spans, so the clamp cannot override it. {%- endcomment -%}
       <div class="flex flex--col flex--left w--full shrink-0 gap--xsmall">
         <span class="label label--small lg:label--base">DESTINATION</span>
-        <span class="title--small lg:title--base" data-clamp="2">{{ orbit }}</span>
+        {%- if destination != blank and destination != orbit -%}
+          <div class="lg:hidden"><span class="title--small" data-clamp="2">{{ orbit }}</span></div>
+          <div class="hidden lg:block"><span class="title--small lg:title--base" data-clamp="2">{{ destination }}</span></div>
+        {%- else -%}
+          <span class="title--small lg:title--base" data-clamp="2">{{ orbit }}</span>
+        {%- endif -%}
+        {%- if destination_explanation != blank -%}
+          <div class="hidden lg:block">
+            <span class="description" data-clamp="7" data-clamp-lg-portrait="2">{{ destination_explanation }}</span>
+          </div>
+        {%- endif -%}
       </div>
 
       <div class="divider shrink-0"></div>
 
-      <div class="grow flex flex--row {% if rocket_ascending %}flex--top{% else %}flex--bottom{% endif %} flex--center-x w--full h--min-[40cqh] portrait:h--min-[16cqh] mc-clip">        <img
+      <div class="grow flex flex--row {% if rocket_ascending %}flex--top{% else %}flex--bottom{% endif %} flex--center-x w--full h--min-[40cqh] lg:h--min-[28cqh] portrait:h--min-[16cqh] mc-clip">
+        <img
           class="image w--max-full h--max-full"
           src="{{ rocket_visual }}"
           data-alt="{{ rocket_visual_alt }}"
@@ -178,5 +238,29 @@
       </div>
     </div>
 
+  </div>
+
+  {%- comment -%} ============ FOOTER (X only) ============
+      What follows the launch on screen, after it has flown: its docking if
+      one is scheduled, else the next launch with real timing. Every field
+      comes from that one event. Rendered only when there is one. {%- endcomment -%}
+  {%- if has_footer -%}
+  <div class="hidden lg:flex flex--col w--full shrink-0 gap--small">
+    <div class="divider shrink-0"></div>
+    <div class="flex flex--row flex--center-y w--full gap--medium">
+      <div class="flex flex--col flex--left grow gap--xsmall">
+        <span class="label label--small lg:label--base">{{ footer_label }}</span>
+        <span class="title lg:title--base" data-clamp="1">{{ footer_title }}</span>
+        {%- if footer_detail != blank -%}
+          <span class="description lg:description--large" data-clamp="1">{{ footer_detail }}</span>
+        {%- endif -%}
+      </div>
+      <div class="flex flex--col flex--right shrink-0 gap--xsmall">
+        <span class="label label--small lg:label--base">COUNTDOWN</span>
+        <span class="label label--outline lg:label--xlarge value--tnums">{{ footer_countdown }}</span>
+      </div>
+    </div>
+  </div>
+  {%- endif -%}
   </div>
 </div>
