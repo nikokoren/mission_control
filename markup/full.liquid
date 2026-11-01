@@ -55,9 +55,12 @@
 {%- comment -%} Same tiers for the X pair. {%- endcomment -%}
 {%- assign xa_len = xa_text | size -%}
 {%- assign xa_cls = "description description--large lg:description--xlarge" -%}
-{%- assign xa_clamp = 7 -%}
-{%- if xa_len > 400 -%}{%- assign xa_cls = "description lg:description--large mc-regular" -%}{%- assign xa_clamp = 8 -%}{%- endif -%}
-{%- if xa_len > 520 -%}{%- assign xa_cls = "label label--small lg:description" -%}{%- assign xa_clamp = 9 -%}{%- endif -%}
+{%- assign xa_clamp = 10 -%}
+{%- comment -%} The X keeps slot A at xlarge up to 520 characters, which
+    covers its whole LG_BRIEF_BUDGET: a long brief is the most important
+    text on the screen and should not be the smallest. {%- endcomment -%}
+{%- if xa_len > 520 -%}{%- assign xa_cls = "description lg:description--large mc-regular" -%}{%- assign xa_clamp = 10 -%}{%- endif -%}
+{%- if xa_len > 640 -%}{%- assign xa_cls = "label label--small lg:description" -%}{%- assign xa_clamp = 12 -%}{%- endif -%}
 {%- assign xb_len = xb_text | size -%}
 {%- assign xb_cls = "description description--large lg:description--xlarge" -%}
 {%- assign xb_clamp = 5 -%}

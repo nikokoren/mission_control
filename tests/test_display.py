@@ -275,6 +275,12 @@ def check_panel_variants(rows):
         f.check(len(set(notes)) == len(notes), f"{key}: variants are distinct", notes)
         for text in notes:
             f.check(len(text) <= C.PANEL_NOTE_MAX, f"{key}: fits the panel ({len(text)})", text)
+            # The note sits right under the destination's name; opening by
+            # saying the name again ("Low Earth Orbit / Low Earth orbit
+            # starts...") is the echo that makes it read machine-written.
+            heading = "international space station" if key == "iss" else key
+            f.check(heading not in text.lower()[:40],
+                    f"{key}: does not open by repeating its heading", text)
             f.check(text[-1] in ".!?", f"{key}: is a sentence", text)
     f.check(len(C.PANEL_NOTES["low earth orbit"]) >= 5,
             "low Earth orbit, where most launches go, has the most variants", "")

@@ -132,7 +132,7 @@ against the 3.4.4 stylesheet.
   `destination_explanation` (generic context, never mission-specific; empty
   means the block is dropped), then the rocket, then ROCKET USED. The notes
   are `PANEL_NOTES` / `ISS_NOTES` in `cards.py`, several variants per
-  destination (six for LEO), at most `PANEL_NOTE_MAX` characters, shuffled
+  destination (six for LEO), at most `PANEL_NOTE_MAX` (160) characters, never opening by repeating the destination heading, shuffled
   per launch and stepped every `PANEL_ROTATE_HOURS`. Keep them clear of what
   the fact pool already says.
 - **X slots**: `build_slots(..., lg=True)` gives `lg_slot_a_*` / `_b_*` /

@@ -1566,124 +1566,139 @@ ISS_PROGRAM = "International Space Station"
 # one note on every screen goes stale. Kept clear of ideas the fact pool
 # already states -- 16 sunrises a day, LEO at 17,500 mph, orbit as falling,
 # the Karman line -- so DID YOU KNOW? cannot say the same thing beside it.
-PANEL_NOTE_MAX = 120
+PANEL_NOTE_MAX = 160
 PANEL_ROTATE_HOURS = 6
 
 PANEL_NOTES = {
     "low earth orbit": (
-        "Anywhere from about 160 to 2,000 km up. A satellite here circles the "
-        "planet roughly every 90 minutes.",
-        "Most satellites in orbit today work below 2,000 km, which makes this "
-        "the busiest region of space.",
-        "Thin traces of atmosphere still reach this high. Without a push now "
-        "and then, an orbit here slowly decays.",
-        "Being close to the ground means fast signals and sharp images, so "
-        "internet and imaging satellites live here.",
-        "A satellite this low crosses the sky in minutes, so any one ground "
-        "station sees it only briefly per pass.",
-        "Old satellites here do not stay up forever: drag pulls the lowest "
-        "ones down to burn up within years.",
+        "It starts around 160 km up and runs to about 2,000 km. At this height "
+        "a satellite goes all the way around the planet in about an hour and "
+        "a half.",
+        "Most of the satellites working today are down here, which has made "
+        "this by far the most crowded stretch of space around the planet.",
+        "Even at this height there are faint wisps of atmosphere. They slowly "
+        "drag satellites down, so anything here needs an occasional push to "
+        "stay up.",
+        "Being close to the ground is the point: signals arrive quickly and "
+        "cameras see fine detail, which is why internet and imaging "
+        "satellites settle here.",
+        "A satellite this low sweeps across the sky in a few minutes, so a "
+        "ground station only gets a short window to talk to it on each pass.",
+        "This orbit cleans up after itself. Dead satellites in the lowest "
+        "orbits are pulled down by drag and burn up within a few years.",
     ),
     "sun-synchronous orbit": (
-        "Tilted so a satellite passes over each place at the same local time, "
-        "keeping the light the same in every image.",
-        "Its orbital plane turns about one degree a day, in step with Earth's "
-        "yearly trip around the Sun.",
-        "A near-polar orbit, typically 600 to 800 km up, favored for weather, "
-        "mapping and Earth imaging.",
+        "Tilted just so, a satellite here passes over each place "
+        "at the same local time every day, so the light matches from one "
+        "picture to the next.",
+        "The orbit slowly swivels about a degree a day, keeping pace with "
+        "Earth's trip around the Sun. That is what keeps the lighting steady "
+        "all year.",
+        "Usually 600 to 800 km up and running nearly pole to pole, this is "
+        "the favorite orbit for weather, mapping and Earth-imaging "
+        "satellites.",
     ),
     "geostationary transfer orbit": (
-        "A long ellipse, the stepping stone to geostationary orbit 36,000 km "
-        "up over the equator.",
-        "Low point a few hundred km up, high point near 36,000 km. A burn at "
-        "the top later rounds the orbit out.",
-        "Rockets leave satellites here rather than at 36,000 km, and the "
-        "satellites make the final climb themselves.",
+        "A long, stretched loop, and the first step on the way to a parking "
+        "spot 36,000 km above the equator.",
+        "The low point is a few hundred km up and the high point is near "
+        "36,000 km. Later burns at the high point gradually round the orbit "
+        "out.",
+        "Rockets usually drop satellites off here rather than going all the "
+        "way up. The satellites finish the climb themselves over the "
+        "following weeks.",
     ),
     "geostationary orbit": (
-        "36,000 km above the equator, where a satellite keeps pace with the "
-        "turning Earth and seems to hover.",
-        "One lap takes as long as one turn of the Earth, so a dish on the "
-        "ground can stay pointed at one spot.",
-        "Three satellites spaced around this ring can see almost the whole "
-        "planet, apart from the poles.",
+        "36,000 km above the equator, a satellite circles at exactly the speed "
+        "Earth turns, so from the ground it seems to hang still in the sky.",
+        "Because a satellite here never moves across the sky, a dish "
+        "on a roof can be pointed once and left alone for years.",
+        "Three satellites spaced evenly around this ring can see almost the "
+        "entire planet between them. Only the polar regions are out of view.",
     ),
     "geosynchronous orbit": (
-        "36,000 km up, where one lap takes a day, so a satellite returns over "
-        "the same ground at the same time.",
-        "A 24-hour orbit that may be tilted, so from the ground the satellite "
-        "traces a figure eight across the sky.",
+        "One lap here takes exactly a day, so the satellite comes back over "
+        "the same spot at the same time every day.",
+        "If the orbit is tilted, the satellite drifts north and "
+        "south during the day, tracing a slow figure eight across the sky.",
     ),
     "medium earth orbit": (
-        "Between the low satellites and the geostationary belt. Home to "
-        "navigation constellations like GPS.",
-        "Roughly 2,000 to 35,000 km up. GPS satellites orbit near 20,000 km "
-        "and circle the planet twice a day.",
-        "High enough for wide coverage, low enough for a short signal path. "
-        "Navigation and some internet satellites work here.",
+        "The wide band between low orbit and the geostationary ring, and the "
+        "place where navigation systems like GPS do their work.",
+        "GPS satellites fly about 20,000 km up and go around twice a day. "
+        "From that height, a handful of them is enough to cover the whole "
+        "planet.",
+        "High enough to see a big piece of the planet and low enough to keep "
+        "signal delays short, this orbit suits navigation and some internet "
+        "systems.",
     ),
     "polar orbit": (
-        "Passes near both poles, so the planet turns beneath it and every "
-        "point on the surface comes into view.",
-        "Crossing near the poles on every lap, a satellite here covers the "
-        "whole globe in strips as Earth turns.",
-        "Favored for weather and mapping satellites, since no part of the "
-        "planet is out of reach.",
+        "It runs over or near both poles. As Earth turns "
+        "underneath, the satellite eventually passes over every point on the "
+        "surface.",
+        "On each lap the satellite scans a new strip of the globe, a bit "
+        "like peeling an orange, until it has seen the whole planet.",
+        "Weather and mapping satellites favor this orbit for a simple "
+        "reason: nowhere on Earth is out of reach.",
     ),
     "highly elliptical orbit": (
-        "Lingers for hours near its high point, giving long views of high "
-        "latitudes a geostationary satellite sees poorly.",
-        "Its high point can reach tens of thousands of km. Soviet Molniya "
-        "satellites used it to cover the far north.",
+        "It swings far out and back again. Hours near "
+        "the high point give a satellite long, steady views of the far "
+        "north.",
+        "Soviet engineers used orbits like this for their Molniya satellites, "
+        "because a geostationary satellite sits too low on the horizon to "
+        "serve the Arctic.",
     ),
     "trans lunar injection": (
-        "The burn that leaves Earth orbit for the Moon. The trip takes about "
-        "three days.",
-        "A long arc out to where the Moon will be a few days later, aimed so "
-        "its gravity can take over.",
+        "The engine burn that breaks free of Earth orbit and sets a "
+        "spacecraft on course for the Moon, about three days away.",
+        "After this burn, a spacecraft coasts toward where the Moon will be "
+        "days later, aiming to let the Moon's gravity take over on arrival.",
     ),
     "lunar orbit": (
-        "An orbit around the Moon, about 384,000 km from Earth.",
-        "With no air to slow it, an orbit around the Moon can be very low, "
-        "though lumpy gravity slowly bends it.",
+        "Roughly 384,000 km from Earth. Radio signals take a little over a "
+        "second to make the trip each way.",
+        "With no air in the way, an orbit here can skim very low, but the "
+        "Moon's lumpy gravity slowly tugs them out of shape.",
     ),
     "mars orbit": (
-        "An orbit around Mars. The cruise there takes six to nine months.",
-        "Launches to Mars wait for windows that open about every 26 months, "
-        "when the two planets line up.",
+        "The end of a cruise that usually takes six to nine months. Radio "
+        "signals need 3 to 22 minutes to cross the gap to Earth.",
+        "Mars launches wait for windows that open roughly every 26 months, "
+        "when Earth and Mars line up for an efficient trip.",
     ),
     "sun-earth l2": (
-        "A balance point 1.5 million km beyond Earth, where a telescope keeps "
-        "the Sun, Earth and Moon behind it.",
-        "About four times farther than the Moon. A telescope there stays cold "
-        "and has most of the sky to itself.",
+        "A balance point 1.5 million km beyond Earth, on the "
+        "side away from the Sun. A telescope there keeps the Sun, Earth and "
+        "Moon behind it.",
+        "About four times farther away than the Moon, L2 lets a telescope "
+        "stay cold and dark, with a clear view of most of the sky.",
     ),
     "heliocentric orbit": (
-        "An orbit around the Sun rather than Earth, the road every "
-        "interplanetary mission travels.",
-        "Leaving Earth's pull takes about 11 km/s. Past that, the Sun's "
-        "gravity is the one that matters.",
+        "An orbit around the Sun instead of Earth. Every mission "
+        "to another planet spends most of its journey on one.",
+        "Breaking free of Earth takes about 11 km/s. Once past that, a "
+        "spacecraft follows the Sun's gravity rather than ours.",
     ),
     "suborbital": (
-        "Up and back down without the sideways speed to stay up. Altitude is "
-        "easy; orbital speed is the hard part.",
-        "Suborbital flights reach space and fall back, never reaching the "
-        "roughly 7.8 km/s it takes to stay up.",
-        "A suborbital hop gives a few minutes of weightlessness before the "
-        "fall back to Earth.",
+        "It crosses into space and comes back down on a long "
+        "arc, like a very tall throw, landing not far from where it began.",
+        "A hop like this gives its passengers or experiments a few minutes "
+        "of weightlessness before the fall back to Earth.",
     ),
 }
 
 # About the station itself, never this flight's arrival.
 ISS_NOTES = (
     "The station circles Earth about 400 km up, once every 90 minutes. "
-    "Visiting craft spend hours to days catching up.",
-    "Crewed without a break since November 2000, the station is about the "
-    "size of a football field.",
-    "Air drag slowly lowers the station, so it is boosted back up a few "
-    "times a year, often by visiting craft.",
-    "Its crew of about seven runs experiments that need weightlessness, "
-    "from biology to materials science.",
+    "Visiting spacecraft usually spend hours to a few days catching up before "
+    "they dock.",
+    "People have lived aboard the station without a break since November "
+    "2000. End to end, it is about as long as a football field.",
+    "Thin air at this height slowly drags the station down, so it gets "
+    "boosted back up several times a year, often by a visiting spacecraft.",
+    "The station usually has a crew of about seven, running experiments that "
+    "only work in weightlessness, from biology to materials science.",
 )
 
 
