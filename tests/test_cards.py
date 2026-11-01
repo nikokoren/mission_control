@@ -172,6 +172,20 @@ EDGE_CASES = [
         "pad_launch_attempt_count_year": 3}},
 ]
 
+# Crew-13 after a successful launch, with its real crew as LL2 lists it. The
+# corpus has no resolved crewed flight, so without this the crew card's past
+# tense would go unchecked.
+EDGE_CASES.append({"mode": "POST_LAUNCH", "launch": {
+    "id": "edge-crew-resolved", "name": "Falcon 9 Block 5 | Crew-13",
+    "status": {"abbrev": "Success"}, "net": "2026-10-01T15:10:06Z",
+    "rocket": {"spacecraft_stage": {
+        "spacecraft": {"name": "Crew Dragon Grace"},
+        "launch_crew": [
+            {"role": {"role": "Spacecraft Commander"}, "astronaut": {"name": "Jessica Watkins"}},
+            {"role": {"role": "Flight Engineer"}, "astronaut": {"name": "Joshua Kutryk"}},
+            {"role": {"role": "Pilot"}, "astronaut": {"name": "Luke Delaney"}},
+            {"role": {"role": "Flight Engineer"}, "astronaut": {"name": "Sergey Teteryatnikov"}}]}}}})
+
 # First-launch years for the edge cases above, which have no pad id and so no
 # entry in the pad cache.
 EDGE_PAD_YEARS = {"edge-pad-new": 2026, "edge-pad-bad-year": 2031}
@@ -271,6 +285,7 @@ def generated_cards(launch, mode):
         "next": C.booster_next_card(launch, history),
         "record": C.record_card(launch, history, fleet),
         "docking": C.docking_card(launch, DOCKING),
+        "crew": C.crew_card(launch),
     }
     return {k: v for k, v in out.items() if v}
 
@@ -450,7 +465,7 @@ def check_articles(fixtures):
 FORWARD_LOOKING = (
     "is aiming for", "is targeting", "will be", "is flying back",
     "so far this year", "is unconfirmed", "no confirmed launch time",
-    "it is the ", "is up to",
+    "it is the ", "is up to", "carries a crew", "is carrying a crew",
 )
 
 
@@ -655,7 +670,7 @@ def check_fixture_shape(fixtures):
     # Keys of the caches and lookups this repo builds itself, which are not
     # API launch fields and so are not in the pruning shape.
     known |= {"serial", "launches", "cores", "flights", "hours_until", "port",
-              "spacecraft", "pad", "net", "name"}
+              "spacecraft", "pad", "net", "name", "key"}
 
     with open(os.path.join(ROOT, "scripts", "cards.py")) as fh:
         source = fh.read()

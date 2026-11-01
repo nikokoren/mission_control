@@ -50,10 +50,16 @@ stored state or rotation index anywhere.
 1. `choose_target()` in `update_launch.py` picks which launch owns the screen,
    from `hours_since` the previous launch and `hours_until` the next.
    `IMMINENT_HOURS` / `FRESH_HOURS` / `QUIET_HOURS` / `STALE_HOURS` tune it.
-2. `build_slots()` in `cards.py` picks the two cards. Twelve builders each
-   return text or `None`; ranked order lists per mode; first non-empty wins and
-   slot A's pick is excluded from slot B. Whatever is left rotates by time -
-   monotonic tiers pre-launch, a simple cycle post-launch.
+2. `build_slots()` in `cards.py` picks the cards: two on the OG, three on
+   the X (`lg=True`). Fourteen builders each return text or `None`. Each
+   launch stage (`launch_stage()`: pre, flight, done, fail) has a ranked pool
+   per slot in `POOLS`; a slot takes from its pool what has something to say
+   and is not already shown. The rules, agreed card by card in November 2026:
+   one booster-family card at a time (`booster`, `record`, `career`, `next`),
+   one launch-stats card (`pad`, `cadence`), trivia never in slot A and stats
+   there only as a fallback, crew holds slot B when there is a crew, and on the
+   X stats and trivia sit in slot C. A brief or an outcome holds slot A after
+   launch; everything else rotates with `rotation_step()`.
 
 ## Three states, not two
 
@@ -85,6 +91,7 @@ A failure also pins an outcome card to slot A for the whole result window.
 
     python3 tests/test_cards.py           # the checks
     python3 tests/test_cards.py --show    # print every distinct card
+    python3 tests/test_display.py         # X destination panel, footer, writes
 
 Stdlib only, no network, no framework: it walks a corpus of ~90 real API
 payloads in `tests/fixtures/` plus hand-written degenerate cases. **Run it
@@ -114,6 +121,46 @@ it is meant to catch. A check that cannot fail is worse than no check.
   run; it belongs to the workflow.
 - `upcoming.json` and `previous.json` are fetched inputs and are gitignored.
 
+## TRMNL X layout (full view)
+
+The X gets its own arrangement through `lg:` classes; the OG renders as
+before. Markup in `markup/full.liquid` targets Framework **3.4.4** (confirmed
+as the current release, 2026-10-24), and every class it adds was checked
+against the 3.4.4 stylesheet.
+
+- **Info row** (BY / FOR / ON / FROM): values are `lg:description--large`,
+  one step up. `xlarge` is two steps and too heavy for four fields. On the X
+  BY and ON keep their width; FOR and FROM shrink in proportion to their
+  length and wrap, and labels align at the top (`mc-info` in shared.liquid,
+  scoped to `.screen--lg`).
+- **Destination panel**: DESTINATION, `destination` (the station for an
+  ISS-bound flight, else the orbit; `orbit` itself is unchanged), then
+  `destination_explanation` (generic context, never mission-specific; empty
+  means the block is dropped), then the rocket, then ROCKET USED. The notes
+  are `PANEL_NOTES` / `ISS_NOTES` in `cards.py`, several variants per
+  destination (six for LEO), at most `PANEL_NOTE_MAX` (160) characters, never opening by repeating the destination heading, shuffled
+  per launch and stepped every `PANEL_ROTATE_HOURS`. Keep them clear of what
+  the fact pool already says.
+- **X slots**: `build_slots(..., lg=True)` gives `lg_slot_a_*` / `_b_*` /
+  `_c_*`, without the cards the panel and footer already show (`dest`, and
+  `docking` when the footer is a docking). The X's brief may run to
+  `LG_BRIEF_BUDGET`. Slot C comes from the stage's `C` pool, mostly the
+  booster card crew pushed out of slot B, then stats and trivia, so most
+  launches fill three slots; slot B never sits empty above slot C.
+  `slot_a_*` / `slot_b_*` keep their field names for the OG; the same rules
+  pick their content. `tests/test_display.py` checks every rule on both
+  devices.
+- **Footer**: `footer_*` fields, post-launch only, chosen by `choose_footer()`
+  in `update_launch.py`: a scheduled docking still ahead for this ISS-bound
+  spacecraft, else the next launch with real timing (`net_precision` of
+  SEC/MIN/HR, status Go/TBC/TBD), else nothing and the row is removed. A past
+  docking time is not proof of docking (LL2 has no docking status), so it
+  never holds the footer. This does not change `choose_target()`.
+- **Writes**: `needs_write()` writes whenever a countdown that is on screen
+  moved, which post-launch now includes the footer's. Expect a commit every
+  run while a footer is shown.
+- Docking events are matched by `launch_id` in `history.match_docking()`.
+
 ## Design work queued - TRMNL X
 
 Observed on a real TRMNL X (2026-10-17), not in preview: **the top is cramped
@@ -124,8 +171,11 @@ proportions and leaves vertical slack underneath. Same root cause as the
 rocket-art problem in the `trmnl-framework` skill; fixing one may inform the
 other.
 
-- **Rework the BY / ON / FROM line.** Currently three cramped labelled fields
-  in one row. The data side is here: `provider` (short form from
+- **Rework the BY / ON / FROM line further.** On the X the text is one step
+  bigger and long FOR / FROM values now share the width instead of one
+  squeezing the other, but it is still the OG's single row; the OG row
+  still has the squeeze. Long agency names could also use LL2's agency
+  abbreviation (not in the fixtures yet). The data side is here: `provider` (short form from
   `normalize_org_name`) and `location_str`, assembled at
   `update_launch.py:401` as `"{pad} @ {location}, {country}"` - e.g.
   `SLC-40 @ Cape Canaveral SFS, USA`. The arrangement is in
@@ -144,7 +194,5 @@ device, not just a rescaled one; see the `trmnl-framework` skill.
 
 - `is_placeholder` misses "Details TBD" style stubs when the description is
   over 60 characters, so they reach the card.
-- `cadence_card` and `pad_card` can both be on screen stating the same pad
-  count in different words.
 - Rotation is keyed to `hours_until`, so a launch that slips jumps backward
   through the tiers.

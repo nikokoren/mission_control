@@ -1,6 +1,39 @@
 <style>
     .mc-clip { overflow: hidden; }
 
+    /* Takes the height its column leaves over, and may shrink below its
+       content: the main row gives way to the X footer when there is one. */
+    .mc-fill { flex: 1 1 0; min-height: 0; }
+
+    /* description--large at the regular description weight. On the X every
+       16px text style is bold, which turns a paragraph into a block. */
+    .mc-regular { font-weight: var(--description-font-weight); }
+
+    /* The line above the X footer: a step heavier than .divider (1px, light
+       gray), because it separates two contexts -- this launch and what comes
+       next -- rather than two parts of one. */
+    .mc-rule { width: 100%; height: 2px; min-height: 2px; background: #444; }
+
+    /* X info row (BY / FOR / ON / FROM). The framework's flex--row centres
+       items vertically, which dropped a one-line label below a two-line
+       neighbour's; and FOR was shrink-0, so a long agency kept its full
+       width and FROM took all the squeeze. On the X: labels align at the
+       top, and FOR and FROM shrink in proportion to their content (flex-
+       basis auto), so both wrap evenly. Scoped to .screen--lg so the OG
+       row is untouched. */
+    .trmnl .screen--lg .mc-info { align-items: flex-start; }
+    .trmnl .screen--lg .mc-info-fluid { flex: 1 1 auto; min-width: 0; }
+
+    /* Separates the footer's BY and FROM pairs more than label from value. */
+    .mc-gap-left { margin-left: var(--gap-medium, 16px); }
+
+    /* The footer's BY / FROM line stays one line: the location gives way
+       with an ellipsis rather than wrapping. */
+    .mc-min0 { min-width: 0; }
+    .mc-oneline { flex-wrap: nowrap; min-width: 0; }
+    .mc-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden;
+                   text-overflow: ellipsis; }
+
     /* ---------- launch window bar ---------- */
     .mc-tl {display: flex; flex-direction: column; gap: 3px; }
 

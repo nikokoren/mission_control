@@ -67,7 +67,9 @@ SHAPE = {
     "rocket": {
         "configuration": {
             "name": str, "id": str, "consecutive_successful_launches": str},
-        "spacecraft_stage": {"spacecraft": {"name": str}},
+        "spacecraft_stage": {
+            "spacecraft": {"name": str},
+            "launch_crew": [{"role": {"role": str}, "astronaut": {"name": str}}]},
         "launcher_stage": [{
             "type": str, "reused": str, "launcher_flight_number": str,
             "turn_around_time_days": str,

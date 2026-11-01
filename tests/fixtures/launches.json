@@ -468,6 +468,40 @@
      }
     ],
     "spacecraft_stage": {
+     "launch_crew": [
+      {
+       "astronaut": {
+        "name": "Jessica Watkins"
+       },
+       "role": {
+        "role": "Spacecraft Commander"
+       }
+      },
+      {
+       "astronaut": {
+        "name": "Joshua Kutryk"
+       },
+       "role": {
+        "role": "Flight Engineer"
+       }
+      },
+      {
+       "astronaut": {
+        "name": "Luke Delaney"
+       },
+       "role": {
+        "role": "Pilot"
+       }
+      },
+      {
+       "astronaut": {
+        "name": "Sergey Teteryatnikov"
+       },
+       "role": {
+        "role": "Flight Engineer"
+       }
+      }
+     ],
      "spacecraft": {
       "name": "Crew Dragon Grace"
      }

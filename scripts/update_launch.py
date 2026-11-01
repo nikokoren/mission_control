@@ -16,7 +16,8 @@ import sys
 from datetime import datetime, timezone
 
 from cards import (build_slots, dig, short_pad, is_placeholder, lead_booster,
-                   real_serial, is_resolved, clip, strip_corporate)
+                   real_serial, is_resolved, clip, strip_corporate,
+                   is_iss_bound, destination_label, destination_explanation)
 from history import get_booster_history, get_fleet, get_docking, get_pad_first_year
 from facts import get_rocket_fact
 
@@ -70,8 +71,22 @@ BASE_KEY = {
 
 LANDABLE_KEYS = ["falcon9", "falconheavy", "starship", "newglenn", "electron", "newshepard"]
 
-# Fields that change every run and should not force a commit on their own.
-VOLATILE_FIELDS = ["countdown", "next_countdown"]
+# Fields that change every run. On their own they force a write only while
+# the screen shows them -- see displayed_countdowns().
+VOLATILE_FIELDS = ["countdown", "next_countdown", "footer_countdown"]
+
+# --- the TRMNL X footer: what happens next, once the launch is over ---
+# A next launch is promoted only with timing worth counting down to. LL2's
+# net_precision says how much of the NET is real: a month- or quarter-
+# precision NET is a placeholder, and a running T- to it would be a stale
+# countdown dressed up as a live one. A launch on Hold has a NET that is not
+# moving with the clock either.
+FOOTER_PRECISIONS = ("SEC", "MIN", "HR")
+FOOTER_STATUSES = ("Go", "TBC", "TBD")
+# A failed or partly failed launch will not keep its docking appointment,
+# whatever the schedule still says.
+NO_DOCKING_STATUSES = ("Failure", "Partial Failure")
+STATION_SHORT = {"International Space Station": "ISS"}
 
 # --- how long each launch holds the screen ---
 IMMINENT_HOURS = 1.5   # next launch this close always wins
@@ -183,8 +198,8 @@ def parse_time(t_str):
         return None
 
 
-def get_countdown(dt_event):
-    now = datetime.now(timezone.utc)
+def get_countdown(dt_event, now=None):
+    now = now or datetime.now(timezone.utc)
     diff = dt_event - now
     total = int(abs(diff.total_seconds()))
     hours, rem = divmod(total, 3600)
@@ -325,7 +340,18 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
 # per-launch processing
 # ============================================================
 
-def process_launch_data(launch, mode_override=None, with_history=False):
+def location_string(launch):
+    """"SLC-40 @ Cape Canaveral SFS, USA": the FROM field, for the header
+    and for the next launch in the footer alike."""
+    pad_name = short_pad(dig(launch, "pad", "name", default="Unknown Pad"))
+    if pad_name.isdigit():
+        pad_name = f"Pad {pad_name}"
+    loc_name = dig(launch, "pad", "location", "name", default="Unknown").split(",")[0].strip()
+    country = dig(launch, "pad", "location", "country_code", default="")
+    return f"{pad_name} @ {loc_name}, {country}" if country else f"{pad_name} @ {loc_name}"
+
+
+def process_launch_data(launch, mode_override=None, with_history=False, candidates=None):
     if not launch:
         return None
 
@@ -393,12 +419,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         image_url = dig(launch, "launch_service_provider", "logo_url", default="")
         image_is_patch = False
 
-    pad_name = short_pad(dig(launch, "pad", "name", default="Unknown Pad"))
-    if pad_name.isdigit():
-        pad_name = f"Pad {pad_name}"
-    loc_name = dig(launch, "pad", "location", "name", default="Unknown").split(",")[0].strip()
-    country = dig(launch, "pad", "location", "country_code", default="")
-    location_str = f"{pad_name} @ {loc_name}, {country}" if country else f"{pad_name} @ {loc_name}"
+    location_str = location_string(launch)
 
     stage = {}
     s_list = dig(launch, "rocket", "launcher_stage", default=[]) or []
@@ -456,15 +477,16 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     # only post-launch, so asking before liftoff -- every 15 minutes for the
     # whole countdown of a crew or cargo flight, and again for the NEXT UP
     # launch whose cards are thrown away -- spent rate limit on nothing.
+    #
+    # Matched on the launch id, which every docking event carries, so a
+    # flight with no spacecraft stage (Cygnus) still finds its arrival.
     docking = None
     if with_history and mode == "POST_LAUNCH":
         try:
             spacecraft = dig(launch, "rocket", "spacecraft_stage", "spacecraft",
-                             "name", default="")
-            iss_bound = any("International Space Station" in (p.get("name") or "")
-                            for p in (launch.get("program") or []))
-            if spacecraft and iss_bound:
-                docking = get_docking(spacecraft)
+                             "name", default="") or ""
+            if is_iss_bound(launch) and (spacecraft or launch.get("id")):
+                docking = get_docking(spacecraft, launch_id=launch.get("id"))
         except Exception as e:
             print(f"Warning: docking check skipped: {e}")
 
@@ -475,10 +497,28 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     if with_history and pad_name and "unknown" not in pad_name.lower():
         pad_first_year = get_pad_first_year(dig(launch, "pad", "id"), pad_name)
 
+    slot_args = dict(history=history, fleet=fleet,
+                     hours_until=hours_until, hours_since=hours_since,
+                     docking=docking, pad_first_year=pad_first_year)
     slot_a, slot_b = build_slots(launch, mode, description, program_description,
-                                 rocket_fact, history=history, fleet=fleet,
-                                 hours_until=hours_until, hours_since=hours_since,
-                                 docking=docking, pad_first_year=pad_first_year)
+                                 rocket_fact, **slot_args)
+
+    # --- the TRMNL X: destination panel and footer ---
+    # The X shows the destination explanation in its sidebar and, after
+    # launch, the next event in a footer, so its text slots skip both. It
+    # also has room the OG lacks: a longer mission brief, the crew card, and
+    # a third slot that appears only for a card about this flight. The OG
+    # keeps slot_a_* / slot_b_* exactly as before until its own layout moves.
+    dest_explanation = destination_explanation(launch, now) or ""
+    footer = choose_footer(launch, mode, docking, candidates or [], now)
+    lg_exclude = []
+    if dest_explanation:
+        lg_exclude.append("dest")
+    if footer.get("footer_kind") == "docking":
+        lg_exclude.append("docking")
+    lg_a, lg_b, lg_c = build_slots(launch, mode, description, program_description,
+                                   rocket_fact, exclude=lg_exclude, lg=True,
+                                   **slot_args)
 
     vis_status = dig(launch, "status", "abbrev", default="TBD")
     if vis_status == "PENDING":
@@ -511,7 +551,7 @@ def process_launch_data(launch, mode_override=None, with_history=False):
     if "Unknown Payload" in m_name:
         m_name = rocket_name
 
-    return {
+    out = {
         "mode": mode,
         "name": m_name,
         "agency": agency,
@@ -527,11 +567,26 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "rocket": rocket_name,
         "orbit": orbit_name,
 
+        # The destination panel. destination is what the X shows as the name
+        # (the station for an ISS-bound flight); orbit above is untouched.
+        # An empty explanation means the panel drops the block entirely.
+        "destination": destination_label(launch, orbit_name),
+        "destination_explanation": dest_explanation,
+
         # new: the two variable slots
         "slot_a_label": slot_a["label"],
         "slot_a_text": slot_a["text"],
         "slot_b_label": slot_b["label"],
         "slot_b_text": slot_b["text"],
+
+        # The TRMNL X's slots: without what its destination panel and
+        # footer already show, and a third only for a card about this flight.
+        "lg_slot_a_label": lg_a["label"],
+        "lg_slot_a_text": lg_a["text"],
+        "lg_slot_b_label": lg_b["label"],
+        "lg_slot_b_text": lg_b["text"],
+        "lg_slot_c_label": lg_c["label"],
+        "lg_slot_c_text": lg_c["text"],
 
         "rocket_visual": vis_url,
         "rocket_visual_alt": vis_alt,
@@ -543,6 +598,122 @@ def process_launch_data(launch, mode_override=None, with_history=False):
         "program_description": program_description,
         "rocket_fact": rocket_fact,
     }
+    out.update(footer)
+    return out
+
+
+# ============================================================
+# the footer: the next event, after launch
+# ============================================================
+
+def display_name(launch):
+    """The mission half of an LL2 launch name, as the header shows it."""
+    rocket_name = dig(launch, "rocket", "configuration", "name", default="Unknown Rocket")
+    name = (launch.get("name") or rocket_name).split(" | ")[-1]
+    return rocket_name if "Unknown Payload" in name else name
+
+
+def countdown_time(launch, now):
+    """
+    The NET of a launch worth counting down to, or None: in the future,
+    at a precision finer than a day, and not on hold or already resolved.
+    A launch with no precision on record counts only if it is Go.
+    """
+    when = parse_time(launch.get("net"))
+    if when is None or when <= now:
+        return None
+    status = dig(launch, "status", "abbrev", default="")
+    if status not in FOOTER_STATUSES:
+        return None
+    precision = dig(launch, "net_precision", "abbrev", default="")
+    if precision:
+        if precision not in FOOTER_PRECISIONS:
+            return None
+    elif status != "Go":
+        return None
+    return when
+
+
+def docking_footer(launch, docking, now):
+    """
+    The docking milestone for the launch on screen, or {}. Only a scheduled
+    docking still ahead: LL2 records no docking status, so a time already
+    past says nothing about whether the spacecraft arrived, and must not hold
+    the footer.
+    """
+    if not docking or not is_iss_bound(launch):
+        return {}
+    if dig(launch, "status", "abbrev", default="") in NO_DOCKING_STATUSES:
+        return {}
+    ts = docking.get("docking_ts")
+    craft = (docking.get("spacecraft") or "").strip()
+    if not isinstance(ts, int) or not craft or craft == "The spacecraft":
+        return {}
+    when = datetime.fromtimestamp(ts, timezone.utc)
+    if when <= now:
+        return {}
+    station = docking.get("station") or "International Space Station"
+    port = (docking.get("port") or "").strip()
+    return {
+        "footer_kind": "docking",
+        "footer_label": "NEXT MILESTONE \u00b7 DOCKING",
+        "footer_title": f"{craft} \u2192 {STATION_SHORT.get(station, station)}",
+        "footer_detail": f"Docking port: {port}" if port else "",
+        "footer_countdown": get_countdown(when, now),
+        "footer_ts": ts,
+        "footer_event_id": docking.get("event_id"),
+        "footer_status": "",
+        "footer_spacecraft": craft,
+        "footer_port": port,
+        "footer_station": station,
+    }
+
+
+def launch_footer(candidates, now):
+    """The first candidate launch with real timing, or {}. Every field comes
+    from that one launch, so a timer can never sit under another launch's
+    rocket or provider."""
+    for cand in candidates:
+        when = countdown_time(cand or {}, now)
+        if when is None:
+            continue
+        rocket = dig(cand, "rocket", "configuration", "name", default="") or ""
+        provider = normalize_org_name(
+            dig(cand, "launch_service_provider", "name", default="") or "")
+        return {
+            "footer_kind": "launch",
+            "footer_label": "NEXT LAUNCH",
+            "footer_title": display_name(cand),
+            # Shown as BY / FROM, which the markup labels itself.
+            "footer_detail": "",
+            "footer_countdown": get_countdown(when, now),
+            "footer_ts": int(when.timestamp()),
+            "footer_event_id": cand.get("id") or "",
+            "footer_status": dig(cand, "status", "abbrev", default=""),
+            "footer_rocket": rocket,
+            "footer_provider": provider,
+            "footer_location": location_string(cand),
+        }
+    return {}
+
+
+def choose_footer(launch, mode, docking, candidates, now):
+    """
+    What the X footer promotes once the launch on screen has flown, or {}
+    for no footer. First match wins:
+
+    1. a scheduled docking, still ahead, for this ISS-bound spacecraft
+    2. the next launch with real timing
+    3. nothing -- the footer and its row are removed
+
+    Pre-launch there is never a footer: the header owns the countdown, and
+    the footer is not a second schedule for the same mission. POST_LAUNCH
+    covers in flight, awaiting confirmation and resolved alike, and none of
+    them is taken as success.
+    """
+    if mode != "POST_LAUNCH":
+        return {}
+    return docking_footer(launch, docking, now) or launch_footer(candidates, now)
 
 
 # ============================================================
@@ -590,6 +761,27 @@ def strip_volatile(d):
     return {k: v for k, v in (d or {}).items() if k not in VOLATILE_FIELDS}
 
 
+def displayed_countdowns(d):
+    """
+    The volatile fields this payload puts on screen. TRMNL skips a new screen
+    when a polled payload is unchanged, so any countdown on screen has to be
+    written as it moves or it freezes on the device. Pre-launch that is the
+    header's; post-launch it is the footer's, when there is a footer.
+    """
+    if d.get("mode") == "PRE_LAUNCH":
+        return ["countdown"]
+    if d.get("footer_kind"):
+        return ["footer_countdown"]
+    return []
+
+
+def needs_write(old, new):
+    """Write unless nothing that reaches the screen has changed."""
+    if old is None or strip_volatile(old) != strip_volatile(new):
+        return True
+    return any(old.get(k) != new.get(k) for k in displayed_countdowns(new))
+
+
 # ============================================================
 # main
 # ============================================================
@@ -600,7 +792,6 @@ def main():
     previous_results = load_json("previous.json")
 
     upcoming = upcoming_results[0] if upcoming_results else None
-    next_upcoming = upcoming_results[1] if upcoming_results and len(upcoming_results) > 1 else None
     previous = previous_results[0] if previous_results else None
 
     if not upcoming and not previous:
@@ -611,14 +802,20 @@ def main():
     target, mode, reason = choose_target(previous, upcoming, now)
     print(f"Selected: {mode} because {reason}")
 
-    output = process_launch_data(target, mode, with_history=True)
+    # Launches that could follow the one on screen. Compared by id, not by
+    # object: the same launch can arrive in both feeds.
+    target_id = target.get("id")
+    candidates = [u for u in (upcoming_results or [])
+                  if u is not target and not (target_id and u.get("id") == target_id)]
+
+    output = process_launch_data(target, mode, with_history=True, candidates=candidates)
     if not output:
         print("Error: failed to process launch data")
         return 0
 
     # Post-launch the display turns to NEXT UP, so we need the following launch.
     if mode == "POST_LAUNCH":
-        follow = next_upcoming if (target is upcoming and next_upcoming) else upcoming
+        follow = candidates[0] if candidates else None
         next_data = process_launch_data(follow, "PRE_LAUNCH")
         if next_data:
             output["next_name"] = next_data["name"]
@@ -640,11 +837,11 @@ def main():
         except Exception:
             old = None
 
+    if not needs_write(old, output):
+        print("Only an off-screen countdown moved. Leaving launch.json alone.")
+        return 0
     if old is not None and strip_volatile(old) == strip_volatile(output):
-        if output["mode"] == "POST_LAUNCH":
-            print("Only the countdown moved and we are post launch. Leaving launch.json alone.")
-            return 0
-        print("Only the countdown moved, but we are pre launch so the display needs it.")
+        print("Only the countdown moved, but it is on screen so the display needs it.")
 
     print(f"Writing launch.json for {output['name']}...")
     with open("launch.json", "w") as f:
