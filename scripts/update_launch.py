@@ -340,6 +340,17 @@ def get_rocket_image_url(rocket_name, status, landing_success, mission_type, mis
 # per-launch processing
 # ============================================================
 
+def location_string(launch):
+    """"SLC-40 @ Cape Canaveral SFS, USA": the FROM field, for the header
+    and for the next launch in the footer alike."""
+    pad_name = short_pad(dig(launch, "pad", "name", default="Unknown Pad"))
+    if pad_name.isdigit():
+        pad_name = f"Pad {pad_name}"
+    loc_name = dig(launch, "pad", "location", "name", default="Unknown").split(",")[0].strip()
+    country = dig(launch, "pad", "location", "country_code", default="")
+    return f"{pad_name} @ {loc_name}, {country}" if country else f"{pad_name} @ {loc_name}"
+
+
 def process_launch_data(launch, mode_override=None, with_history=False, candidates=None):
     if not launch:
         return None
@@ -408,12 +419,7 @@ def process_launch_data(launch, mode_override=None, with_history=False, candidat
         image_url = dig(launch, "launch_service_provider", "logo_url", default="")
         image_is_patch = False
 
-    pad_name = short_pad(dig(launch, "pad", "name", default="Unknown Pad"))
-    if pad_name.isdigit():
-        pad_name = f"Pad {pad_name}"
-    loc_name = dig(launch, "pad", "location", "name", default="Unknown").split(",")[0].strip()
-    country = dig(launch, "pad", "location", "country_code", default="")
-    location_str = f"{pad_name} @ {loc_name}, {country}" if country else f"{pad_name} @ {loc_name}"
+    location_str = location_string(launch)
 
     stage = {}
     s_list = dig(launch, "rocket", "launcher_stage", default=[]) or []
@@ -677,13 +683,15 @@ def launch_footer(candidates, now):
             "footer_kind": "launch",
             "footer_label": "NEXT LAUNCH",
             "footer_title": display_name(cand),
-            "footer_detail": " \u00b7 ".join(p for p in (rocket, provider) if p),
+            # Shown as BY / FROM, which the markup labels itself.
+            "footer_detail": "",
             "footer_countdown": get_countdown(when, now),
             "footer_ts": int(when.timestamp()),
             "footer_event_id": cand.get("id") or "",
             "footer_status": dig(cand, "status", "abbrev", default=""),
             "footer_rocket": rocket,
             "footer_provider": provider,
+            "footer_location": location_string(cand),
         }
     return {}
 

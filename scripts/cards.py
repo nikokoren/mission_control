@@ -1554,12 +1554,61 @@ def destination_card(launch):
 
 ISS_PROGRAM = "International Space Station"
 
-# Educational context about the station itself, never about this flight: no
-# arrival time, altitude or trajectory that the payload does not supply.
+# The X destination panel's notes: what the destination means, in a line or
+# two under its name. Shorter than ORBIT_NOTES, which stay as the OG's
+# DESTINATION EXPLAINED card. Generic by design -- nothing here may claim to
+# know this flight's altitude, inclination or trajectory -- and they never
+# repeat the mission brief. Matched like ORBIT_NOTES: exact name first,
+# then containment, so "Very Low Earth Orbit" finds the LEO note.
+PANEL_NOTE_MAX = 120
+
+PANEL_NOTES = {
+    "low earth orbit": (
+        "Anywhere from about 160 to 2,000 km up. A satellite here circles the "
+        "planet roughly every 90 minutes."),
+    "sun-synchronous orbit": (
+        "Tilted so a satellite passes over each place at the same local time, "
+        "keeping the light the same in every image."),
+    "geostationary transfer orbit": (
+        "A long ellipse, the stepping stone to geostationary orbit 36,000 km "
+        "up over the equator."),
+    "geostationary orbit": (
+        "36,000 km above the equator, where a satellite keeps pace with the "
+        "turning Earth and seems to hover."),
+    "geosynchronous orbit": (
+        "36,000 km up, where one lap takes a day, so a satellite returns over "
+        "the same ground at the same time."),
+    "medium earth orbit": (
+        "Between the low satellites and the geostationary belt. Home to "
+        "navigation constellations like GPS."),
+    "polar orbit": (
+        "Passes near both poles, so the planet turns beneath it and every "
+        "point on the surface comes into view."),
+    "highly elliptical orbit": (
+        "Lingers for hours near its high point, giving long views of high "
+        "latitudes a geostationary satellite sees poorly."),
+    "trans lunar injection": (
+        "The burn that leaves Earth orbit for the Moon. The trip takes about "
+        "three days."),
+    "lunar orbit": (
+        "An orbit around the Moon, about 384,000 km from Earth."),
+    "mars orbit": (
+        "An orbit around Mars. The cruise there takes six to nine months."),
+    "sun-earth l2": (
+        "A balance point 1.5 million km beyond Earth, where a telescope keeps "
+        "the Sun, Earth and Moon behind it."),
+    "heliocentric orbit": (
+        "An orbit around the Sun rather than Earth, the road every "
+        "interplanetary mission travels."),
+    "suborbital": (
+        "Up and back down without the sideways speed to stay up. Altitude is "
+        "easy; orbital speed is the hard part."),
+}
+
+# About the station itself, never this flight's arrival.
 ISS_NOTE = (
-    "The International Space Station circles Earth in low Earth orbit, about "
-    "400 km up, once every 90 minutes. Visiting spacecraft launch into a lower "
-    "orbit and spend hours to days catching up before they dock."
+    "The station circles Earth about 400 km up, once every 90 minutes. "
+    "Visiting craft spend hours to days catching up."
 )
 
 
@@ -1590,13 +1639,21 @@ def destination_label(launch, orbit_name):
 def destination_explanation(launch):
     """
     What the destination means, for the panel under its name: the station
-    for an ISS-bound flight, otherwise the orbit note. Generic context only,
+    for an ISS-bound flight, otherwise the short orbit note. Generic context only,
     so it does not repeat the mission brief. None when there is nothing
     useful to say, and the panel then drops the block entirely.
     """
     if is_iss_bound(launch):
         return ISS_NOTE
-    return destination_card(launch)
+    orbit = (dig(launch, "mission", "orbit", "name", default="") or "").strip().lower()
+    if not orbit or orbit in ("unknown", "n/a", "tbd"):
+        return None
+    if orbit in PANEL_NOTES:
+        return PANEL_NOTES[orbit]
+    for key, text in PANEL_NOTES.items():
+        if key in orbit or orbit in key:
+            return text
+    return None
 
 
 def pad_card(launch, first_year=None):

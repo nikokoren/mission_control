@@ -181,7 +181,10 @@ def check_next_launch(rows):
             f.check(got["footer_ts"] == int(net.timestamp()) and
                     got["footer_title"] == U.display_name(l) and
                     got["footer_event_id"] == l["id"] and
-                    got["footer_rocket"] == C.dig(l, "rocket", "configuration", "name"),
+                    got["footer_rocket"] == C.dig(l, "rocket", "configuration", "name") and
+                    got["footer_location"] == U.location_string(l) and
+                    got["footer_provider"] == U.normalize_org_name(
+                        C.dig(l, "launch_service_provider", "name", default="")),
                     f"{l['name']}: every footer field is from the same launch", got)
             f.check(got["footer_countdown"].startswith("T- "),
                     f"{l['name']}: counts down, not up", got["footer_countdown"])
@@ -242,6 +245,8 @@ def check_destination(rows):
             f.check(not text, f"{launch['name']}: no filler for an unknown orbit", text)
         if text:
             f.check(text[-1] in ".!?", f"{launch['name']}: explanation is a sentence", text)
+            f.check(len(text) <= C.PANEL_NOTE_MAX,
+                    f"{launch['name']}: explanation fits the panel ({len(text)})", text)
 
         desc, pdesc = descriptions(launch)
         for hours in (None, 1, 9, 20, 40, 80):
