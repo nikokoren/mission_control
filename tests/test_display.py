@@ -31,7 +31,7 @@ import cards as C  # noqa: E402
 import history as H  # noqa: E402
 import update_launch as U  # noqa: E402
 
-from test_cards import Failures, descriptions, FACT  # noqa: E402
+from test_cards import Failures, descriptions, FACT, caches_for, pad_year_for  # noqa: E402
 
 FIXTURES = os.path.join(HERE, "fixtures", "launches.json")
 DOCKINGS = os.path.join(HERE, "fixtures", "docking_events.json")
@@ -304,46 +304,90 @@ def check_panel_variants(rows):
     return f.report("rotates the destination notes")
 
 
-def check_lg_slots(rows):
-    """The X's third slot, longer brief and crew card, against the OG pair."""
+
+def family(launch, history, fleet, slot):
+    """Which family a rendered slot belongs to, read off its text."""
+    text = slot.get("text") or ""
+    if not text:
+        return None
+    if text in {C.booster_card(launch, m) for m in ("PRE_LAUNCH", "POST_LAUNCH")} | {
+            C.booster_career_card(launch, history, fleet),
+            C.booster_next_card(launch, history),
+            C.record_card(launch, history, fleet)} - {None}:
+        return "booster"
+    if slot["label"] in ("PAD HISTORY", "LAUNCH CADENCE"):
+        return "stats"
+    return None
+
+
+def check_slot_rules(rows):
+    """The ranking rules agreed in November 2026, on both devices."""
     f = Failures()
-    with_c = without_c = longer = 0
-    for r in rows:
+    three = crew_seen = 0
+    # The corpus has no failed crewed flight; Crew-13 with its status set to
+    # Failure stands in, so the failure rule has a crew to keep off screen.
+    failed_crew = {"mode": "POST_LAUNCH", "launch": with_status(by_id(rows, CREW_13), "Failure")}
+    for r in rows + [failed_crew]:
         launch, mode = r["launch"], r["mode"]
         desc, pdesc = descriptions(launch)
+        history, fleet = caches_for(launch)
+        stage = C.launch_stage(launch, mode)
+        crew = C.crew_card(launch)
         for hours in (None, 1, 9, 20, 40, 80):
-            kw = dict(hours_until=hours if mode == "PRE_LAUNCH" else None,
+            kw = dict(history=history, fleet=fleet, pad_first_year=pad_year_for(launch),
+                      hours_until=hours if mode == "PRE_LAUNCH" else None,
                       hours_since=hours if mode == "POST_LAUNCH" else None)
             og = C.build_slots(launch, mode, desc, pdesc, FACT, **kw)
-            a, b, c = C.build_slots(launch, mode, desc, pdesc, FACT, lg=True,
-                                    exclude=["dest"], **kw)
-            crew = C.crew_card(launch)
-            for slot in og:
-                f.check(not crew or slot["text"] != crew,
-                        f"{launch['name']}: the crew card stays off the OG", slot)
-            if not c["text"]:
-                without_c += 1
-                continue
-            with_c += 1
-            f.check(c["text"] not in (a["text"], b["text"]),
-                    f"{launch['name']}: slot C repeats nothing", c)
-            f.check(c["label"] not in ("DID YOU KNOW?", "LAUNCH CADENCE", "PAD HISTORY",
-                                       "PROGRAM CONTEXT", "DESTINATION EXPLAINED",
-                                       "MISSION BRIEF", "MISSION RECAP")
-                    and not c["label"].endswith(" NEXT"),
-                    f"{launch['name']}: slot C is never a fallback card", c)
+            x = C.build_slots(launch, mode, desc, pdesc, FACT, lg=True,
+                              exclude=["dest"], **kw)
+            name = f"{launch['name']} at {hours}h"
+            for device, slots in (("OG", og), ("X", x)):
+                shown = [s for s in slots if s["text"]]
+                fams = [family(launch, history, fleet, s) for s in shown]
+                f.check(fams.count("booster") <= 1,
+                        f"{name} ({device}): one booster card at a time",
+                        [s["label"] for s in shown])
+                f.check(fams.count("stats") <= 1,
+                        f"{name} ({device}): one launch-stats card at a time",
+                        [s["label"] for s in shown])
+                f.check(slots[0]["label"] != "DID YOU KNOW?",
+                        f"{name} ({device}): trivia never takes slot A", slots[0])
+                if slots[0]["label"] in ("PAD HISTORY", "LAUNCH CADENCE"):
+                    better = [x for x in (
+                        None if C.is_boilerplate(launch, desc) else C.tidy_brief(desc),
+                        C.booster_card(launch, mode),
+                        C.booster_career_card(launch, history, fleet),
+                        C.record_card(launch, history, fleet),
+                        C.booster_next_card(launch, history),
+                        C.outlook_card(launch, mode) if mode == "PRE_LAUNCH" else None) if x]
+                    f.check(not better,
+                            f"{name} ({device}): launch stats take slot A only as a fallback",
+                            slots[0]["label"])
+                texts = [s["text"] for s in shown]
+                f.check(len(texts) == len(set(texts)), f"{name} ({device}): no card twice", texts)
+                if crew and stage != "fail":
+                    crew_seen += 1
+                    f.check(slots[1]["text"] == crew,
+                            f"{name} ({device}): the crew holds slot B", slots[1])
+                if stage == "fail":
+                    f.check(crew not in texts or not crew,
+                            f"{name} ({device}): no crew card on a failure", texts)
+            a, b, c = x
+            if c["text"]:
+                three += 1
+            filler = ("DID YOU KNOW?", "PAD HISTORY", "LAUNCH CADENCE")
+            f.check(not (b["label"] in filler and c["text"] and c["label"] not in filler),
+                    f"{name} (X): stats and trivia never sit above a card about the flight",
+                    (b, c))
+            f.check(b["text"] or not c["text"], f"{name} (X): no gap in slot B", (b, c))
         brief = None if C.is_boilerplate(launch, desc) else C.tidy_brief(desc)
         lg_brief = None if C.is_boilerplate(launch, desc) else \
             C.tidy_brief(desc, C.LG_BRIEF_BUDGET)
-        if brief and lg_brief and len(lg_brief) > len(brief):
-            longer += 1
+        if brief and lg_brief:
             f.check(len(lg_brief) <= C.LG_BRIEF_BUDGET + 1,
                     f"{launch['name']}: X brief within its budget", len(lg_brief))
-    f.check(with_c and without_c, "the corpus has flights with and without a third card",
-            (with_c, without_c))
-    f.check(longer > 0, "some brief gets longer on the X", "")
-    return f.report(f"X slots: third card on {with_c} renders, none on {without_c}; "
-                    f"{longer} longer briefs")
+    f.check(crew_seen > 0, "the corpus has a crewed flight", "")
+    return f.report(f"slot rules on both devices (X shows three cards in {three} renders)")
 
 
 def main():
@@ -354,7 +398,7 @@ def main():
               check_writes(rows),
               check_destination(rows),
               check_panel_variants(rows),
-              check_lg_slots(rows)]
+              check_slot_rules(rows)]
     failed = checks.count(False)
     print(f"\n{len(checks) - failed}/{len(checks)} checks passed")
     return 1 if failed else 0

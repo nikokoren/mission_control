@@ -50,10 +50,16 @@ stored state or rotation index anywhere.
 1. `choose_target()` in `update_launch.py` picks which launch owns the screen,
    from `hours_since` the previous launch and `hours_until` the next.
    `IMMINENT_HOURS` / `FRESH_HOURS` / `QUIET_HOURS` / `STALE_HOURS` tune it.
-2. `build_slots()` in `cards.py` picks the two cards. Twelve builders each
-   return text or `None`; ranked order lists per mode; first non-empty wins and
-   slot A's pick is excluded from slot B. Whatever is left rotates by time -
-   monotonic tiers pre-launch, a simple cycle post-launch.
+2. `build_slots()` in `cards.py` picks the cards: two on the OG, three on
+   the X (`lg=True`). Fourteen builders each return text or `None`. Each
+   launch stage (`launch_stage()`: pre, flight, done, fail) has a ranked pool
+   per slot in `POOLS`; a slot takes from its pool what has something to say
+   and is not already shown. The rules, agreed card by card in November 2026:
+   one booster-family card at a time (`booster`, `record`, `career`, `next`),
+   one launch-stats card (`pad`, `cadence`), trivia never in slot A and stats
+   there only as a fallback, crew holds slot B when there is a crew, and on the
+   X stats and trivia sit in slot C. A brief or an outcome holds slot A after
+   launch; everything else rotates with `rotation_step()`.
 
 ## Three states, not two
 
@@ -138,10 +144,12 @@ against the 3.4.4 stylesheet.
 - **X slots**: `build_slots(..., lg=True)` gives `lg_slot_a_*` / `_b_*` /
   `_c_*`, without the cards the panel and footer already show (`dest`, and
   `docking` when the footer is a docking). The X's brief may run to
-  `LG_BRIEF_BUDGET`; the `crew` card exists only here. Slot C is the first
-  `THIRD_SLOT` card the pair did not use - flight-specific cards only, never
-  trivia, cadence, pad or program - and is empty otherwise, so a routine
-  flight keeps two cards. `slot_a_*` / `slot_b_*` stay the OG contract.
+  `LG_BRIEF_BUDGET`. Slot C comes from the stage's `C` pool, mostly the
+  booster card crew pushed out of slot B, then stats and trivia, so most
+  launches fill three slots; slot B never sits empty above slot C.
+  `slot_a_*` / `slot_b_*` keep their field names for the OG; the same rules
+  pick their content. `tests/test_display.py` checks every rule on both
+  devices.
 - **Footer**: `footer_*` fields, post-launch only, chosen by `choose_footer()`
   in `update_launch.py`: a scheduled docking still ahead for this ISS-bound
   spacecraft, else the next launch with real timing (`net_precision` of
@@ -186,7 +194,5 @@ device, not just a rescaled one; see the `trmnl-framework` skill.
 
 - `is_placeholder` misses "Details TBD" style stubs when the description is
   over 60 characters, so they reach the card.
-- `cadence_card` and `pad_card` can both be on screen stating the same pad
-  count in different words.
 - Rotation is keyed to `hours_until`, so a launch that slips jumps backward
   through the tiers.
