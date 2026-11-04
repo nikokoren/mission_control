@@ -2,14 +2,14 @@
     .mc-clip { overflow: hidden; }
 
     /* Takes the height its column leaves over, and may shrink below its
-       content: the main row gives way to the X footer when there is one. */
+       content: the main row gives way to the footer when there is one. */
     .mc-fill { flex: 1 1 0; min-height: 0; }
 
     /* description--large at the regular description weight. On the X every
        16px text style is bold, which turns a paragraph into a block. */
     .mc-regular { font-weight: var(--description-font-weight); }
 
-    /* The line above the X footer: a step heavier than .divider (1px, light
+    /* The line above the footer: a step heavier than .divider (1px, light
        gray), because it separates two contexts -- this launch and what comes
        next -- rather than two parts of one. */
     .mc-rule { width: 100%; height: 2px; min-height: 2px; background: #444; }
@@ -34,6 +34,18 @@
     .mc-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden;
                    text-overflow: ellipsis; }
 
+    /* The OG footer omits the detail row. Let the art yield height and
+       keep both cards inside the remaining column. Portrait shares the
+       remaining row between stacked text and art. */
+    .trmnl .screen--sm .mc-full--footer .mc-rocket-art { min-height: 0; }
+    .trmnl .screen--sm .mc-full .mc-og-cards { min-height: 0; }
+    .trmnl .screen--sm .mc-full .mc-og-card { min-height: 0; }
+    .trmnl .screen--sm.screen--portrait .mc-full--footer .mc-main-column {
+        height: 52cqh;
+    }
+    .trmnl .screen--sm.screen--portrait .mc-full--footer .mc-sidebar {
+        height: auto; flex: 1 1 0; min-height: 0;
+    }
     /* ---------- launch window bar ---------- */
     .mc-tl {display: flex; flex-direction: column; gap: 3px; }
 

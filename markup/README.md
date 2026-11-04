@@ -22,14 +22,33 @@ change the framework version used by the active recipe.
 
 ## TRMNL X changes
 
-`full.liquid` and `shared.liquid` now carry the X layout: a footer, a
-destination explanation and a larger info row, all behind `lg:` classes, so
-the OG renders as before. These use Framework **3.4.4** classes
+`full.liquid` and `shared.liquid` carry the X layout: a detailed footer, a
+destination explanation and a larger info row behind `lg:` classes. The OG
+now shares the footer in a compact form, described below. These use Framework **3.4.4** classes
 (`lg:grow`, `lg:portrait:h--[Ncqh]`, `data-clamp-lg-portrait`). Switch the
 recipe's framework version to 3.4.4 when publishing them. The payload fields
 they read are listed in `CLAUDE.md` under "TRMNL X layout".
 
 ## Editing and publishing
+
+The OG full view also shows a compact, two-row footer: the next event's
+label and title, alongside its countdown. It follows the same lifecycle as
+the X footer, starting after liftoff (including in-flight and confirming
+states). A future ISS docking takes priority over the next timed launch.
+Provider, location, and docking-port details remain in the X footer only.
+No eligible event means no footer row.
+
+The OG keeps two cards and uses the same 500-character mission-brief
+budget as the X. Mashups retain the 360-character budget. Its
+`og_full_slot_a_*` and `og_full_slot_b_*` fields omit a docking already shown
+in the footer; the shared `slot_a_*` / `slot_b_*` pair still serves mashups.
+Older payloads fall back to that shared pair. Portrait reserves room for the
+footer by reducing the text-and-art row.
+
+Long OG briefs use the existing type tiers: above 400 characters, the
+brief switches from large to base description text. The 500-character
+budget changes the full view's brief only; it does not enable a third card.
+Line clamps still apply, including the tighter portrait limits.
 
 The Liquid templates consume the fields generated in `launch.json` by
 `scripts/update_launch.py`. Shared code supplies the `mc-clip` and `mc-tl*`

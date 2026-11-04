@@ -2324,7 +2324,8 @@ def _expand(pool, stage, pad_first_year):
 
 def build_slots(launch, mode, description, program_description, rocket_fact,
                 history=None, fleet=None, hours_until=None, hours_since=None,
-                docking=None, pad_first_year=None, exclude=(), lg=False):
+                docking=None, pad_first_year=None, exclude=(), lg=False,
+                brief_budget=None):
     """
     Returns (slot_a, slot_b), each a dict with 'label' and 'text'; with
     lg=True, the TRMNL X's (slot_a, slot_b, slot_c). An empty slot is
@@ -2339,9 +2340,13 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
     exclude names cards a view already shows elsewhere: the X puts the
     destination note in its sidebar and the docking countdown in its footer.
     lg=True also lets the brief run to LG_BRIEF_BUDGET.
+    brief_budget overrides the brief length independently of card count;
+    the full OG uses the X's 500-character budget while keeping two cards.
     """
+    if brief_budget is None:
+        brief_budget = LG_BRIEF_BUDGET if lg else BRIEF_BUDGET
     brief = None if is_boilerplate(launch, description) else \
-        tidy_brief(description, LG_BRIEF_BUDGET if lg else BRIEF_BUDGET)
+        tidy_brief(description, brief_budget)
     # The label is free tense signal: it is always on screen and costs the
     # body no characters.
     resolved = is_resolved(launch)
@@ -2422,7 +2427,7 @@ def build_slots(launch, mode, description, program_description, rocket_fact,
             return take(avail_c[step % len(avail_c)]) if avail_c else None
         c = pick_c()
         # Slot B with nothing of its own takes slot C's card, and slot C
-        # picks again, so the X never shows a gap above a card.
+        # picks again, so a three-card view never shows a gap above a card.
         if b is None and c is not None:
             b, c = c, pick_c()
 

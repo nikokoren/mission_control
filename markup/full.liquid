@@ -24,11 +24,19 @@
 {%- assign xc_text = lg_slot_c_text | default: "" -%}
 
 {%- comment -%} The footer exists only after launch, only with a next event,
-    and only on the X. Absent, it takes no row and gives its height back. {%- endcomment -%}
+    on both devices. Absent, it takes no row and gives its height back. {%- endcomment -%}
 {%- assign has_footer = false -%}
 {%- if footer_kind == "launch" or footer_kind == "docking" -%}{%- assign has_footer = true -%}{%- endif -%}
 
-{%- assign a_len = slot_a_text | size -%}
+{%- comment -%} Full OG cards omit the docking repeated in its footer.
+    Older payloads fall back to the shared mashup pair. {%- endcomment -%}
+{%- assign oa_label = slot_a_label -%}{%- assign oa_text = slot_a_text -%}
+{%- assign ob_label = slot_b_label -%}{%- assign ob_text = slot_b_text -%}
+{%- if og_full_slot_a_label != nil -%}
+  {%- assign oa_label = og_full_slot_a_label -%}{%- assign oa_text = og_full_slot_a_text -%}
+  {%- assign ob_label = og_full_slot_b_label -%}{%- assign ob_text = og_full_slot_b_text -%}
+{%- endif -%}
+{%- assign a_len = oa_text | size -%}
 {%- assign a_cls = "description description--large lg:description--xlarge" -%}
 {%- assign a_clamp = 7 -%}
 {%- if a_len > 400 -%}
@@ -40,7 +48,7 @@
   {%- assign a_clamp = 9 -%}
 {%- endif -%}
 
-{%- assign b_len = slot_b_text | size -%}
+{%- assign b_len = ob_text | size -%}
 {%- assign b_cls = "description description--large lg:description--xlarge" -%}
 {%- assign b_clamp = 5 -%}
 {%- if b_len > 285 -%}
@@ -74,12 +82,12 @@
 {%- if xc_len > 285 -%}{%- assign xc_cls = "description lg:description--large mc-regular" -%}{%- assign xc_clamp = 6 -%}{%- endif -%}
 {%- if xc_len > 410 -%}{%- assign xc_cls = "label label--small lg:description" -%}{%- assign xc_clamp = 7 -%}{%- endif -%}
 
-<div class="layout">
+<div class="layout mc-full{% if has_footer %} mc-full--footer{% endif %}">
   <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
-  <div class="flex flex--row portrait:flex--col flex--top w--full mc-fill gap--large portrait:gap--small">
+  <div class="flex flex--row portrait:flex--col flex--top w--full mc-fill mc-main-row gap--large portrait:gap--small">
 
     {%- comment -%} ============ MAIN COLUMN ============ {%- endcomment -%}
-    <div class="w--[62cqw] portrait:w--full h--full portrait:h--[56cqh] {% if has_footer %}lg:portrait:h--[50cqh]{% endif %} flex flex--col gap--small">
+    <div class="w--[62cqw] portrait:w--full h--full portrait:h--[56cqh] mc-main-column {% if has_footer %}lg:portrait:h--[50cqh]{% endif %} flex flex--col gap--small">
 
       {%- comment -%} --- header --- {%- endcomment -%}
       <div class="flex flex--row flex--center-y w--full gap--medium">
@@ -176,20 +184,21 @@
 
       <div class="divider shrink-0"></div>
 
-      {%- comment -%} OG slots. Hidden on the X, which has its own pair below. {%- endcomment -%}
-      <div class="grow flex flex--col w--full gap--small mc-clip lg:hidden">
-        <div class="flex flex--col flex--left w--full gap--xsmall">
-          <span class="label label--small lg:label--base">{{ slot_a_label }}</span>
-          <span class="{{ a_cls }}" data-clamp="{{ a_clamp }}" data-clamp-portrait="3" data-clamp-lg-portrait="3">{{ slot_a_text }}</span>
+      {%- comment -%} OG full view: two cards, with briefs up to 500 characters. {%- endcomment -%}
+      <div class="grow flex flex--col w--full gap--small mc-clip lg:hidden mc-og-cards">
+        <div class="flex flex--col flex--left w--full gap--xsmall mc-og-card">
+          <span class="label label--small">{{ oa_label }}</span>
+          <span class="{{ a_cls }} mc-og-card-body" data-clamp="{{ a_clamp }}" data-clamp-portrait="3">{{ oa_text }}</span>
         </div>
 
-        {% if slot_b_text != "" %}
+        {% if ob_text != "" %}
         <div class="divider shrink-0"></div>
-        <div class="flex flex--col flex--left w--full gap--xsmall">
-          <span class="label label--small lg:label--base">{{ slot_b_label }}</span>
-          <span class="{{ b_cls }}" data-clamp="{{ b_clamp }}" data-clamp-portrait="4" data-clamp-lg-portrait="4">{{ slot_b_text }}</span>
+        <div class="flex flex--col flex--left w--full gap--xsmall mc-og-card">
+          <span class="label label--small">{{ ob_label }}</span>
+          <span class="{{ b_cls }} mc-og-card-body" data-clamp="{{ b_clamp }}" data-clamp-portrait="4">{{ ob_text }}</span>
         </div>
         {% endif %}
+
       </div>
 
       {%- comment -%} X slots. {%- endcomment -%}
@@ -224,7 +233,7 @@
     {%- comment -%} lg:grow: flex--row centres its children, which left the
         two columns inset from the full-width footer on the X. Letting the
         sidebar take the slack lines both edges up with it. {%- endcomment -%}
-    <div class="w--[31cqw] lg:grow portrait:w--full h--full portrait:h--[40cqh] {% if has_footer %}lg:portrait:h--[34cqh]{% endif %} flex flex--col gap--small">
+    <div class="w--[31cqw] lg:grow portrait:w--full h--full portrait:h--[40cqh] mc-sidebar {% if has_footer %}lg:portrait:h--[34cqh]{% endif %} flex flex--col gap--small">
 
       {%- comment -%} Destination name, then on the X what it means. The OG
           keeps the orbit name; the X shows destination, which is the
@@ -247,7 +256,7 @@
 
       <div class="divider shrink-0"></div>
 
-      <div class="grow flex flex--row {% if rocket_ascending %}flex--top{% else %}flex--bottom{% endif %} flex--center-x w--full h--min-[40cqh] lg:h--min-[28cqh] portrait:h--min-[16cqh] mc-clip">
+      <div class="grow flex flex--row {% if rocket_ascending %}flex--top{% else %}flex--bottom{% endif %} flex--center-x w--full h--min-[40cqh] lg:h--min-[28cqh] portrait:h--min-[16cqh] mc-clip mc-rocket-art">
         <img
           class="image w--max-full h--max-full"
           src="{{ rocket_visual }}"
@@ -266,21 +275,21 @@
 
   </div>
 
-  {%- comment -%} ============ FOOTER (X only) ============
+  {%- comment -%} ============ FOOTER ============
       What follows the launch on screen, after it has flown: its docking if
       one is scheduled, else the next launch with real timing. Every field
       comes from that one event. Rendered only when there is one. {%- endcomment -%}
   {%- if has_footer -%}
-  <div class="hidden lg:flex flex--col w--full shrink-0 gap--small">
+  <div class="flex flex--col w--full shrink-0 gap--small mc-footer">
     <div class="mc-rule shrink-0"></div>
     <div class="flex flex--row flex--bottom w--full gap--medium">
       <div class="flex flex--col flex--left grow gap--xsmall mc-min0">
         <span class="label label--small lg:label--base">{{ footer_label }}</span>
-        <span class="title lg:title--base" data-clamp="1">{{ footer_title }}</span>
+        <span class="title title--small lg:title--base" data-clamp="1">{{ footer_title }}</span>
         {%- comment -%} Last row, bottom left, one line: who and where for a
             launch, the port for a docking. {%- endcomment -%}
         {%- if footer_kind == "launch" -%}
-        <div class="flex flex--row flex--left flex--center-y w--full gap--small mc-oneline">
+        <div class="hidden lg:flex flex--row flex--left flex--center-y w--full gap--small mc-oneline">
           {%- if footer_provider != blank -%}
             <span class="label label--small lg:label--base shrink-0">BY:</span>
             <span class="description lg:description--large shrink-0">{{ footer_provider }}</span>
@@ -291,7 +300,7 @@
           {%- endif -%}
         </div>
         {%- elsif footer_detail != blank -%}
-          <span class="description lg:description--large" data-clamp="1">{{ footer_detail }}</span>
+          <div class="hidden lg:block"><span class="description lg:description--large" data-clamp="1">{{ footer_detail }}</span></div>
         {%- endif -%}
       </div>
       <div class="flex flex--col flex--right shrink-0 gap--xsmall">

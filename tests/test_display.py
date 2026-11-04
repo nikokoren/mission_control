@@ -21,6 +21,7 @@ import copy
 import json
 import os
 import sys
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -340,8 +341,13 @@ def check_slot_rules(rows):
             og = C.build_slots(launch, mode, desc, pdesc, FACT, **kw)
             x = C.build_slots(launch, mode, desc, pdesc, FACT, lg=True,
                               exclude=["dest"], **kw)
+            og_full = C.build_slots(launch, mode, desc, pdesc, FACT,
+                                    brief_budget=C.LG_BRIEF_BUDGET, **kw)
             name = f"{launch['name']} at {hours}h"
-            for device, slots in (("OG", og), ("X", x)):
+            f.check(len(og_full) == 2, f"{name}: OG full view keeps two cards")
+            f.check([s["label"] for s in og_full] == [s["label"] for s in og],
+                    f"{name}: longer OG briefs preserve its card selection")
+            for device, slots in (("OG", og), ("X", x), ("OG full", og_full)):
                 shown = [s for s in slots if s["text"]]
                 fams = [family(launch, history, fleet, s) for s in shown]
                 f.check(fams.count("booster") <= 1,
@@ -390,6 +396,71 @@ def check_slot_rules(rows):
     return f.report(f"slot rules on both devices (X shows three cards in {three} renders)")
 
 
+def check_og_full_slots(rows, dockings):
+    """The full OG can omit footer content without changing mashup cards."""
+    f = Failures()
+    docking_cases = extended_briefs = 0
+    build_slots = U.build_slots
+    for row in rows:
+        launch, mode = row["launch"], row["mode"]
+        out = U.process_launch_data(launch, mode, with_history=False)
+        for slot in "ab":
+            full = out.get(f"og_full_slot_{slot}_text", "")
+            label = out.get(f"og_full_slot_{slot}_label")
+            f.check(label == out[f"slot_{slot}_label"],
+                    f"{launch['name']}: longer briefs keep the same card selection")
+            if label in ("MISSION BRIEF", "MISSION RECAP"):
+                f.check(0 < len(full) <= C.LG_BRIEF_BUDGET + 1,
+                        f"{launch['name']}: full OG brief stays within the 500-character budget")
+                f.check(len(out[f"slot_{slot}_text"]) <= C.BRIEF_BUDGET + 1,
+                        f"{launch['name']}: mashup brief keeps its shorter budget")
+                extended_briefs += len(full) > C.BRIEF_BUDGET + 1
+            else:
+                f.check(full == out[f"slot_{slot}_text"],
+                        f"{launch['name']}: other mashup cards are unchanged")
+        f.check("og_full_slot_c_text" not in out, "OG full view supplies only two cards")
+    f.check(extended_briefs > 0, "real fixtures exercise briefs beyond the old 360-character limit")
+
+    for event in dockings["results"]:
+        launch_id = event.get("launch_id")
+        matching = [r["launch"] for r in rows if r["launch"].get("id") == launch_id]
+        if not matching:
+            continue
+        launch = matching[0]
+        before = at(event["docking"]) - timedelta(hours=6)
+        docking = H.match_docking(dockings, "", launch_id, before)
+        if not docking:
+            continue
+
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return before
+
+        # Sample rotation independently of the docking clock, as in the
+        # slot-rule checks. The cargo fixture's NET has since slipped past
+        # its recorded docking; at step zero its booster hides the duplicate.
+        for hours in (1, 3, 9, 20):
+            def at_rotation(*args, **kwargs):
+                kwargs["hours_since"] = hours
+                return build_slots(*args, **kwargs)
+
+            with patch.object(U, "datetime", Clock), \
+                 patch.object(U, "build_slots", side_effect=at_rotation), \
+                 patch.object(U, "get_docking", return_value=docking), \
+                 patch.object(U, "get_booster_history", return_value=None), \
+                 patch.object(U, "get_fleet", return_value=None), \
+                 patch.object(U, "get_pad_first_year", return_value=None):
+                out = U.process_launch_data(launch, "POST_LAUNCH", with_history=True)
+            f.check(out.get("footer_kind") == "docking", "real docking fixture reaches the footer")
+            for slot in "ab":
+                f.check(out.get(f"og_full_slot_{slot}_label") != "NEXT MILESTONE",
+                        "OG full slots do not repeat the docking footer")
+            docking_cases += 1
+    f.check(docking_cases > 0, "exercised real docking fixtures")
+    return f.report("OG full cards preserve mashups and exclude footer docking")
+
+
 def main():
     rows, dockings = load()
     checks = [check_docking_match(rows, dockings),
@@ -398,7 +469,8 @@ def main():
               check_writes(rows),
               check_destination(rows),
               check_panel_variants(rows),
-              check_slot_rules(rows)]
+              check_slot_rules(rows),
+              check_og_full_slots(rows, dockings)]
     failed = checks.count(False)
     print(f"\n{len(checks) - failed}/{len(checks)} checks passed")
     return 1 if failed else 0

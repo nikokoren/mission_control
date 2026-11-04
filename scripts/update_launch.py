@@ -17,7 +17,8 @@ from datetime import datetime, timezone
 
 from cards import (build_slots, dig, short_pad, is_placeholder, lead_booster,
                    real_serial, is_resolved, clip, strip_corporate,
-                   is_iss_bound, destination_label, destination_explanation)
+                   is_iss_bound, destination_label, destination_explanation,
+                   LG_BRIEF_BUDGET)
 from history import get_booster_history, get_fleet, get_docking, get_pad_first_year
 from facts import get_rocket_fact
 
@@ -503,14 +504,20 @@ def process_launch_data(launch, mode_override=None, with_history=False, candidat
     slot_a, slot_b = build_slots(launch, mode, description, program_description,
                                  rocket_fact, **slot_args)
 
-    # --- the TRMNL X: destination panel and footer ---
+    # --- full views: destination panel and footer ---
     # The X shows the destination explanation in its sidebar and, after
     # launch, the next event in a footer, so its text slots skip both. It
-    # also has room the OG lacks: a longer mission brief, the crew card, and
-    # a third slot that appears only for a card about this flight. The OG
-    # keeps slot_a_* / slot_b_* exactly as before until its own layout moves.
+    # also has room for a third slot. Both full views use longer briefs. Shared
+    # slot_a_* / slot_b_* stay unchanged for mashups; each full view has
+    # its own selection so its footer does not repeat a docking card.
     dest_explanation = destination_explanation(launch, now) or ""
     footer = choose_footer(launch, mode, docking, candidates or [], now)
+    # Among OG views only full has a footer. Keep the shared mashup pair
+    # intact, and omit its docking story from the full view's own cards.
+    og_exclude = ["docking"] if footer.get("footer_kind") == "docking" else []
+    og_a, og_b = build_slots(launch, mode, description, program_description,
+                               rocket_fact, exclude=og_exclude,
+                               brief_budget=LG_BRIEF_BUDGET, **slot_args)
     lg_exclude = []
     if dest_explanation:
         lg_exclude.append("dest")
@@ -578,6 +585,12 @@ def process_launch_data(launch, mode_override=None, with_history=False, candidat
         "slot_a_text": slot_a["text"],
         "slot_b_label": slot_b["label"],
         "slot_b_text": slot_b["text"],
+
+        # OG full view: two cards with the same brief budget as the X.
+        "og_full_slot_a_label": og_a["label"],
+        "og_full_slot_a_text": og_a["text"],
+        "og_full_slot_b_label": og_b["label"],
+        "og_full_slot_b_text": og_b["text"],
 
         # The TRMNL X's slots: without what its destination panel and
         # footer already show, and a third only for a card about this flight.

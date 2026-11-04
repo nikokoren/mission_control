@@ -123,8 +123,8 @@ it is meant to catch. A check that cannot fail is worse than no check.
 
 ## TRMNL X layout (full view)
 
-The X gets its own arrangement through `lg:` classes; the OG renders as
-before. Markup in `markup/full.liquid` targets Framework **3.4.4** (confirmed
+The X gets its own arrangement through `lg:` classes; the OG now has a
+compact version of its footer, described below. Markup in `markup/full.liquid` targets Framework **3.4.4** (confirmed
 as the current release, 2026-10-24), and every class it adds was checked
 against the 3.4.4 stylesheet.
 
@@ -147,8 +147,9 @@ against the 3.4.4 stylesheet.
   `LG_BRIEF_BUDGET`. Slot C comes from the stage's `C` pool, mostly the
   booster card crew pushed out of slot B, then stats and trivia, so most
   launches fill three slots; slot B never sits empty above slot C.
-  `slot_a_*` / `slot_b_*` keep their field names for the OG; the same rules
-  pick their content. `tests/test_display.py` checks every rule on both
+  `slot_a_*` / `slot_b_*` keep their field names for mashups; the OG full
+  view uses `og_full_slot_a_*` / `og_full_slot_b_*`, excluding a docking
+  already in its footer. `tests/test_display.py` checks every rule on both
   devices.
 - **Footer**: `footer_*` fields, post-launch only, chosen by `choose_footer()`
   in `update_launch.py`: a scheduled docking still ahead for this ISS-bound
@@ -160,6 +161,23 @@ against the 3.4.4 stylesheet.
   moved, which post-launch now includes the footer's. Expect a commit every
   run while a footer is shown.
 - Docking events are matched by `launch_id` in `history.match_docking()`.
+
+## OG full view
+
+The OG keeps two cards and the same 500-character brief budget as the X.
+Mashups keep their 360-character budget. Its footer shows
+the next event's label, title, and countdown; the X alone shows the extra
+provider/location or docking-port row. Both follow the same post-liftoff
+selection, including in-flight and confirming states. A missing event gives
+the row's height back. Portrait divides the remaining row between text and
+rocket art. Shared styles scope these adjustments to the OG full view.
+
+`brief_budget` in `build_slots()` controls brief length independently of
+`lg=True` (three cards and X selection rules). The OG full pair passes
+`LG_BRIEF_BUDGET` explicitly, keeping two cards and its existing selection
+rules. There is no OG third-card variant. Briefs above 400 characters use
+base description text; existing line clamps still apply. See
+`markup/README.md` for the editor publishing steps.
 
 ## Design work queued - TRMNL X
 
