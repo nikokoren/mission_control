@@ -39,7 +39,7 @@ Provider, location, and docking-port details remain in the X footer only.
 No eligible event means no footer row.
 
 The OG keeps two cards and uses the same 500-character mission-brief
-budget as the X. Mashups retain the 360-character budget. Its
+budget as the X. Half views retain the 360-character budget. Its
 `og_full_slot_a_*` and `og_full_slot_b_*` fields omit a docking already shown
 in the footer; the shared `slot_a_*` / `slot_b_*` pair still serves mashups.
 Older payloads fall back to that shared pair. Portrait reserves room for the
@@ -49,6 +49,21 @@ Long OG briefs use the existing type tiers: above 400 characters, the
 brief switches from large to base description text. The 500-character
 budget changes the full view's brief only; it does not enable a third card.
 Line clamps still apply, including the tighter portrait limits.
+
+The quarter view uses a flex header with MISSION and its title on the left,
+with an outlined countdown or status on the right in both orientations. Its
+center shows the card title and text from `og_full_slot_a_*` (up to a
+500-character brief), falling back to `slot_a_*` for older payloads. Native
+responsive clamps allow more text on the X and in portrait. Dates and
+operator labels are omitted.
+
+A large rocket name anchors the bottom until there is an eligible next
+event **and the current flight has a confirmed result** (Success, Failure,
+or Partial Failure). Then the next-event row replaces the rocket block:
+event label and title at left, COUNTDOWN and an outlined timer at right.
+In-flight and confirming states keep the rocket block. This differs from
+the full view, whose footer can start at liftoff. Updating the quarter view
+requires both `quadrant.liquid` and `shared.liquid` in the editor.
 
 The Liquid templates consume the fields generated in `launch.json` by
 `scripts/update_launch.py`. Shared code supplies the `mc-clip` and `mc-tl*`

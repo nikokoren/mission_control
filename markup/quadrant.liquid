@@ -1,76 +1,52 @@
-{%- comment -%}
-    Title tiers at 400px hold roughly 25, 31 and 44 characters a line.
-    On X there is more room, so each tier steps up one with lg:.
-{%- endcomment -%}
-{%- assign title_cls = "title title--large lg:title--xlarge" -%}
-{%- if name.size > 14 -%}{%- assign title_cls = "title lg:title--large" -%}{%- endif -%}
-{%- if name.size > 22 -%}{%- assign title_cls = "title title--small lg:title--base" -%}{%- endif -%}
-
+{%- assign q_title = 'title lg:title--large' -%}
+{%- if name.size > 22 -%}{%- assign q_title = 'title title--small lg:title--base' -%}{%- endif -%}
+{%- assign q_resolved = false -%}
+{%- if status == 'Success' or status == 'Failure' or status == 'Partial Failure' -%}{%- assign q_resolved = true -%}{%- endif -%}
+{%- assign q_has_next = false -%}
+{%- if q_resolved -%}
+  {%- if footer_kind == 'launch' or footer_kind == 'docking' -%}{%- assign q_has_next = true -%}{%- endif -%}
+{%- endif -%}
+{%- assign q_card_label = og_full_slot_a_label | default: slot_a_label -%}
+{%- assign q_card_text = og_full_slot_a_text | default: slot_a_text -%}
 <div class="layout">
-  <div class="flex flex--col w--full h--full gap--small mx--2 my--2">
-
-    <div class="flex flex--row portrait:flex--col flex--center-y portrait:flex--left
-                grow w--full gap--medium">
-
-      <div class="flex flex--col flex--left grow gap--xsmall">
+  <div class="flex flex--col w--full h--full gap--small mc-quarter">
+    <div class="flex flex--row flex--top w--full shrink-0 gap--small">
+      <div class="flex flex--col flex--left grow gap--xsmall mc-quarter-min">
         <span class="label label--small lg:label--base">MISSION</span>
-        <span class="{{ title_cls }}">{{ name }}</span>
+        <span class="{{ q_title }}" data-clamp="2" data-clamp-portrait="4" data-clamp-lg-portrait="3">{{ name }}</span>
       </div>
-
-      <div class="flex flex--col flex--right portrait:flex--left shrink-0 gap--xsmall">
-        {%- if mode == 'PRE_LAUNCH' -%}
-          <span class="label label--small lg:label--base">COUNTDOWN</span>
-          <span class="label label--large label--outline lg:label--xlarge value--tnums">{{ countdown }}</span>
-        {%- else -%}
-          <span class="label label--small lg:label--base">STATUS</span>
-          <span class="label label--large lg:label--xlarge {% if status == 'Success' %}label--inverted{% else %}label--outline{% endif %}">
-            {%- if status == 'Success' -%}SUCCESS
-            {%- elsif status == 'Failure' -%}FAILURE
-            {%- elsif status == 'Partial Failure' -%}PARTIAL FAIL
-            {%- elsif status == 'PENDING' -%}CONFIRMING
-            {%- else -%}{{ status | upcase }}
-            {%- endif -%}
-          </span>
-        {%- endif -%}
-
-        {% if mode == 'PRE_LAUNCH' and window_start_ts != window_end_ts %}
-          {%- assign duration = window_end_ts | minus: window_start_ts -%}
-          {%- assign elapsed = date_ts | minus: window_start_ts -%}
-          {%- if duration > 0 -%}
-            {%- assign pct = elapsed | times: 100.0 | divided_by: duration -%}
-          {%- else -%}
-            {%- assign pct = 50 -%}
-          {%- endif -%}
-          {%- if pct < 0 -%}{%- assign pct = 0 -%}{%- endif -%}
-          {%- if pct > 100 -%}{%- assign pct = 100 -%}{%- endif -%}
-          {%- assign frac = pct | divided_by: 100.0 -%}
-
-          <div class="mc-tl">
-            <span class="label label--small lg:label--base">LAUNCH WINDOW</span>
-            <div class="mc-tl-bar">
-              <div class="mc-tl-line">
-                <div class="mc-tl-dot" style="left: calc(6px + {{ frac }} * (100% - 12px));"></div>
-              </div>
-              {% if date_ts != window_start_ts and date_ts != window_end_ts %}
-              <span class="mc-tl-t0 label label--small value--tnums" style="{% if pct < 15 %}left: 0;{% elsif pct > 85 %}right: 0;{% else %}left: {{ pct }}%; transform: translateX(-50%);{% endif %}">{{ date_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
-              {% endif %}
-            </div>
-            <div class="mc-tl-ends">
-              <span class="label label--small value--tnums">{{ window_start_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
-              <span class="label label--small value--tnums">{{ window_end_ts | plus: trmnl.user.utc_offset | date: "%H:%M" }}</span>
-            </div>
-          </div>
-        {% endif %}
+      <div class="flex flex--col flex--right shrink-0 gap--xsmall">
+        <span class="label label--small lg:label--base">{% if mode == 'PRE_LAUNCH' %}COUNTDOWN{% else %}STATUS{% endif %}</span>
+        <span class="label label--outline lg:label--xlarge value--tnums">
+          {% if mode == 'PRE_LAUNCH' %}{{ countdown }}
+          {% elsif status == 'Success' %}SUCCESS
+          {% elsif status == 'Failure' %}FAILURE
+          {% elsif status == 'Partial Failure' %}PARTIAL FAIL
+          {% elsif status == 'PENDING' %}CONFIRMING
+          {% else %}{{ status | upcase }}{% endif %}
+        </span>
       </div>
     </div>
-
-    {%- comment -%} ---- vehicle ---- {%- endcomment -%}
-    <div class="divider shrink-0"></div>
-
-    <div class="flex flex--col flex--center-x w--full shrink-0 gap--xsmall">
-      <span class="label label--base lg:label--large">ROCKET USED</span>
-      <span class="title title--large lg:title--xlarge">{{ rocket }}</span>
+    <div class="grow flex flex--col flex--top flex--left w--full gap--xsmall mc-quarter-min mc-quarter-context">
+      <span class="label label--small lg:label--base shrink-0 w--full" data-clamp="1">{{ q_card_label }}</span>
+      <span class="description description--large mc-regular w--full" data-clamp="4" data-clamp-lg="9" data-clamp-portrait="9" data-clamp-lg-portrait="12">{{ q_card_text }}</span>
     </div>
-
+    {% if q_has_next %}
+    <div class="flex flex--row flex--top w--full shrink-0 gap--small mc-quarter-next">
+      <div class="flex flex--col flex--left grow gap--xsmall mc-quarter-min">
+        <span class="label label--small lg:label--base">{{ footer_label }}</span>
+        <span class="title title--small lg:title--base" data-clamp="1" data-clamp-portrait="3" data-clamp-lg-portrait="2">{{ footer_title }}</span>
+      </div>
+      <div class="flex flex--col flex--right shrink-0 gap--xsmall">
+        <span class="label label--small lg:label--base">COUNTDOWN</span>
+        <span class="label label--outline lg:label--large value--tnums">{{ footer_countdown }}</span>
+      </div>
+    </div>
+    {% else %}
+    <div class="flex flex--col flex--left w--full shrink-0 gap--xsmall">
+      <span class="label label--small lg:label--base">ROCKET USED</span>
+      <span class="title lg:title--large" data-clamp="2">{{ rocket }}</span>
+    </div>
+    {% endif %}
   </div>
 </div>

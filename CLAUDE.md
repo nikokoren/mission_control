@@ -165,7 +165,7 @@ against the 3.4.4 stylesheet.
 ## OG full view
 
 The OG keeps two cards and the same 500-character brief budget as the X.
-Mashups keep their 360-character budget. Its footer shows
+Half views keep their 360-character budget. Its footer shows
 the next event's label, title, and countdown; the X alone shows the extra
 provider/location or docking-port row. Both follow the same post-liftoff
 selection, including in-flight and confirming states. A missing event gives
@@ -178,6 +178,21 @@ rocket art. Shared styles scope these adjustments to the OG full view.
 rules. There is no OG third-card variant. Briefs above 400 characters use
 base description text; existing line clamps still apply. See
 `markup/README.md` for the editor publishing steps.
+
+## Quarter view
+
+`markup/quadrant.liquid` uses native flex rows for the mission header and
+next-event row in both orientations. Countdown and status badges always
+use `label--outline`. The center card reads `og_full_slot_a_*` (500-character
+brief budget), with a fallback to `slot_a_*` for older payloads, and shows
+the card label above its text. Responsive line clamps budget the available
+space. Styles are scoped under `.mc-quarter` in shared.liquid.
+
+The rocket name is the same base size as a short mission title. A confirmed
+result plus an eligible footer event replaces the rocket block with the
+next-event row; in-flight and confirming states keep the rocket. Dates and
+operator labels are omitted. The quarter view does not change which launch
+owns the screen. Half views retain their existing templates and card fields.
 
 ## Design work queued - TRMNL X
 

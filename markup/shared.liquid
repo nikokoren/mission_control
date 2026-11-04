@@ -46,6 +46,16 @@
     .trmnl .screen--sm.screen--portrait .mc-full--footer .mc-sidebar {
         height: auto; flex: 1 1 0; min-height: 0;
     }
+    /* Quarter view: native flex sizing, with the center card taking the
+       space between the header and rocket / next-event row. */
+    .trmnl .mc-quarter { min-height: 0; }
+    .trmnl .mc-quarter .mc-quarter-min { min-width: 0; min-height: 0; }
+    .trmnl .mc-quarter-context { justify-content: flex-start; }
+    .trmnl .mc-quarter-next {
+        border-top: 1px solid #666;
+        padding-top: var(--gap-small);
+    }
+
     /* ---------- launch window bar ---------- */
     .mc-tl {display: flex; flex-direction: column; gap: 3px; }
 
