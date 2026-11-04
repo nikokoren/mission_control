@@ -695,7 +695,7 @@ def launch_footer(candidates, now):
             dig(cand, "launch_service_provider", "name", default="") or "")
         return {
             "footer_kind": "launch",
-            "footer_label": "NEXT LAUNCH",
+            "footer_label": "NEXT MISSION",
             "footer_title": display_name(cand),
             # Shown as BY / FROM, which the markup labels itself.
             "footer_detail": "",

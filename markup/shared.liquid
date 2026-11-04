@@ -56,6 +56,19 @@
         padding-top: var(--gap-small);
     }
 
+    /* Half views: let context and rocket art share the available height.
+       Scoped font and image rendering retain fine rocket strokes on the X. */
+    .trmnl .mc-halfh-panel, .trmnl .mc-halfh-panel .mc-halfh-panel-min { min-width:0; min-height:0; }
+    .trmnl .mc-halfh-panel-main, .trmnl .mc-halfh-panel-context, .trmnl .mc-halfh-panel-card { flex:1 1 0; justify-content:flex-start; }
+    .trmnl .mc-halfh-panel-image { flex:1 1 0; min-width:0; min-height:0; }
+    .trmnl .mc-halfh-panel-image img { object-fit:contain; object-position:bottom; image-rendering:auto; }
+    .trmnl .mc-halfh-panel .mc-regular { font-variation-settings:'wght' var(--description-font-weight); }
+    .trmnl .mc-halfv, .trmnl .mc-halfv .mc-halfv-min { min-width:0; min-height:0; }
+    .trmnl .mc-halfv-context, .trmnl .mc-halfv-card { justify-content:flex-start; }
+    .trmnl .mc-halfv-image { flex:1 1 0; min-width:0; min-height:0; }
+    .trmnl .mc-halfv-image img { object-fit:contain; object-position:bottom; image-rendering:auto; }
+    .trmnl .mc-halfv .mc-regular { font-variation-settings:'wght' var(--description-font-weight); }
+
     /* ---------- launch window bar ---------- */
     .mc-tl {display: flex; flex-direction: column; gap: 3px; }
 

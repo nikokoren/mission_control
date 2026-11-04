@@ -165,7 +165,7 @@ against the 3.4.4 stylesheet.
 ## OG full view
 
 The OG keeps two cards and the same 500-character brief budget as the X.
-Half views keep their 360-character budget. Its footer shows
+Its footer shows
 the next event's label, title, and countdown; the X alone shows the extra
 provider/location or docking-port row. Both follow the same post-liftoff
 selection, including in-flight and confirming states. A missing event gives
@@ -192,7 +192,32 @@ The rocket name is the same base size as a short mission title. A confirmed
 result plus an eligible footer event replaces the rocket block with the
 next-event row; in-flight and confirming states keep the rocket. Dates and
 operator labels are omitted. The quarter view does not change which launch
-owns the screen. Half views retain their existing templates and card fields.
+owns the screen. Half views use the same 500-character card pair, as
+described below.
+
+## Half views
+
+Both half views use `og_full_slot_a_*` / `og_full_slot_b_*` (500-character
+brief budget), falling back to `slot_a_*` / `slot_b_*` for older payloads.
+MISSION and its title share a native flex header with an outlined countdown
+or status badge at the top right. Titles above 22 characters use a smaller
+type tier; responsive clamps limit them to two lines in landscape, four on
+OG portrait, and three on X portrait.
+
+The horizontal half puts two labeled context cards beside a divided rocket
+column. The rocket uses the top row's full height, with ROCKET USED and its
+name below the image; portrait stacks the context cards. The vertical half
+stacks context and art, showing one card on OG landscape and two on X or
+portrait. An intentionally empty rocket image gives its space to context
+and enables the second card on OG landscape too. Art uses contain sizing,
+bottom alignment, and automatic image rendering to retain fine strokes.
+
+Both keep the rocket caption when a next-event footer appears. As in the
+quarter view, this requires a confirmed result and an eligible event. The
+footer spans the full width with the full view's heavier divider, event
+title at left, and COUNTDOWN plus an outlined timer at right. Launch events
+are labeled NEXT MISSION across all views; docking retains its own label.
+Shared styles are scoped under `.mc-halfh-panel` and `.mc-halfv`.
 
 ## Design work queued - TRMNL X
 

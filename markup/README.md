@@ -39,15 +39,15 @@ Provider, location, and docking-port details remain in the X footer only.
 No eligible event means no footer row.
 
 The OG keeps two cards and uses the same 500-character mission-brief
-budget as the X. Half views retain the 360-character budget. Its
+budget as the X. Its
 `og_full_slot_a_*` and `og_full_slot_b_*` fields omit a docking already shown
-in the footer; the shared `slot_a_*` / `slot_b_*` pair still serves mashups.
-Older payloads fall back to that shared pair. Portrait reserves room for the
+in the footer; older payloads fall back to the shared
+`slot_a_*` / `slot_b_*` pair. Portrait reserves room for the
 footer by reducing the text-and-art row.
 
 Long OG briefs use the existing type tiers: above 400 characters, the
 brief switches from large to base description text. The 500-character
-budget changes the full view's brief only; it does not enable a third card.
+budget does not enable a third card on the OG.
 Line clamps still apply, including the tighter portrait limits.
 
 The quarter view uses a flex header with MISSION and its title on the left,
@@ -64,6 +64,25 @@ event label and title at left, COUNTDOWN and an outlined timer at right.
 In-flight and confirming states keep the rocket block. This differs from
 the full view, whose footer can start at liftoff. Updating the quarter view
 requires both `quadrant.liquid` and `shared.liquid` in the editor.
+
+The half views use the same 500-character card pair, with a fallback to
+`slot_a_*` / `slot_b_*`. Both keep the outlined countdown or status at the
+top right. Longer mission titles use a smaller font and wrap, with an
+ellipsis after the responsive line limit.
+
+Half horizontal shows two labeled cards beside a divided rocket column;
+portrait stacks the cards. The rocket fills the available column height,
+with ROCKET USED and its name below. Half vertical stacks context above the
+rocket: one card on OG landscape, two on X and in portrait. An intentionally
+empty rocket image gives its space to context, including a second card on
+OG landscape.
+
+Both half views show the next event after a confirmed result, using a
+full-width footer and heavier divider. The rocket caption stays visible.
+Launch events now read NEXT MISSION in every view; docking events retain
+NEXT MILESTONE · DOCKING. Updating these layouts requires
+`half_horizontal.liquid`, `half_vertical.liquid`, and `shared.liquid` in
+the editor, alongside the updated payload generator.
 
 The Liquid templates consume the fields generated in `launch.json` by
 `scripts/update_launch.py`. Shared code supplies the `mc-clip` and `mc-tl*`
