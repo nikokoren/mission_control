@@ -259,6 +259,30 @@ changes. The framework's responsive prefixes
 (`sm:` / `lg:` / `portrait:`) allow a genuinely different arrangement per
 device, not just a rescaled one; see the `trmnl-framework` skill.
 
+## Upper-stage returns - to design (found 2026-11-14)
+
+Starship Flight 15 (Nov 13): Booster 22 aborted before its landing burn and
+splashed down in the Gulf, but Ship 42 flew 22.5 hours and returned to the
+pad at Starbase on Nov 14 ~21:20 UTC. The display never showed it. Gaps:
+
+- **Data is there, unused.** LL2 records the upper stage's own landing at
+  `rocket.spacecraft_stage.landing` (attempt, success, description, location,
+  type RTLS) plus `spacecraft_stage.mission_end`. `cards.py` and the art
+  logic read only `launcher_stage` (the booster).
+- **No art for it.** `get_rocket_image_url` picks `_landed` or the empty pad
+  from the booster's landing. There is no drawing of a returned ship, and a
+  failed booster plus a returned ship currently shows an empty pad.
+- **Timing.** The return can come hours or days after liftoff (SpaceX plans
+  may stretch it). By then `previous.json` (limit 1) has moved on to newer
+  launches, so `choose_target()` never revisits the flight. Needs a rule for
+  bringing a launch back when its return lands; do not invent hold times
+  without the author.
+- **Stale prose.** LL2's mission description is written before flight
+  ("first ever to attempt returning...") and not updated after.
+
+Decide the design with the author before building: card wording, art, and
+whether and how long a return reclaims the screen.
+
 ## Known open items
 
 - `is_placeholder` misses "Details TBD" style stubs when the description is
