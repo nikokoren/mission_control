@@ -283,6 +283,33 @@ pad at Starbase on Nov 14 ~21:20 UTC. The display never showed it. Gaps:
 Decide the design with the author before building: card wording, art, and
 whether and how long a return reclaims the screen.
 
+## Failure screens - to design (found 2026-11-16)
+
+The first failure seen on the display (Vulcan VC6L, Amazon Leo LV-01,
+2026-11-15) did not convey its impact. Full design review, with findings for
+every view, device and orientation and ranked ideas:
+`docs/failure-screen-review.md`. The main causes, all verified in the code:
+
+- **Status styling is upside down.** `full.liquid` gives `Success` the solid
+  `label--inverted` chip and `Failure` the weaker `label--outline`; the half
+  and quarter views outline every status, so failure looks like success.
+- **Trivia beside a failure.** `OG_B_FALLBACK["fail"]` in `cards.py` includes
+  `fact`, so DID YOU KNOW? sits next to the failure on the OG and every half
+  view. The X shows the future-tense pre-flight recap instead.
+- **Blank art.** `rockets/empty.png` is fully transparent, so the "empty pad"
+  is an empty column that reads as a broken image.
+- **The footer outweighs the failure.** Its countdown chip is as large as
+  the FAILURE chip, under the heaviest rule on screen.
+- **The outcome sentence has no subject** ("The launch failed."): it does
+  not say which vehicle or what payload.
+- **It holds the screen like a success:** `FRESH_HOURS` / `STALE_HOURS`.
+
+Cheap first steps proposed: invert the failure chip in every view, drop
+trivia on failure, name the vehicle and payload in the outcome sentence, and
+treat `empty.png` as no art. Open questions for the author are listed at the
+end of the review (how loud, how long, footer, payload wording, art,
+partial and crewed failures); decide those before building.
+
 ## Known open items
 
 - `is_placeholder` misses "Details TBD" style stubs when the description is
